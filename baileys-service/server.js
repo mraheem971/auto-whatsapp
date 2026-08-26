@@ -49,6 +49,7 @@ async function initBaileysSession(sessionId, accountName) {
         qrImage: null,
         user: null,
         socket: null,
+        contacts: new Map(),
         lastUpdated: new Date()
     };
 
@@ -66,6 +67,47 @@ async function initBaileysSession(sessionId, accountName) {
     sessionData.socket = sock;
 
     sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('contacts.upsert', (contacts) => {
+        for (const contact of contacts) {
+            if (contact.id && !contact.id.endsWith('@g.us') && !contact.id.endsWith('@broadcast')) {
+                const phone = contact.id.split('@')[0].split(':')[0];
+                const name = contact.name || contact.notify || contact.verifiedName || `+${phone}`;
+                sessionData.contacts.set(phone, {
+                    id: contact.id,
+                    phone: phone,
+                    name: name
+                });
+            }
+        }
+    });
+
+    sock.ev.on('contacts.update', (updates) => {
+        for (const update of updates) {
+            if (update.id && !update.id.endsWith('@g.us') && !update.id.endsWith('@broadcast')) {
+                const phone = update.id.split('@')[0].split(':')[0];
+                const existing = sessionData.contacts.get(phone) || { id: update.id, phone: phone, name: `+${phone}` };
+                if (update.name) existing.name = update.name;
+                if (update.notify) existing.name = update.notify;
+                sessionData.contacts.set(phone, existing);
+            }
+        }
+    });
+
+    sock.ev.on('chats.upsert', (chats) => {
+        for (const chat of chats) {
+            if (chat.id && !chat.id.endsWith('@g.us') && !chat.id.endsWith('@broadcast')) {
+                const phone = chat.id.split('@')[0].split(':')[0];
+                if (!sessionData.contacts.has(phone)) {
+                    sessionData.contacts.set(phone, {
+                        id: chat.id,
+                        phone: phone,
+                        name: chat.name || `+${phone}`
+                    });
+                }
+            }
+        }
+    });
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
@@ -359,6 +401,82 @@ app.get('/api/groups/:sessionId', async (req, res) => {
     } catch (error) {
         console.error('Error fetching groups:', error);
         res.status(500).json({ error: error.message || 'Failed to extract groups' });
+    }
+});
+
+// Extract / Get Contacts
+app.get('/api/contacts/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        let session = sessions.get(sessionId);
+
+        if (!session) {
+            const sessionPath = path.join(SESSIONS_DIR, sessionId);
+            if (fs.existsSync(sessionPath)) {
+                session = await initBaileysSession(sessionId);
+                let waitAttempts = 0;
+                while (session.status !== 'connected' && waitAttempts < 20) {
+                    await new Promise(r => setTimeout(r, 250));
+                    waitAttempts++;
+                }
+            }
+        }
+
+        if (!session || !session.socket || session.status !== 'connected') {
+            return res.status(400).json({ 
+                error: 'WhatsApp session is not connected. Please connect the account first.' 
+            });
+        }
+
+        // Also fetch from groups participants to get comprehensive contacts
+        const groupParticipants = new Map();
+        try {
+            const groups = await session.socket.groupFetchAllParticipating();
+            for (const group of Object.values(groups)) {
+                for (const p of group.participants || []) {
+                    if (p.id && !p.id.endsWith('@g.us') && !p.id.endsWith('@broadcast')) {
+                        const phone = p.id.split('@')[0].split(':')[0];
+                        if (phone && !groupParticipants.has(phone)) {
+                            groupParticipants.set(phone, {
+                                id: p.id,
+                                phone: phone,
+                                name: `+${phone}`,
+                                groupName: group.subject || 'WhatsApp Group'
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (e) {}
+
+        const syncedContacts = session.contacts ? Array.from(session.contacts.values()) : [];
+        
+        // Merge synced contacts and group members
+        const contactMap = new Map();
+        for (const c of syncedContacts) {
+            contactMap.set(c.phone, {
+                id: c.id,
+                phone: c.phone,
+                name: c.name || `+${c.phone}`,
+                groupName: 'WhatsApp Contacts'
+            });
+        }
+        for (const [phone, p] of groupParticipants) {
+            if (!contactMap.has(phone)) {
+                contactMap.set(phone, p);
+            }
+        }
+
+        const contactList = Array.from(contactMap.values());
+
+        res.json({
+            success: true,
+            totalContacts: contactList.length,
+            contacts: contactList
+        });
+    } catch (error) {
+        console.error('Error fetching contacts:', error);
+        res.status(500).json({ error: error.message || 'Failed to extract contacts' });
     }
 });
 

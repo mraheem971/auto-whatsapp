@@ -199,6 +199,9 @@ Route::middleware('admin')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('create', 'create')->name('create');
         Route::post('store', 'store')->name('store');
+        Route::get('sync', 'sync')->name('sync');
+        Route::get('fetch/{sessionId}', 'fetchWhatsAppContacts')->name('fetch');
+        Route::post('import', 'importContacts')->name('import');
         Route::post('delete/{id}', 'delete')->name('delete');
     });
 

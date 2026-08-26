@@ -69,6 +69,12 @@
                 "menu_active": "admin.contacts.create"
             },
             {
+                "keyword": ["Sync contacts", "Import contacts", "Extract contacts", "WhatsApp contacts", "Fetch contacts"],
+                "title": "Sync from WhatsApp",
+                "route_name": "admin.contacts.sync",
+                "menu_active": "admin.contacts.sync"
+            },
+            {
                 "keyword": ["All contacts", "Contact list", "Phone numbers", "Address book"],
                 "title": "All Contacts",
                 "route_name": "admin.contacts.index",

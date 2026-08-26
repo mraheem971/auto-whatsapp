@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
+use App\Models\WhatsappAccount;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class ContactController extends Controller
 {
+    protected $baileysUrl = 'http://127.0.0.1:3000';
+
     public function index(Request $request)
     {
         $pageTitle = 'All Contacts';
@@ -43,6 +47,12 @@ class ContactController extends Controller
 
         $cleanedPhone = preg_replace('/[^0-9]/', '', $request->phone_number);
 
+        $exists = Contact::where('phone_number', $cleanedPhone)->first();
+        if ($exists) {
+            $notify[] = ['error', 'A contact with this phone number already exists'];
+            return back()->withInput()->withNotify($notify);
+        }
+
         $contact = new Contact();
         $contact->admin_id     = auth('admin')->id() ?? 1;
         $contact->name         = $request->name;
@@ -53,6 +63,81 @@ class ContactController extends Controller
 
         $notify[] = ['success', 'Contact added successfully'];
         return redirect()->route('admin.contacts.index')->withNotify($notify);
+    }
+
+    public function sync()
+    {
+        $pageTitle = 'Sync Contacts from WhatsApp';
+        $connectedAccounts = WhatsappAccount::active()->latest()->get();
+        return view('admin.contact.sync', compact('pageTitle', 'connectedAccounts'));
+    }
+
+    public function fetchWhatsAppContacts($sessionId)
+    {
+        try {
+            $response = Http::timeout(25)->get("{$this->baileysUrl}/api/contacts/{$sessionId}");
+
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+
+            $err = $response->json()['error'] ?? 'Failed to fetch WhatsApp contacts.';
+            return response()->json(['success' => false, 'error' => $err], 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Baileys service connection error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function importContacts(Request $request)
+    {
+        $request->validate([
+            'contacts'   => 'required|array|min:1',
+            'contacts.*' => 'required|string', // phone numbers
+        ]);
+
+        $adminId = auth('admin')->id() ?? 1;
+        $imported = 0;
+        $skipped = 0;
+
+        foreach ($request->contacts as $contactJson) {
+            $data = json_decode($contactJson, true);
+            if (!$data || empty($data['phone'])) {
+                continue;
+            }
+
+            $phone = preg_replace('/[^0-9]/', '', $data['phone']);
+            if (empty($phone)) {
+                continue;
+            }
+
+            $name = !empty($data['name']) ? $data['name'] : "+{$phone}";
+            $group = !empty($data['groupName']) ? $data['groupName'] : 'WhatsApp Sync';
+
+            $exists = Contact::where('phone_number', $phone)->exists();
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            $contact = new Contact();
+            $contact->admin_id     = $adminId;
+            $contact->name         = $name;
+            $contact->phone_number = $phone;
+            $contact->group_name   = $group;
+            $contact->save();
+
+            $imported++;
+        }
+
+        return response()->json([
+            'success'  => true,
+            'imported' => $imported,
+            'skipped'  => $skipped,
+            'message'  => "Successfully imported {$imported} contacts" . ($skipped > 0 ? " ({$skipped} duplicates skipped)" : "")
+        ]);
     }
 
     public function delete(Request $request, $id)

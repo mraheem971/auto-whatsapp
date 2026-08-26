@@ -82,6 +82,9 @@
 @endsection
 
 @push('breadcrumb-plugins')
+    <a href="{{ route('admin.contacts.sync') }}" class="btn btn-sm btn-outline--success me-2">
+        <i class="lab la-whatsapp me-1"></i>@lang('Sync from WhatsApp')
+    </a>
     <a href="{{ route('admin.contacts.create') }}" class="btn btn-sm btn-outline--primary">
         <i class="las la-plus me-1"></i>@lang('Add New Contact')
     </a>
