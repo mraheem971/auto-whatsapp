@@ -1,0 +1,39 @@
+# Environment Files
+.env
+.env.backup
+.env.production
+core/.env
+core/.env.backup
+core/.env.production
+baileys-service/.env
+
+# Dependencies
+/core/vendor/
+/baileys-service/node_modules/
+/node_modules/
+
+# Baileys Sessions
+/baileys-service/sessions/*
+!/baileys-service/sessions/.gitkeep
+
+# Storage and Logs
+/core/storage/*.key
+/core/storage/framework/cache/data/*
+/core/storage/framework/sessions/*
+/core/storage/framework/views/*
+/core/storage/logs/*.log
+/core/bootstrap/cache/*.php
+
+# Node & Package Managers
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# IDE & OS Files
+.idea/
+.vscode/
+.fleet/
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
