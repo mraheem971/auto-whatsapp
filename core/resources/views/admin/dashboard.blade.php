@@ -202,41 +202,41 @@
         <div class="col-xxl-3 col-sm-6">
             <x-widget
                 style="7"
-                link="{{route('admin.account.listing.active')}}"
-                icon="las la-list-alt"
-                title="Active Listings"
-                value="{{$listings['active']}}"
+                link="{{route('admin.account.listing.index')}}"
+                icon="lab la-whatsapp"
+                title="Total WhatsApp Accounts"
+                value="{{$whatsappAccounts['total']}}"
                 bg="primary"
             />
         </div><!-- dashboard-w1 end -->
         <div class="col-xxl-3 col-sm-6">
             <x-widget
                 style="7"
+                link="{{route('admin.account.listing.active')}}"
+                icon="las la-check-circle"
+                title="Active Accounts"
+                value="{{$whatsappAccounts['active']}}"
+                bg="success"
+            />
+        </div><!-- dashboard-w1 end -->
+        <div class="col-xxl-3 col-sm-6">
+            <x-widget
+                style="7"
                 link="{{route('admin.account.listing.pending')}}"
-                icon="las la-list"
-                title="Pending Listings"
-                value="{{$listings['pending']}}"
+                icon="las la-clock"
+                title="Pending Accounts"
+                value="{{$whatsappAccounts['pending']}}"
                 bg="warning"
             />
         </div><!-- dashboard-w1 end -->
         <div class="col-xxl-3 col-sm-6">
             <x-widget
                 style="7"
-                link="{{route('admin.account.listing.sold')}}"
-                icon="las la-tasks"
-                title="Sold Listings"
-                value="{{$listings['sold']}}"
+                link="{{route('admin.contacts.index')}}"
+                icon="las la-address-book"
+                title="Total Contacts"
+                value="{{$totalContacts}}"
                 bg="info"
-            />
-        </div><!-- dashboard-w1 end -->
-        <div class="col-xxl-3 col-sm-6">
-            <x-widget
-                style="7"
-                link="javascript:void(0)"
-                icon="las la-money-bill-wave"
-                title="Total Seller Fee"
-                value="{{showAmount($listings['sellerFee'])}}"
-                bg="success"
             />
         </div><!-- dashboard-w1 end -->
     </div><!-- row end-->

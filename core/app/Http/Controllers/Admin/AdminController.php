@@ -12,6 +12,8 @@ use App\Models\Withdrawal;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use App\Models\AccountListing;
+use App\Models\WhatsappAccount;
+use App\Models\Contact;
 use App\Rules\FileTypeValidate;
 use App\Models\AdminNotification;
 use App\Http\Controllers\Controller;
@@ -55,12 +57,12 @@ class AdminController extends Controller
         $withdrawals['total_withdraw_rejected'] = Withdrawal::rejected()->count();
         $withdrawals['total_withdraw_charge']   = Withdrawal::approved()->sum('charge');
 
-        $listings['pending']   = AccountListing::pending()->count();
-        $listings['active']    = AccountListing::active()->count();
-        $listings['sold']      = AccountListing::sold()->count();
-        $listings['sellerFee'] = Transaction::where('remark', 'seller_fee')->sum('charge');
+        $whatsappAccounts['total']   = WhatsappAccount::count();
+        $whatsappAccounts['active']  = WhatsappAccount::active()->count();
+        $whatsappAccounts['pending'] = WhatsappAccount::pending()->count();
+        $totalContacts               = Contact::count();
 
-        return view('admin.dashboard', compact('pageTitle', 'widget', 'chart','deposit','withdrawals','listings'));
+        return view('admin.dashboard', compact('pageTitle', 'widget', 'chart','deposit','withdrawals','whatsappAccounts','totalContacts'));
     }
 
 
