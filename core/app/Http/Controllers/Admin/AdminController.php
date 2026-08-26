@@ -60,9 +60,10 @@ class AdminController extends Controller
         $whatsappAccounts['total']   = WhatsappAccount::count();
         $whatsappAccounts['active']  = WhatsappAccount::active()->count();
         $whatsappAccounts['pending'] = WhatsappAccount::pending()->count();
+        $activeAccounts              = WhatsappAccount::active()->latest()->get();
         $totalContacts               = Contact::count();
 
-        return view('admin.dashboard', compact('pageTitle', 'widget', 'chart','deposit','withdrawals','whatsappAccounts','totalContacts'));
+        return view('admin.dashboard', compact('pageTitle', 'widget', 'chart','deposit','withdrawals','whatsappAccounts','activeAccounts','totalContacts'));
     }
 
 
