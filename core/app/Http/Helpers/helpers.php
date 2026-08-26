@@ -328,8 +328,8 @@ function showDateTime($date, $format = 'Y-m-d h:i A')
     if (!$date) {
         return '-';
     }
-    $lang = session()->get('lang') ?? 'en';
-    Carbon::setLocale($lang);
+    $lang = session()->get('lang');
+    Carbon::setlocale($lang);
     return Carbon::parse($date)->translatedFormat($format);
 }
 

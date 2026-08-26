@@ -148,4 +148,17 @@ class ContactController extends Controller
         $notify[] = ['success', 'Contact removed successfully'];
         return back()->withNotify($notify);
     }
+
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'integer',
+        ]);
+
+        $count = Contact::whereIn('id', $request->ids)->delete();
+
+        $notify[] = ['success', "{$count} contacts removed successfully"];
+        return back()->withNotify($notify);
+    }
 }
