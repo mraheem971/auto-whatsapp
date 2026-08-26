@@ -14,6 +14,15 @@ const {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Global process error handlers to prevent crash on Baileys socket timeouts
+process.on('uncaughtException', (err) => {
+    console.error('[Uncaught Exception]', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[Unhandled Rejection]', reason?.message || reason);
+});
+
 app.use(cors());
 app.use(express.json());
 
