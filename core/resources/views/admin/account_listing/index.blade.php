@@ -101,7 +101,10 @@
                 <div class="modal-body">
                     <div class="form-group mb-3">
                         <label class="fw-bold mb-1">@lang('Sending From')</label>
-                        <input type="text" id="modal_sender_display" class="form-control bg-light" readonly>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="lab la-whatsapp text--success fs-5"></i></span>
+                            <input type="text" id="modal_sender_display" class="form-control border-start-0" style="background-color: #f8fafc !important; color: #1e293b !important; font-weight: 600; opacity: 1;" readonly>
+                        </div>
                     </div>
 
                     <div class="form-group mb-3">
