@@ -58,6 +58,24 @@
             }
         ]
     },
+    "manage_contacts": {
+        "title": "Manage Contacts",
+        "icon": "las la-address-book",
+        "menu_active": "admin.contacts*",
+        "submenu": [{
+                "keyword": ["Add contact", "New contact", "Create contact", "Save contact"],
+                "title": "Add Contact",
+                "route_name": "admin.contacts.create",
+                "menu_active": "admin.contacts.create"
+            },
+            {
+                "keyword": ["All contacts", "Contact list", "Phone numbers", "Address book"],
+                "title": "All Contacts",
+                "route_name": "admin.contacts.index",
+                "menu_active": "admin.contacts.index"
+            }
+        ]
+    },
     "manage_users": {
         "title": "Manage Users",
         "icon": "las la-users",

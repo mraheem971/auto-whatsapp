@@ -171,6 +171,22 @@ class AccountListingController extends Controller
         return back()->withNotify($notify);
     }
 
+    public function extractGroups($sessionId)
+    {
+        try {
+            $response = Http::timeout(20)->get("{$this->baileysUrl}/api/groups/{$sessionId}");
+
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+
+            $err = $response->json()['error'] ?? 'Failed to extract groups.';
+            return response()->json(['success' => false, 'error' => $err], 400);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => 'Baileys service error: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function details($id)
     {
         $pageTitle = 'WhatsApp Account Details';

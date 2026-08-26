@@ -186,11 +186,20 @@ Route::middleware('admin')->group(function () {
         Route::get('create', 'create')->name('create');
         Route::post('init-session', 'initSession')->name('init.session');
         Route::get('session-status/{sessionId}', 'sessionStatus')->name('session.status');
+        Route::get('extract-groups/{sessionId}', 'extractGroups')->name('extract.groups');
         Route::post('test-message', 'testSendMessage')->name('test.message');
         Route::post('delete/{id}', 'deleteAccount')->name('delete');
         Route::get('pending', 'pending')->name('pending');
         Route::get('active', 'active')->name('active');
         Route::get('details/{id}', 'details')->name('detail');
+    });
+
+    // Contact Management
+    Route::controller('ContactController')->prefix('contacts')->name('contacts.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('create', 'create')->name('create');
+        Route::post('store', 'store')->name('store');
+        Route::post('delete/{id}', 'delete')->name('delete');
     });
 
 

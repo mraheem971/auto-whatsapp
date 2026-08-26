@@ -303,6 +303,56 @@ app.post('/api/messages/send', async (req, res) => {
     }
 });
 
+// Extract Groups
+app.get('/api/groups/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        let session = sessions.get(sessionId);
+
+        if (!session) {
+            const sessionPath = path.join(SESSIONS_DIR, sessionId);
+            if (fs.existsSync(sessionPath)) {
+                session = await initBaileysSession(sessionId);
+                let waitAttempts = 0;
+                while (session.status !== 'connected' && waitAttempts < 20) {
+                    await new Promise(r => setTimeout(r, 250));
+                    waitAttempts++;
+                }
+            }
+        }
+
+        if (!session || !session.socket || session.status !== 'connected') {
+            return res.status(400).json({ 
+                error: 'WhatsApp session is not connected. Please connect the account first.' 
+            });
+        }
+
+        const groups = await session.socket.groupFetchAllParticipating();
+        const groupList = Object.values(groups).map(g => ({
+            id: g.id,
+            subject: g.subject || 'Unnamed Group',
+            owner: g.owner || g.subjectOwner || '',
+            creation: g.creation || 0,
+            desc: g.desc ? g.desc.toString() : '',
+            participantsCount: g.participants ? g.participants.length : 0,
+            participants: (g.participants || []).map(p => ({
+                id: p.id,
+                admin: p.admin || null,
+                phone: p.id ? p.id.split('@')[0].split(':')[0] : ''
+            }))
+        }));
+
+        res.json({
+            success: true,
+            totalGroups: groupList.length,
+            groups: groupList
+        });
+    } catch (error) {
+        console.error('Error fetching groups:', error);
+        res.status(500).json({ error: error.message || 'Failed to extract groups' });
+    }
+});
+
 app.listen(PORT, '127.0.0.1', () => {
     console.log(`Baileys WhatsApp Service running on http://127.0.0.1:${PORT}`);
 });
