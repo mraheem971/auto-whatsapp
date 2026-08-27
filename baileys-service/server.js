@@ -364,7 +364,18 @@ app.post('/api/messages/send', async (req, res) => {
         });
     } catch (error) {
         console.error('Error sending message:', error);
-        res.status(500).json({ error: error.message || 'Failed to send message' });
+        let errMsg = error.message || 'Failed to send message';
+        const statusCode = error?.output?.statusCode || error?.status || 500;
+
+        if (errMsg.toLowerCase().includes('forbidden') || statusCode === 403) {
+            errMsg = 'Forbidden: This WhatsApp number cannot send to this group. (Either it is not a member of this group, was removed, or the group is set to "Only Admins Can Send Messages"). Try selecting your other connected WhatsApp account.';
+        } else if (errMsg.toLowerCase().includes('item-not-found') || statusCode === 404) {
+            errMsg = 'WhatsApp recipient or group not found. Please verify the Group JID.';
+        } else if (errMsg.toLowerCase().includes('rate-overlimit') || statusCode === 429) {
+            errMsg = 'Rate limit reached on WhatsApp. Please wait a moment.';
+        }
+
+        res.status(400).json({ error: errMsg, originalError: error.message });
     }
 });
 
