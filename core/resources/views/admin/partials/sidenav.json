@@ -76,7 +76,7 @@
             },
             {
                 "keyword": ["All contacts", "Contact list", "Phone numbers", "Address book"],
-                "title": "All Contacts",
+                "title": "Contact List",
                 "route_name": "admin.contacts.index",
                 "menu_active": "admin.contacts.index"
             }

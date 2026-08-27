@@ -305,9 +305,14 @@
                                     <span class="badge badge--info fs-6">${g.participantsCount} Members</span>
                                 </td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-outline--success btnCopyGroupNumbers" data-numbers='${JSON.stringify(g.participants.map(p => p.phone).filter(Boolean))}' title="Copy Member Phone Numbers">
-                                        <i class="las la-copy me-1"></i> Copy Numbers
-                                    </button>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline--primary btnImportGroupContacts" data-group-name="${encodeURIComponent(g.subject)}" data-group-id="${g.id}" data-participants='${JSON.stringify(g.participants)}' title="Import group members directly into Contact List">
+                                            <i class="las la-file-import me-1"></i> Import Contacts
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline--success btnCopyGroupNumbers" data-numbers='${JSON.stringify(g.participants.map(p => p.phone).filter(Boolean))}' title="Copy Member Phone Numbers">
+                                            <i class="las la-copy me-1"></i> Copy
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         `;
@@ -321,6 +326,47 @@
                 $('#groupLoading').addClass('d-none');
                 $('#groupEmpty').removeClass('d-none');
                 let errMsg = 'Failed to extract WhatsApp groups.';
+                if(xhr.responseJSON && xhr.responseJSON.error){
+                    errMsg = xhr.responseJSON.error;
+                }
+                notify('error', errMsg);
+            }
+        });
+    });
+
+    $(document).on('click', '.btnImportGroupContacts', function(){
+        const btn = $(this);
+        const groupName = decodeURIComponent(btn.data('group-name'));
+        const groupId = btn.data('group-id');
+        const participants = btn.data('participants');
+
+        if(!participants || participants.length === 0){
+            notify('warning', 'No participants found in this group.');
+            return;
+        }
+
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Importing...');
+
+        $.ajax({
+            url: "{{ route('admin.contacts.import.group') }}",
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}",
+                group_name: groupName,
+                group_id: groupId,
+                participants: participants
+            },
+            success: function(res){
+                btn.prop('disabled', false).html('<i class="las la-check text--success me-1"></i> Imported');
+                if(res.success){
+                    notify('success', res.message);
+                } else {
+                    notify('error', res.error || 'Failed to import contacts');
+                }
+            },
+            error: function(xhr){
+                btn.prop('disabled', false).html('<i class="las la-file-import me-1"></i> Import Contacts');
+                let errMsg = 'Failed to import group contacts.';
                 if(xhr.responseJSON && xhr.responseJSON.error){
                     errMsg = xhr.responseJSON.error;
                 }

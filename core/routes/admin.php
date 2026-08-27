@@ -202,7 +202,8 @@ Route::middleware('admin')->group(function () {
         Route::get('sync', 'sync')->name('sync');
         Route::get('fetch/{sessionId}', 'fetchWhatsAppContacts')->name('fetch');
         Route::post('import', 'importContacts')->name('import');
-        Route::post('bulk-delete', 'bulkDelete')->name('bulk.delete');
+        Route::post('import-group', 'importGroupContacts')->name('import.group');
+        Route::post('delete-group', 'deleteGroup')->name('delete.group');
         Route::post('delete/{id}', 'delete')->name('delete');
     });
 
