@@ -494,6 +494,23 @@ app.get('/api/contacts/:sessionId', async (req, res) => {
     }
 });
 
+// Auto-restore saved sessions from disk on server launch
+async function restoreSavedSessions() {
+    try {
+        if (!fs.existsSync(SESSIONS_DIR)) return;
+        const dirs = fs.readdirSync(SESSIONS_DIR, { withFileTypes: true });
+        for (const dir of dirs) {
+            if (dir.isDirectory() && fs.existsSync(path.join(SESSIONS_DIR, dir.name, 'creds.json'))) {
+                console.log(`[Baileys] Auto-restoring session: ${dir.name}`);
+                initBaileysSession(dir.name).catch(e => console.error(`Error restoring session ${dir.name}:`, e));
+            }
+        }
+    } catch (e) {
+        console.error('Error auto-restoring sessions:', e);
+    }
+}
+
 app.listen(PORT, '127.0.0.1', () => {
     console.log(`Baileys WhatsApp Service running on http://127.0.0.1:${PORT}`);
+    restoreSavedSessions();
 });

@@ -215,7 +215,7 @@
                     </div>
 
                     <div class="form-group mb-3">
-                        <label class="fw-bold mb-1">@lang('Target WhatsApp Group')</label>
+                        <label class="fw-bold mb-1">@lang('Target WhatsApp Group Name')</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0"><i class="las la-users text--primary fs-5"></i></span>
                             <input type="text" id="contact_grp_display" class="form-control border-start-0" style="background-color: #f8fafc !important; color: #1e293b !important; font-weight: 600;" readonly>
@@ -223,8 +223,9 @@
                     </div>
 
                     <div class="form-group mb-3">
-                        <label class="fw-bold mb-1">@lang('Group JID / ID')</label>
-                        <input type="text" name="receiver" id="contact_grp_id" class="form-control bg-light font-monospace" readonly required>
+                        <label class="fw-bold mb-1">@lang('Group JID / ID') <span class="text--danger">*</span></label>
+                        <input type="text" name="receiver" id="contact_grp_id" class="form-control font-monospace" placeholder="@lang('e.g. 120363...@g.us')" required>
+                        <small class="text-muted d-block mt-1"><i class="las la-info-circle me-1"></i>@lang('WhatsApp Group JID (ends with @g.us)')</small>
                     </div>
 
                     <div class="form-group mb-0">
@@ -261,13 +262,8 @@
     "use strict";
 
     $('.btnOpenGroupMessage').on('click', function(){
-        const groupName = $(this).data('group-name');
-        const groupId = $(this).data('group-id');
-
-        if(!groupId){
-            notify('warning', 'This group does not have a WhatsApp Group JID.');
-            return;
-        }
+        const groupName = $(this).data('group-name') || '';
+        let groupId = $(this).data('group-id') || '';
 
         $('#contact_grp_display').val(groupName);
         $('#contact_grp_id').val(groupId);
@@ -278,11 +274,16 @@
         e.preventDefault();
 
         const sessionId = $('#contact_grp_session_id').val();
-        const receiver = $('#contact_grp_id').val();
+        const receiver = $('#contact_grp_id').val().trim();
         const message = $('#contact_grp_text').val().trim();
 
         if(!sessionId){
             notify('error', 'Please select an active WhatsApp account');
+            return;
+        }
+
+        if(!receiver){
+            notify('error', 'Please provide the WhatsApp Group JID');
             return;
         }
 
