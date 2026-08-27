@@ -37,12 +37,13 @@ class CampaignController extends Controller
         
         // Distinct groups from contacts table
         $groups = Contact::whereNotNull('group_id')
+            ->where('group_id', '!=', '')
             ->selectRaw('group_name, group_id, count(*) as member_count')
             ->groupBy('group_name', 'group_id')
             ->get();
 
         $totalContacts = Contact::where('type', 'contact')->count();
-        $totalGroups = Contact::whereNotNull('group_id')->distinct('group_id')->count('group_id');
+        $totalGroups = $groups->count();
 
         return view('admin.campaign.create', compact('pageTitle', 'connectedAccounts', 'templates', 'groups', 'totalContacts', 'totalGroups'));
     }
@@ -50,18 +51,41 @@ class CampaignController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'            => 'required|string|max:190',
-            'session_id'      => 'required|string',
-            'target_type'     => 'required|string|in:groups,contacts,all,selected_group',
-            'target_group_id' => 'nullable|string',
-            'message'         => 'required|string',
-            'delay_seconds'   => 'required|integer|min:1|max:60',
+            'name'             => 'required|string|max:190',
+            'session_id'       => 'required|string',
+            'target_type'      => 'required|string|in:groups,selected_groups,contacts,all,selected_group',
+            'target_group_ids' => 'nullable|array',
+            'target_group_id'  => 'nullable|string',
+            'message'          => 'required|string',
+            'delay_seconds'    => 'required|integer|min:1|max:60',
         ]);
 
         // Calculate recipients list based on target type
         $recipients = [];
         if ($request->target_type === 'groups') {
             $groups = Contact::whereNotNull('group_id')
+                ->where('group_id', '!=', '')
+                ->selectRaw('group_name, group_id')
+                ->groupBy('group_name', 'group_id')
+                ->get();
+
+            foreach ($groups as $g) {
+                $recipients[] = [
+                    'type'       => 'group',
+                    'name'       => $g->group_name,
+                    'target_jid' => $g->group_id,
+                    'group_name' => $g->group_name,
+                    'group_id'   => $g->group_id,
+                ];
+            }
+        } elseif ($request->target_type === 'selected_groups') {
+            $selectedIds = $request->target_group_ids ?: [];
+            if (empty($selectedIds)) {
+                $notify[] = ['error', 'Please select at least one WhatsApp group.'];
+                return back()->withInput()->withNotify($notify);
+            }
+
+            $groups = Contact::whereIn('group_id', $selectedIds)
                 ->selectRaw('group_name, group_id')
                 ->groupBy('group_name', 'group_id')
                 ->get();
@@ -98,6 +122,7 @@ class CampaignController extends Controller
             }
         } else { // 'all'
             $groups = Contact::whereNotNull('group_id')
+                ->where('group_id', '!=', '')
                 ->selectRaw('group_name, group_id')
                 ->groupBy('group_name', 'group_id')
                 ->get();
@@ -130,18 +155,19 @@ class CampaignController extends Controller
         }
 
         $campaign = new Campaign();
-        $campaign->admin_id        = auth('admin')->id() ?? 1;
-        $campaign->name            = $request->name;
-        $campaign->session_id      = $request->session_id;
-        $campaign->target_type     = $request->target_type;
-        $campaign->target_group_id = $request->target_group_id;
-        $campaign->message         = $request->message;
-        $campaign->delay_seconds   = $request->delay_seconds;
-        $campaign->status          = 'ready';
-        $campaign->total_targets   = count($recipients);
-        $campaign->sent_count      = 0;
-        $campaign->failed_count    = 0;
-        $campaign->logs            = [];
+        $campaign->admin_id         = auth('admin')->id() ?? 1;
+        $campaign->name             = $request->name;
+        $campaign->session_id       = $request->session_id;
+        $campaign->target_type      = $request->target_type;
+        $campaign->target_group_ids = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
+        $campaign->target_group_id  = $request->target_group_id;
+        $campaign->message          = $request->message;
+        $campaign->delay_seconds    = $request->delay_seconds;
+        $campaign->status           = 'ready';
+        $campaign->total_targets    = count($recipients);
+        $campaign->sent_count       = 0;
+        $campaign->failed_count     = 0;
+        $campaign->logs             = [];
         $campaign->save();
 
         $notify[] = ['success', 'Campaign created successfully! Ready to launch.'];
@@ -157,6 +183,21 @@ class CampaignController extends Controller
         $targets = [];
         if ($campaign->target_type === 'groups') {
             $groups = Contact::whereNotNull('group_id')
+                ->where('group_id', '!=', '')
+                ->selectRaw('group_name, group_id')
+                ->groupBy('group_name', 'group_id')
+                ->get();
+            foreach ($groups as $g) {
+                $targets[] = [
+                    'type'       => 'group',
+                    'name'       => $g->group_name,
+                    'target_jid' => $g->group_id,
+                    'group_name' => $g->group_name,
+                ];
+            }
+        } elseif ($campaign->target_type === 'selected_groups') {
+            $selectedIds = json_decode($campaign->target_group_ids ?? '[]', true) ?: [];
+            $groups = Contact::whereIn('group_id', $selectedIds)
                 ->selectRaw('group_name, group_id')
                 ->groupBy('group_name', 'group_id')
                 ->get();
@@ -189,6 +230,7 @@ class CampaignController extends Controller
             }
         } else {
             $groups = Contact::whereNotNull('group_id')
+                ->where('group_id', '!=', '')
                 ->selectRaw('group_name, group_id')
                 ->groupBy('group_name', 'group_id')
                 ->get();

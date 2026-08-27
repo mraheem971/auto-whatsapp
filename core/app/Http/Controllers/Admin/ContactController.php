@@ -107,7 +107,8 @@ class ContactController extends Controller
     public function fetchWhatsAppContacts($sessionId)
     {
         try {
-            $response = Http::timeout(25)->get("{$this->baileysUrl}/api/contacts/{$sessionId}");
+            $mode = request('mode', 'all');
+            $response = Http::timeout(25)->get("{$this->baileysUrl}/api/contacts/{$sessionId}?mode={$mode}");
 
             if ($response->successful()) {
                 return response()->json($response->json());

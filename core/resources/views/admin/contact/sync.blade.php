@@ -29,10 +29,18 @@
                         </select>
                     </div>
 
-                    <div class="col-lg-4 col-md-6">
-                        <button type="button" class="btn btn--primary h-45 px-4 w-100 fw-bold" id="btnFetchWhatsAppContacts" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }}>
-                            <i class="las la-sync me-1"></i> @lang('Fetch Contacts & Groups')
-                        </button>
+                    <div class="col-lg-7 col-md-6">
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn--warning text-dark fw-bold h-45 px-3 flex-grow-1 btnFetchAction" data-mode="groups_only" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }}>
+                                <i class="las la-users me-1"></i> @lang('Fetch Groups Only (No Numbers)')
+                            </button>
+                            <button type="button" class="btn btn--primary h-45 px-3 flex-grow-1 btnFetchAction" data-mode="contacts_only" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }}>
+                                <i class="las la-user me-1"></i> @lang('Fetch Contacts Only')
+                            </button>
+                            <button type="button" class="btn btn--dark h-45 px-3 btnFetchAction" data-mode="all" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }} title="@lang('Fetch everything including group members')">
+                                <i class="las la-sync me-1"></i> @lang('Fetch All')
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -41,7 +49,7 @@
                     <div class="spinner-border text--primary mb-3" style="width: 3.5rem; height: 3.5rem;" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <h6 class="text-muted">@lang('Extracting contacts, chats, and WhatsApp groups...')</h6>
+                    <h6 class="text-muted" id="loadingText">@lang('Extracting WhatsApp data...')</h6>
                 </div>
 
                 <!-- Empty Prompt -->
@@ -49,8 +57,8 @@
                     <div class="mb-3">
                         <i class="lab la-whatsapp text--success" style="font-size: 70px;"></i>
                     </div>
-                    <h5 class="text-dark fw-bold mb-1">@lang('Unified Extraction of WhatsApp Contacts & Groups')</h5>
-                    <p class="text-muted small mb-0">@lang('Retrieve all participating WhatsApp groups and phone numbers into one unified list for campaign automation.')</p>
+                    <h5 class="text-dark fw-bold mb-1">@lang('Extract WhatsApp Groups & Contacts')</h5>
+                    <p class="text-muted small mb-0">@lang('Click "Fetch Groups Only" to sync all participating groups with their Group JIDs directly into your Contact List.')</p>
                 </div>
 
                 <!-- Results Table -->
@@ -58,7 +66,7 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 p-3 bg-light rounded border">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge badge--dark fs-6" id="totalCountBadge">0 Total</span>
-                            <span class="badge badge--info fs-6" id="totalGroupsBadge">0 Groups</span>
+                            <span class="badge badge--warning text-dark fs-6" id="totalGroupsBadge">0 Groups</span>
                             <span class="badge badge--primary fs-6" id="totalContactsBadge">0 Contacts</span>
                             <span class="badge badge--success fs-6" id="selectedCountBadge">0 Selected</span>
                         </div>
@@ -107,6 +115,9 @@
 @endsection
 
 @push('breadcrumb-plugins')
+    <a href="{{ route('admin.campaigns.create') }}" class="btn btn-sm btn--warning text-dark fw-bold me-2">
+        <i class="las la-bullhorn me-1"></i> @lang('Create Campaign')
+    </a>
     <a href="{{ route('admin.contacts.index') }}" class="btn btn-sm btn-outline--primary">
         <i class="las la-list me-1"></i> @lang('Contact List')
     </a>
@@ -120,8 +131,9 @@
     let fetchedItems = [];
     let currentFilter = 'all';
 
-    $('#btnFetchWhatsAppContacts').on('click', function(){
+    $('.btnFetchAction').on('click', function(){
         const sessionId = $('#selected_session').val();
+        const mode = $(this).data('mode');
 
         if(!sessionId){
             notify('error', 'Please select a connected WhatsApp account');
@@ -131,14 +143,23 @@
         $('#fetchPrompt').addClass('d-none');
         $('#fetchResults').addClass('d-none');
         $('#fetchLoading').removeClass('d-none');
-        $('#btnFetchWhatsAppContacts').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Fetching...');
+        
+        if(mode === 'groups_only'){
+            $('#loadingText').text('Extracting WhatsApp participating groups...');
+        } else if(mode === 'contacts_only'){
+            $('#loadingText').text('Extracting WhatsApp contacts...');
+        } else {
+            $('#loadingText').text('Extracting all WhatsApp groups and contacts...');
+        }
+
+        $('.btnFetchAction').prop('disabled', true);
 
         $.ajax({
-            url: "{{ url('admin/contacts/fetch') }}/" + sessionId,
+            url: "{{ url('admin/contacts/fetch') }}/" + sessionId + "?mode=" + mode,
             type: "GET",
             success: function(res){
                 $('#fetchLoading').addClass('d-none');
-                $('#btnFetchWhatsAppContacts').prop('disabled', false).html('<i class="las la-sync me-1"></i> Fetch Contacts & Groups');
+                $('.btnFetchAction').prop('disabled', false);
 
                 if(res.success && res.items && res.items.length > 0){
                     fetchedItems = res.items;
@@ -151,15 +172,15 @@
                     updateSelectedCounter();
                 } else {
                     $('#fetchPrompt').removeClass('d-none');
-                    notify('warning', 'No contacts or groups found for this session.');
+                    notify('warning', 'No groups or contacts found for this session.');
                 }
             },
             error: function(xhr){
                 $('#fetchLoading').addClass('d-none');
                 $('#fetchPrompt').removeClass('d-none');
-                $('#btnFetchWhatsAppContacts').prop('disabled', false).html('<i class="las la-sync me-1"></i> Fetch Contacts & Groups');
+                $('.btnFetchAction').prop('disabled', false);
 
-                let errMsg = 'Failed to fetch WhatsApp contacts and groups.';
+                let errMsg = 'Failed to fetch WhatsApp data.';
                 if(xhr.responseJSON && xhr.responseJSON.error){
                     errMsg = xhr.responseJSON.error;
                 }

@@ -2,11 +2,11 @@
 
 @section('panel')
 <div class="row justify-content-center">
-    <div class="col-lg-9">
+    <div class="col-lg-10">
         <div class="card b-radius--10 shadow-sm">
             <div class="card-header bg--primary text-white py-3">
                 <h5 class="card-title text-white mb-0 d-flex align-items-center">
-                    <i class="las la-bullhorn me-2 fs-4"></i> @lang('Create WhatsApp Auto Broadcast Campaign')
+                    <i class="las la-bullhorn me-2 fs-4"></i> @lang('Create WhatsApp Marketing Campaign')
                 </h5>
             </div>
             <form action="{{ route('admin.campaigns.store') }}" method="POST">
@@ -17,7 +17,7 @@
                         <!-- Campaign Name -->
                         <div class="col-md-7">
                             <label class="fw-bold mb-1">@lang('Campaign Name') <span class="text--danger">*</span></label>
-                            <input type="text" name="name" class="form-control" placeholder="@lang('e.g. Group Promo Announcement 2026')" value="{{ old('name') }}" required>
+                            <input type="text" name="name" class="form-control" placeholder="@lang('e.g. Weekly Deals Broadcast 2026')" value="{{ old('name') }}" required>
                         </div>
 
                         <!-- Sender Account -->
@@ -34,27 +34,67 @@
                             </select>
                         </div>
 
-                        <!-- Target Audience -->
+                        <!-- Target Audience Type -->
                         <div class="col-md-7">
                             <label class="fw-bold mb-1">@lang('Target Audience') <span class="text--danger">*</span></label>
                             <select name="target_type" id="target_type" class="form-control form-select" required>
                                 <option value="groups" selected>📢 @lang('All WhatsApp Groups') ({{ $totalGroups }} @lang('Groups'))</option>
+                                <option value="selected_groups">🎯 @lang('Select Multiple Specific Groups')</option>
+                                <option value="selected_group">📌 @lang('Single Specific Group')</option>
                                 <option value="contacts">👤 @lang('All Direct Contacts') ({{ $totalContacts }} @lang('Contacts'))</option>
                                 <option value="all">🌐 @lang('All Groups & Contacts Combined')</option>
-                                <option value="selected_group">🎯 @lang('Specific Single Group')</option>
                             </select>
                         </div>
 
                         <!-- Anti-Ban Delay -->
                         <div class="col-md-5">
-                            <label class="fw-bold mb-1">@lang('Anti-Ban Delay (Seconds)') <span class="text--danger">*</span></label>
+                            <label class="fw-bold mb-1">@lang('Anti-Ban Cooldown Delay (Seconds)') <span class="text--danger">*</span></label>
                             <input type="number" name="delay_seconds" class="form-control" value="5" min="2" max="60" required>
-                            <small class="text-muted"><i class="las la-shield-alt me-1 text--success"></i>@lang('Recommended 5-10s between messages')</small>
+                            <small class="text-muted"><i class="las la-shield-alt me-1 text--success"></i>@lang('Recommended 5-10s between messages to prevent spam detection')</small>
                         </div>
 
-                        <!-- Specific Group Select (Hidden by default) -->
-                        <div class="col-12 d-none" id="specific_group_wrapper">
-                            <label class="fw-bold mb-1">@lang('Select Specific WhatsApp Group')</label>
+                        <!-- Multiple Specific Groups Selector (Hidden by default) -->
+                        <div class="col-12 d-none" id="multiple_groups_wrapper">
+                            <div class="card border bg-light">
+                                <div class="card-header bg-white d-flex align-items-center justify-content-between py-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="fw-bold text-dark"><i class="las la-tasks text--primary me-1"></i> @lang('Select Target WhatsApp Groups'):</span>
+                                        <span class="badge badge--primary" id="selectedGroupsCount">0 @lang('Selected')</span>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-xs btn-outline--dark" id="btnCheckAllGroups">@lang('Select All')</button>
+                                        <button type="button" class="btn btn-xs btn-outline--secondary" id="btnUncheckAllGroups">@lang('Deselect All')</button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="mb-3">
+                                        <input type="text" id="filterGroupsSearch" class="form-control form-control-sm" placeholder="@lang('Filter group names...')">
+                                    </div>
+                                    <div class="row g-2" id="groupsChecklist" style="max-height: 260px; overflow-y: auto;">
+                                        @forelse($groups as $g)
+                                            <div class="col-md-6 group-item-col">
+                                                <label class="p-2 border rounded bg-white w-100 d-flex align-items-center justify-content-between mb-0 cursor-pointer hover-shadow">
+                                                    <div class="d-flex align-items-center text-truncate me-2">
+                                                        <input type="checkbox" name="target_group_ids[]" value="{{ $g->group_id }}" class="form-check-input group-chk me-2">
+                                                        <div>
+                                                            <strong class="text-dark d-block text-truncate group-name-label" style="max-width: 220px;">{{ $g->group_name }}</strong>
+                                                            <span class="font-monospace text-muted" style="font-size: 10px;">{{ $g->group_id }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span class="badge badge--info">{{ $g->member_count }} @lang('Members')</span>
+                                                </label>
+                                            </div>
+                                        @empty
+                                            <div class="col-12 text-center text-muted py-3">@lang('No WhatsApp groups found. Please sync groups first.')</div>
+                                        @endforelse
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Single Specific Group Selector (Hidden by default) -->
+                        <div class="col-12 d-none" id="single_group_wrapper">
+                            <label class="fw-bold mb-1">@lang('Select Single WhatsApp Group')</label>
                             <select name="target_group_id" id="target_group_id" class="form-control form-select">
                                 <option value="">@lang('-- Choose Group --')</option>
                                 @foreach($groups as $g)
@@ -89,7 +129,7 @@
                                 @endif
                             </div>
 
-                            <textarea name="message" id="campaign_message" rows="6" class="form-control" placeholder="@lang('Write the message you want to broadcast across all target groups/contacts...')" required>{{ old('message') }}</textarea>
+                            <textarea name="message" id="campaign_message" rows="6" class="form-control" placeholder="@lang('Write the broadcast message to send across all selected WhatsApp groups/contacts...')" required>{{ old('message') }}</textarea>
                             
                             <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
                                 <span class="text-muted small fw-bold">@lang('Personalization tags'):</span>
@@ -106,7 +146,7 @@
                         <i class="las la-arrow-left me-1"></i> @lang('Cancel')
                     </a>
                     <button type="submit" class="btn btn--primary btn-sm px-4 fw-bold">
-                        <i class="las la-rocket me-1"></i> @lang('Create & Prepare Campaign')
+                        <i class="las la-rocket me-1"></i> @lang('Create & Launch Campaign')
                     </button>
                 </div>
             </form>
@@ -121,15 +161,57 @@
     "use strict";
 
     $('#target_type').on('change', function(){
-        if($(this).val() === 'selected_group'){
-            $('#specific_group_wrapper').removeClass('d-none');
+        const val = $(this).val();
+
+        if(val === 'selected_groups'){
+            $('#multiple_groups_wrapper').removeClass('d-none');
+            $('#single_group_wrapper').addClass('d-none');
+            $('#target_group_id').prop('required', false);
+        } else if(val === 'selected_group'){
+            $('#single_group_wrapper').removeClass('d-none');
+            $('#multiple_groups_wrapper').addClass('d-none');
             $('#target_group_id').prop('required', true);
         } else {
-            $('#specific_group_wrapper').addClass('d-none');
+            $('#multiple_groups_wrapper').addClass('d-none');
+            $('#single_group_wrapper').addClass('d-none');
             $('#target_group_id').prop('required', false);
         }
     });
 
+    // Checklist buttons
+    $('#btnCheckAllGroups').on('click', function(){
+        $('.group-chk:visible').prop('checked', true);
+        updateGroupCounter();
+    });
+
+    $('#btnUncheckAllGroups').on('click', function(){
+        $('.group-chk:visible').prop('checked', false);
+        updateGroupCounter();
+    });
+
+    $(document).on('change', '.group-chk', function(){
+        updateGroupCounter();
+    });
+
+    function updateGroupCounter(){
+        const count = $('.group-chk:checked').length;
+        $('#selectedGroupsCount').text(`${count} Selected`);
+    }
+
+    // Filter groups search
+    $('#filterGroupsSearch').on('keyup', function(){
+        const term = $(this).val().toLowerCase().trim();
+        $('.group-item-col').each(function(){
+            const text = $(this).find('.group-name-label').text().toLowerCase();
+            if(text.includes(term)){
+                $(this).removeClass('d-none');
+            } else {
+                $(this).addClass('d-none');
+            }
+        });
+    });
+
+    // Template application
     $('.btnApplyTpl').on('click', function(e){
         e.preventDefault();
         const msg = $(this).data('msg');

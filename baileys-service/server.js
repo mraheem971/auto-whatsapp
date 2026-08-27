@@ -429,10 +429,11 @@ app.get('/api/groups/:sessionId', async (req, res) => {
     }
 });
 
-// Extract / Get Contacts
+// Extract / Get Contacts & Groups
 app.get('/api/contacts/:sessionId', async (req, res) => {
     try {
         const { sessionId } = req.params;
+        const mode = req.query.mode || 'all'; // 'groups_only' | 'contacts_only' | 'all'
         let session = sessions.get(sessionId);
 
         if (!session) {
@@ -453,69 +454,79 @@ app.get('/api/contacts/:sessionId', async (req, res) => {
             });
         }
 
-        // Fetch groups and group participants
-        const unifiedList = [];
         const groupList = [];
         const contactMap = new Map();
+        const unifiedList = [];
 
-        try {
-            const groups = await session.socket.groupFetchAllParticipating();
-            for (const group of Object.values(groups)) {
-                const groupObj = {
-                    type: 'group',
-                    id: group.id,
-                    target_jid: group.id,
-                    phone: group.id,
-                    name: group.subject || 'WhatsApp Group',
-                    groupName: group.subject || 'WhatsApp Group',
-                    groupId: group.id,
-                    participantsCount: group.participants ? group.participants.length : 0
-                };
-                groupList.push(groupObj);
-                unifiedList.push(groupObj);
+        // If groups requested or mode is all
+        if (mode === 'groups_only' || mode === 'all') {
+            try {
+                const groups = await session.socket.groupFetchAllParticipating();
+                for (const group of Object.values(groups)) {
+                    const groupObj = {
+                        type: 'group',
+                        id: group.id,
+                        target_jid: group.id,
+                        phone: group.id,
+                        name: group.subject || 'WhatsApp Group',
+                        groupName: group.subject || 'WhatsApp Group',
+                        groupId: group.id,
+                        participantsCount: group.participants ? group.participants.length : 0
+                    };
+                    groupList.push(groupObj);
+                    unifiedList.push(groupObj);
 
-                for (const p of group.participants || []) {
-                    if (p.id && !p.id.endsWith('@g.us') && !p.id.endsWith('@broadcast')) {
-                        const phone = p.id.split('@')[0].split(':')[0];
-                        if (phone && !contactMap.has(phone)) {
-                            contactMap.set(phone, {
-                                type: 'contact',
-                                id: p.id,
-                                target_jid: `${phone}@s.whatsapp.net`,
-                                phone: phone,
-                                name: `+${phone}`,
-                                groupName: group.subject || 'WhatsApp Group',
-                                groupId: group.id
-                            });
+                    // If NOT groups_only, also extract participant numbers
+                    if (mode === 'all') {
+                        for (const p of group.participants || []) {
+                            if (p.id && !p.id.endsWith('@g.us') && !p.id.endsWith('@broadcast')) {
+                                const phone = p.id.split('@')[0].split(':')[0];
+                                if (phone && !contactMap.has(phone)) {
+                                    contactMap.set(phone, {
+                                        type: 'contact',
+                                        id: p.id,
+                                        target_jid: `${phone}@s.whatsapp.net`,
+                                        phone: phone,
+                                        name: `+${phone}`,
+                                        groupName: group.subject || 'WhatsApp Group',
+                                        groupId: group.id
+                                    });
+                                }
+                            }
                         }
                     }
                 }
-            }
-        } catch (e) {
-            console.error('Error fetching groups in contacts endpoint:', e);
-        }
-
-        const syncedContacts = session.contacts ? Array.from(session.contacts.values()) : [];
-        for (const c of syncedContacts) {
-            if (!contactMap.has(c.phone)) {
-                contactMap.set(c.phone, {
-                    type: 'contact',
-                    id: c.id,
-                    target_jid: `${c.phone}@s.whatsapp.net`,
-                    phone: c.phone,
-                    name: c.name || `+${c.phone}`,
-                    groupName: 'WhatsApp Contacts',
-                    groupId: null
-                });
+            } catch (e) {
+                console.error('Error fetching groups in contacts endpoint:', e);
             }
         }
 
-        for (const c of contactMap.values()) {
-            unifiedList.push(c);
+        if (mode === 'contacts_only' || mode === 'all') {
+            const syncedContacts = session.contacts ? Array.from(session.contacts.values()) : [];
+            for (const c of syncedContacts) {
+                if (!contactMap.has(c.phone)) {
+                    contactMap.set(c.phone, {
+                        type: 'contact',
+                        id: c.id,
+                        target_jid: `${c.phone}@s.whatsapp.net`,
+                        phone: c.phone,
+                        name: c.name || `+${c.phone}`,
+                        groupName: 'WhatsApp Contacts',
+                        groupId: null
+                    });
+                }
+            }
+        }
+
+        if (mode !== 'groups_only') {
+            for (const c of contactMap.values()) {
+                unifiedList.push(c);
+            }
         }
 
         res.json({
             success: true,
+            mode: mode,
             totalItems: unifiedList.length,
             totalGroups: groupList.length,
             totalContacts: contactMap.size,
