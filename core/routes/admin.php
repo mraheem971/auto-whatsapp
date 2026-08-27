@@ -214,8 +214,18 @@ Route::middleware('admin')->group(function () {
         Route::post('store', 'store')->name('store');
         Route::get('edit/{id}', 'edit')->name('edit');
         Route::post('update/{id}', 'update')->name('update');
-        Route::post('delete/{id}', 'delete')->name('delete');
         Route::get('list/json', 'listJson')->name('list.json');
+    });
+
+    // Marketing Campaigns
+    Route::controller('CampaignController')->prefix('campaigns')->name('campaigns.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('create', 'create')->name('create');
+        Route::post('store', 'store')->name('store');
+        Route::get('view/{id}', 'view')->name('view');
+        Route::post('send-single/{id}', 'sendSingle')->name('send.single');
+        Route::post('update-status/{id}', 'updateStatus')->name('update.status');
+        Route::post('delete/{id}', 'delete')->name('delete');
     });
 
 

@@ -11,7 +11,12 @@
                 <h5 class="card-title text-white mb-0 d-flex align-items-center">
                     <i class="las la-layer-group me-2 fs-4"></i> @lang('WhatsApp Groups & Tags')
                 </h5>
-                <span class="badge bg-white text--primary fs-6">{{ $groups->count() }} @lang('Groups Found')</span>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('admin.campaigns.create') }}" class="btn btn-xs btn--warning text-dark fw-bold">
+                        <i class="las la-bullhorn me-1"></i> @lang('Broadcast to All Groups')
+                    </a>
+                    <span class="badge bg-white text--primary fs-6">{{ $groups->count() }} @lang('Groups Found')</span>
+                </div>
             </div>
             <div class="card-body p-3">
                 <div class="row g-3">
@@ -71,14 +76,28 @@
     <div class="col-md-12">
         <div class="card b-radius--10 shadow-sm">
             <div class="card-header bg--dark text-white d-flex flex-wrap align-items-center justify-content-between py-3 gap-2">
-                <div class="d-flex align-items-center gap-2">
-                    <h5 class="card-title text-white mb-0 d-flex align-items-center">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h5 class="card-title text-white mb-0 d-flex align-items-center me-2">
                         <i class="las la-address-book me-2 fs-4 text--primary"></i> @lang('Contact List')
                     </h5>
+
+                    <!-- Type Filter Buttons -->
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ route('admin.contacts.index') }}" class="btn btn-outline-light {{ $selectedType === 'all' && !$selectedGroup ? 'active bg-white text-dark' : '' }}">
+                            @lang('All') ({{ $totalContactsCount }})
+                        </a>
+                        <a href="{{ route('admin.contacts.index', ['type' => 'group']) }}" class="btn btn-outline-light {{ $selectedType === 'group' ? 'active bg-white text-dark' : '' }}">
+                            <i class="las la-users me-1"></i>@lang('Groups')
+                        </a>
+                        <a href="{{ route('admin.contacts.index', ['type' => 'contact']) }}" class="btn btn-outline-light {{ $selectedType === 'contact' ? 'active bg-white text-dark' : '' }}">
+                            <i class="las la-user me-1"></i>@lang('Contacts') ({{ $totalDirectCount }})
+                        </a>
+                    </div>
+
                     @if($selectedGroup)
-                        <span class="badge badge--warning">@lang('Filtered Group'): {{ $selectedGroup }}</span>
-                        <a href="{{ route('admin.contacts.index') }}" class="btn btn-sm btn-outline-light py-0 px-2">
-                            <i class="las la-times"></i> @lang('Clear Filter')
+                        <span class="badge badge--warning ms-2">@lang('Filtered'): {{ $selectedGroup }}</span>
+                        <a href="{{ route('admin.contacts.index') }}" class="btn btn-xs btn-outline-light">
+                            <i class="las la-times"></i> @lang('Clear')
                         </a>
                     @endif
                 </div>
@@ -87,6 +106,9 @@
                     @if($selectedGroup)
                         <input type="hidden" name="group" value="{{ request('group') }}">
                         <input type="hidden" name="group_id" value="{{ request('group_id') }}">
+                    @endif
+                    @if(request('type'))
+                        <input type="hidden" name="type" value="{{ request('type') }}">
                     @endif
                     <div class="input-group input-group-sm">
                         <input type="text" name="search" class="form-control" placeholder="@lang('Search name, phone, group...')" value="{{ request('search') }}">
@@ -100,11 +122,11 @@
                     <table class="table--light style--two table">
                         <thead>
                             <tr>
-                                <th>@lang('Name')</th>
-                                <th>@lang('Phone Number')</th>
+                                <th>@lang('Type')</th>
+                                <th>@lang('Name / Subject')</th>
+                                <th>@lang('Target Phone / Group JID')</th>
                                 <th>@lang('Group Name / Tag')</th>
                                 <th>@lang('Group ID / JID')</th>
-                                <th>@lang('Email')</th>
                                 <th>@lang('Added At')</th>
                                 <th>@lang('Action')</th>
                             </tr>
@@ -113,15 +135,32 @@
                             @forelse($contacts as $contact)
                                 <tr>
                                     <td>
+                                        @if($contact->type === 'group')
+                                            <span class="badge badge--warning"><i class="las la-users me-1"></i> @lang('Group')</span>
+                                        @else
+                                            <span class="badge badge--primary"><i class="las la-user me-1"></i> @lang('Contact')</span>
+                                        @endif
+                                    </td>
+                                    <td>
                                         <div class="user">
                                             <div class="thumb me-2">
-                                                <i class="las la-user-circle text--primary fs-4"></i>
+                                                @if($contact->type === 'group')
+                                                    <i class="lab la-whatsapp text--success fs-4"></i>
+                                                @else
+                                                    <i class="las la-user-circle text--primary fs-4"></i>
+                                                @endif
                                             </div>
                                             <span class="name fw-bold">{{ __($contact->name) }}</span>
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge badge--info fs-6">+{{ $contact->phone_number }}</span>
+                                        @if($contact->type === 'group')
+                                            <span class="badge bg-light text-dark font-monospace border px-2 py-1" style="font-size: 11px;">
+                                                {{ $contact->group_id ?: $contact->phone_number }}
+                                            </span>
+                                        @else
+                                            <span class="badge badge--info fs-6">+{{ $contact->phone_number }}</span>
+                                        @endif
                                     </td>
                                     <td>
                                         @if($contact->group_name)
@@ -140,17 +179,25 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="text-muted small">{{ $contact->email ?? 'N/A' }}</span>
-                                    </td>
-                                    <td>
                                         {{ showDateTime($contact->created_at) }}
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-outline--danger confirmationBtn" 
-                                            data-action="{{ route('admin.contacts.delete', $contact->id) }}"
-                                            data-question="@lang('Are you sure you want to remove this contact?')">
-                                            <i class="las la-trash me-1"></i>@lang('Delete')
-                                        </button>
+                                        <div class="d-inline-flex gap-1">
+                                            @if($contact->type === 'group' || $contact->group_id)
+                                                <button type="button" class="btn btn-sm btn-outline--info btnOpenGroupMessage" 
+                                                    data-group-name="{{ $contact->group_name ?: $contact->name }}" 
+                                                    data-group-id="{{ $contact->group_id ?: $contact->phone_number }}"
+                                                    title="@lang('Send message to this group')">
+                                                    <i class="lab la-whatsapp"></i>
+                                                </button>
+                                            @endif
+
+                                            <button type="button" class="btn btn-sm btn-outline--danger confirmationBtn" 
+                                                data-action="{{ route('admin.contacts.delete', $contact->id) }}"
+                                                data-question="@lang('Are you sure you want to remove this entry?')">
+                                                <i class="las la-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -158,13 +205,16 @@
                                     <td class="text-muted text-center py-5" colspan="100%">
                                         <div class="empty-state">
                                             <i class="las la-address-book text--muted mb-3" style="font-size: 52px;"></i>
-                                            <h6 class="text-muted mb-2">@lang('No contacts found.')</h6>
-                                            <div class="d-flex justify-content-center gap-2 mt-3">
+                                            <h6 class="text-muted mb-2">@lang('No contacts or groups found.')</h6>
+                                            <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
                                                 <a href="{{ route('admin.contacts.sync') }}" class="btn btn-sm btn--success">
                                                     <i class="lab la-whatsapp me-1"></i>@lang('Sync from WhatsApp')
                                                 </a>
                                                 <a href="{{ route('admin.contacts.create') }}" class="btn btn-sm btn--primary">
                                                     <i class="las la-plus me-1"></i>@lang('Add Contact')
+                                                </a>
+                                                <a href="{{ route('admin.campaigns.create') }}" class="btn btn-sm btn--warning text-dark fw-bold">
+                                                    <i class="las la-bullhorn me-1"></i>@lang('Create Campaign')
                                                 </a>
                                             </div>
                                         </div>
@@ -258,11 +308,14 @@
 @endsection
 
 @push('breadcrumb-plugins')
+    <a href="{{ route('admin.campaigns.create') }}" class="btn btn-sm btn--warning text-dark fw-bold me-2">
+        <i class="las la-bullhorn me-1"></i> @lang('Create Campaign')
+    </a>
     <a href="{{ route('admin.contacts.sync') }}" class="btn btn-sm btn-outline--success me-2">
-        <i class="lab la-whatsapp me-1"></i>@lang('Sync from WhatsApp')
+        <i class="lab la-whatsapp me-1"></i> @lang('Sync from WhatsApp')
     </a>
     <a href="{{ route('admin.contacts.create') }}" class="btn btn-sm btn-outline--primary">
-        <i class="las la-plus me-1"></i>@lang('Add New Contact')
+        <i class="las la-plus me-1"></i> @lang('Add New Contact')
     </a>
 @endpush
 

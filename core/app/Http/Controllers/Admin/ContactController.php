@@ -17,6 +17,10 @@ class ContactController extends Controller
         $pageTitle = 'Contact List';
         $query = Contact::query();
 
+        if ($request->type) {
+            $query->where('type', $request->type);
+        }
+
         if ($request->group) {
             $query->where('group_name', $request->group);
         }
@@ -30,6 +34,7 @@ class ContactController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('name', 'LIKE', "%$search%")
                   ->orWhere('phone_number', 'LIKE', "%$search%")
+                  ->orWhere('target_jid', 'LIKE', "%$search%")
                   ->orWhere('group_name', 'LIKE', "%$search%")
                   ->orWhere('group_id', 'LIKE', "%$search%")
                   ->orWhere('email', 'LIKE', "%$search%");
@@ -39,16 +44,20 @@ class ContactController extends Controller
         $contacts = $query->latest()->paginate(getPaginate());
 
         // Groups summary
-        $groups = Contact::selectRaw('group_name, group_id, count(*) as total_count')
+        $groups = Contact::whereNotNull('group_id')
+            ->selectRaw('group_name, group_id, count(*) as total_count')
             ->groupBy('group_name', 'group_id')
             ->orderByDesc('total_count')
             ->get();
 
         $totalContactsCount = Contact::count();
+        $totalGroupsCount = $groups->count();
+        $totalDirectCount = Contact::where('type', 'contact')->count();
         $selectedGroup = $request->group ?? $request->group_id ?? null;
+        $selectedType = $request->type ?? 'all';
         $connectedAccounts = WhatsappAccount::active()->latest()->get();
 
-        return view('admin.contact.index', compact('pageTitle', 'contacts', 'groups', 'totalContactsCount', 'selectedGroup', 'connectedAccounts'));
+        return view('admin.contact.index', compact('pageTitle', 'contacts', 'groups', 'totalContactsCount', 'totalGroupsCount', 'totalDirectCount', 'selectedGroup', 'selectedType', 'connectedAccounts'));
     }
 
     public function create()
