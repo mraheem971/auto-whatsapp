@@ -229,7 +229,17 @@
                     </div>
 
                     <div class="form-group mb-0">
-                        <label class="fw-bold mb-1">@lang('Message Text') <span class="text--danger">*</span></label>
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="fw-bold mb-0">@lang('Message Text') <span class="text--danger">*</span></label>
+                            <div class="dropdown">
+                                <button class="btn btn-xs btn-outline--secondary dropdown-toggle btnLoadTemplates" type="button" data-bs-toggle="dropdown">
+                                    <i class="las la-envelope-open-text me-1"></i> @lang('Insert Template')
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end templateDropdownMenu" style="max-height: 220px; overflow-y: auto;">
+                                    <li><span class="dropdown-item text-muted small">@lang('Loading...')</span></li>
+                                </ul>
+                            </div>
+                        </div>
                         <textarea name="message" id="contact_grp_text" rows="4" class="form-control" placeholder="@lang('Type your message to the group here...')" required>Hello everyone! This is a message sent from Auto WhatsApp.</textarea>
                     </div>
                 </div>
@@ -322,6 +332,39 @@
                 notify('error', errMsg);
             }
         });
+    });
+
+    // Load templates into dropdown
+    $(document).on('click', '.btnLoadTemplates', function(){
+        const dropdownMenu = $(this).closest('.dropdown').find('.templateDropdownMenu');
+        $.ajax({
+            url: "{{ route('admin.templates.list.json') }}",
+            type: "GET",
+            success: function(res){
+                dropdownMenu.empty();
+                if(res.success && res.templates && res.templates.length > 0){
+                    res.templates.forEach(tpl => {
+                        const item = `
+                            <li>
+                                <a class="dropdown-item py-2 border-bottom btnInsertTemplate" href="javascript:void(0)" data-msg="${encodeURIComponent(tpl.message)}">
+                                    <strong class="d-block text-dark">${tpl.title}</strong>
+                                    <small class="text-muted d-block text-truncate" style="max-width: 260px;">${tpl.message}</small>
+                                </a>
+                            </li>
+                        `;
+                        dropdownMenu.append(item);
+                    });
+                } else {
+                    dropdownMenu.append('<li><span class="dropdown-item text-muted small">No templates saved yet.</span></li>');
+                }
+            }
+        });
+    });
+
+    $(document).on('click', '.btnInsertTemplate', function(e){
+        e.preventDefault();
+        const msg = decodeURIComponent($(this).data('msg'));
+        $('#contact_grp_text').val(msg);
     });
 
 })(jQuery);

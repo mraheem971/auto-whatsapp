@@ -82,6 +82,24 @@
             }
         ]
     },
+    "message_templates": {
+        "title": "Message Templates",
+        "icon": "las la-envelope-open-text",
+        "menu_active": "admin.templates*",
+        "submenu": [{
+                "keyword": ["New template", "Add template", "Create template"],
+                "title": "Add Template",
+                "route_name": "admin.templates.create",
+                "menu_active": "admin.templates.create"
+            },
+            {
+                "keyword": ["All templates", "Template list", "Message templates"],
+                "title": "All Templates",
+                "route_name": "admin.templates.index",
+                "menu_active": "admin.templates.index"
+            }
+        ]
+    },
     "manage_users": {
         "title": "Manage Users",
         "icon": "las la-users",

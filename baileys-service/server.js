@@ -453,51 +453,75 @@ app.get('/api/contacts/:sessionId', async (req, res) => {
             });
         }
 
-        // Also fetch from groups participants to get comprehensive contacts
-        const groupParticipants = new Map();
+        // Fetch groups and group participants
+        const unifiedList = [];
+        const groupList = [];
+        const contactMap = new Map();
+
         try {
             const groups = await session.socket.groupFetchAllParticipating();
             for (const group of Object.values(groups)) {
+                const groupObj = {
+                    type: 'group',
+                    id: group.id,
+                    target_jid: group.id,
+                    phone: group.id,
+                    name: group.subject || 'WhatsApp Group',
+                    groupName: group.subject || 'WhatsApp Group',
+                    groupId: group.id,
+                    participantsCount: group.participants ? group.participants.length : 0
+                };
+                groupList.push(groupObj);
+                unifiedList.push(groupObj);
+
                 for (const p of group.participants || []) {
                     if (p.id && !p.id.endsWith('@g.us') && !p.id.endsWith('@broadcast')) {
                         const phone = p.id.split('@')[0].split(':')[0];
-                        if (phone && !groupParticipants.has(phone)) {
-                            groupParticipants.set(phone, {
+                        if (phone && !contactMap.has(phone)) {
+                            contactMap.set(phone, {
+                                type: 'contact',
                                 id: p.id,
+                                target_jid: `${phone}@s.whatsapp.net`,
                                 phone: phone,
                                 name: `+${phone}`,
-                                groupName: group.subject || 'WhatsApp Group'
+                                groupName: group.subject || 'WhatsApp Group',
+                                groupId: group.id
                             });
                         }
                     }
                 }
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error('Error fetching groups in contacts endpoint:', e);
+        }
 
         const syncedContacts = session.contacts ? Array.from(session.contacts.values()) : [];
-        
-        // Merge synced contacts and group members
-        const contactMap = new Map();
         for (const c of syncedContacts) {
-            contactMap.set(c.phone, {
-                id: c.id,
-                phone: c.phone,
-                name: c.name || `+${c.phone}`,
-                groupName: 'WhatsApp Contacts'
-            });
-        }
-        for (const [phone, p] of groupParticipants) {
-            if (!contactMap.has(phone)) {
-                contactMap.set(phone, p);
+            if (!contactMap.has(c.phone)) {
+                contactMap.set(c.phone, {
+                    type: 'contact',
+                    id: c.id,
+                    target_jid: `${c.phone}@s.whatsapp.net`,
+                    phone: c.phone,
+                    name: c.name || `+${c.phone}`,
+                    groupName: 'WhatsApp Contacts',
+                    groupId: null
+                });
             }
         }
 
-        const contactList = Array.from(contactMap.values());
+        for (const c of contactMap.values()) {
+            unifiedList.push(c);
+        }
 
         res.json({
             success: true,
-            totalContacts: contactList.length,
-            contacts: contactList
+            totalItems: unifiedList.length,
+            totalGroups: groupList.length,
+            totalContacts: contactMap.size,
+            items: unifiedList,
+            groups: groupList,
+            contacts: Array.from(contactMap.values())
         });
     } catch (error) {
         console.error('Error fetching contacts:', error);

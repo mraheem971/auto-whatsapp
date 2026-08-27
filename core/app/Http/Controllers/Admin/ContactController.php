@@ -127,41 +127,70 @@ class ContactController extends Controller
 
         foreach ($request->contacts as $contactJson) {
             $data = json_decode($contactJson, true);
-            if (!$data || empty($data['phone'])) {
+            if (!$data) {
                 continue;
             }
 
-            $phone = preg_replace('/[^0-9]/', '', $data['phone']);
-            if (empty($phone)) {
-                continue;
+            $type = $data['type'] ?? 'contact';
+
+            if ($type === 'group') {
+                $groupId = $data['id'] ?? $data['groupId'] ?? '';
+                if (empty($groupId)) continue;
+
+                $groupName = !empty($data['name']) ? $data['name'] : 'WhatsApp Group';
+                $targetJid = $data['target_jid'] ?? $groupId;
+
+                $exists = Contact::where('group_id', $groupId)->where('type', 'group')->exists();
+                if ($exists) {
+                    $skipped++;
+                    continue;
+                }
+
+                $contact = new Contact();
+                $contact->admin_id     = $adminId;
+                $contact->type         = 'group';
+                $contact->name         = $groupName;
+                $contact->phone_number = $groupId;
+                $contact->target_jid   = $targetJid;
+                $contact->group_name   = $groupName;
+                $contact->group_id     = $groupId;
+                $contact->save();
+
+                $imported++;
+            } else {
+                $phone = preg_replace('/[^0-9]/', '', $data['phone'] ?? '');
+                if (empty($phone)) continue;
+
+                $name = !empty($data['name']) ? $data['name'] : "+{$phone}";
+                $group = !empty($data['groupName']) ? $data['groupName'] : 'WhatsApp Sync';
+                $groupId = !empty($data['groupId']) ? $data['groupId'] : (!empty($data['id']) && str_ends_with($data['id'], '@g.us') ? $data['id'] : null);
+                $targetJid = $data['target_jid'] ?? "{$phone}@s.whatsapp.net";
+
+                $exists = Contact::where('phone_number', $phone)->exists();
+                if ($exists) {
+                    $skipped++;
+                    continue;
+                }
+
+                $contact = new Contact();
+                $contact->admin_id     = $adminId;
+                $contact->type         = 'contact';
+                $contact->name         = $name;
+                $contact->phone_number = $phone;
+                $contact->target_jid   = $targetJid;
+                $contact->group_name   = $group;
+                $contact->group_id     = $groupId;
+                $contact->save();
+
+                $imported++;
             }
-
-            $name = !empty($data['name']) ? $data['name'] : "+{$phone}";
-            $group = !empty($data['groupName']) ? $data['groupName'] : 'WhatsApp Sync';
-            $groupId = !empty($data['id']) ? $data['id'] : null;
-
-            $exists = Contact::where('phone_number', $phone)->exists();
-            if ($exists) {
-                $skipped++;
-                continue;
-            }
-
-            $contact = new Contact();
-            $contact->admin_id     = $adminId;
-            $contact->name         = $name;
-            $contact->phone_number = $phone;
-            $contact->group_name   = $group;
-            $contact->group_id     = $groupId;
-            $contact->save();
-
-            $imported++;
         }
 
         return response()->json([
             'success'  => true,
             'imported' => $imported,
             'skipped'  => $skipped,
-            'message'  => "Successfully imported {$imported} contacts" . ($skipped > 0 ? " ({$skipped} duplicates skipped)" : "")
+            'message'  => "Successfully imported {$imported} items (Contacts & Groups)" . ($skipped > 0 ? " ({$skipped} already exist)" : "")
         ]);
     }
 
