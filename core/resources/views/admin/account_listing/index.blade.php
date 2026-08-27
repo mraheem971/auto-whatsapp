@@ -95,13 +95,13 @@
     </div>
 </div>
 
-<!-- Test Message Modal -->
+<!-- Test Direct Message Modal -->
 <div id="testMessageModal" class="modal fade" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header bg--dark text-white">
                 <h5 class="modal-title text-white d-flex align-items-center">
-                    <i class="lab la-whatsapp text--success me-2 fs-4"></i> @lang('Send Test WhatsApp Message')
+                    <i class="lab la-whatsapp text--success me-2 fs-4"></i> @lang('Send WhatsApp Message')
                 </h5>
                 <button type="button" class="close text-white bg-transparent border-0 fs-4" data-bs-dismiss="modal" aria-label="Close">
                     <i class="las la-times"></i>
@@ -120,10 +120,10 @@
                     </div>
 
                     <div class="form-group mb-3">
-                        <label class="fw-bold mb-1">@lang('Recipient WhatsApp Number') <span class="text--danger">*</span></label>
-                        <input type="text" name="receiver" id="modal_receiver" class="form-control" placeholder="@lang('e.g. 923001234567 (with country code)')" required>
+                        <label class="fw-bold mb-1">@lang('Recipient WhatsApp Number or Group ID') <span class="text--danger">*</span></label>
+                        <input type="text" name="receiver" id="modal_receiver" class="form-control" placeholder="@lang('e.g. 923001234567 or 120363...@g.us')" required>
                         <small class="text-muted d-block mt-1">
-                            <i class="las la-globe me-1"></i>@lang('Include country code without + or special characters')
+                            <i class="las la-globe me-1"></i>@lang('Enter individual phone number with country code, or WhatsApp group JID')
                         </small>
                     </div>
 
@@ -143,13 +143,59 @@
     </div>
 </div>
 
+<!-- Group Message Modal -->
+<div id="groupMessageModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg--dark text-white">
+                <h5 class="modal-title text-white d-flex align-items-center">
+                    <i class="lab la-whatsapp text--success me-2 fs-4"></i> @lang('Send Text to WhatsApp Group')
+                </h5>
+                <button type="button" class="close text-white bg-transparent border-0 fs-4" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="las la-times"></i>
+                </button>
+            </div>
+            <form id="formSendGroupMessage">
+                @csrf
+                <input type="hidden" name="session_id" id="grp_msg_session_id">
+                <input type="hidden" name="isGroup" value="1">
+                <div class="modal-body p-4">
+                    <div class="form-group mb-3">
+                        <label class="fw-bold mb-1">@lang('Target WhatsApp Group')</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="las la-users text--primary fs-5"></i></span>
+                            <input type="text" id="grp_msg_group_display" class="form-control border-start-0" style="background-color: #f8fafc !important; color: #1e293b !important; font-weight: 600;" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="fw-bold mb-1">@lang('Group JID / ID')</label>
+                        <input type="text" name="receiver" id="grp_msg_group_id" class="form-control bg-light font-monospace" readonly required>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label class="fw-bold mb-1">@lang('Message Text') <span class="text--danger">*</span></label>
+                        <textarea name="message" id="grp_msg_text" rows="4" class="form-control" placeholder="@lang('Type your message to the group here...')" required>Hello everyone! This is a message sent from Auto WhatsApp.</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn--dark btn-sm px-3" data-bs-dismiss="modal">@lang('Cancel')</button>
+                    <button type="submit" class="btn btn--success btn-sm px-3 fw-bold" id="btnSubmitGroupMessage">
+                        <i class="las la-paper-plane me-1"></i> @lang('Send to Group')
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Group Extract Modal -->
 <div id="groupExtractModal" class="modal fade" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header bg--primary text-white">
                 <h5 class="modal-title text-white d-flex align-items-center">
-                    <i class="las la-users-cog me-2 fs-4"></i> @lang('Extracted WhatsApp Groups')
+                    <i class="las la-users-cog me-2 fs-4"></i> @lang('Extracted WhatsApp Groups & Actions')
                 </h5>
                 <button type="button" class="close text-white bg-transparent border-0 fs-4" data-bs-dismiss="modal" aria-label="Close">
                     <i class="las la-times"></i>
@@ -170,13 +216,14 @@
                         </h6>
                     </div>
 
-                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
                         <table class="table table-bordered table-hover align-middle">
-                            <thead class="table-light">
+                            <thead class="table-light sticky-top">
                                 <tr>
                                     <th>#</th>
                                     <th>@lang('Group Name')</th>
-                                    <th>@lang('Total Members')</th>
+                                    <th>@lang('Group JID / ID')</th>
+                                    <th>@lang('Members')</th>
                                     <th>@lang('Action')</th>
                                 </tr>
                             </thead>
@@ -213,13 +260,15 @@
 (function($){
     "use strict";
 
+    let currentExtractSessionId = null;
+
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    // Test Message Modal
+    // Test Direct Message Modal
     $('.btnTestMessage').on('click', function(){
         const sessionId = $(this).data('session_id');
         const name = $(this).data('name');
@@ -238,7 +287,7 @@
         const message = $('#modal_message').val().trim();
 
         if(!receiver){
-            notify('error', 'Please enter recipient WhatsApp number');
+            notify('error', 'Please enter recipient WhatsApp number or Group JID');
             return;
         }
 
@@ -257,7 +306,7 @@
                 $('#btnModalSendMessage').prop('disabled', false).html('<i class="las la-paper-plane me-1"></i> Send Message');
                 if(res.status === 'success'){
                     $('#testMessageModal').modal('hide');
-                    notify('success', res.message || 'Test message sent successfully!');
+                    notify('success', res.message || 'Message sent successfully!');
                 } else {
                     notify('error', res.error || 'Failed to send message.');
                 }
@@ -276,7 +325,7 @@
     // Group Extractor
     $('.btnExtractGroups').on('click', function(){
         const sessionId = $(this).data('session_id');
-        const name = $(this).data('name');
+        currentExtractSessionId = sessionId;
 
         $('#groupLoading').removeClass('d-none');
         $('#groupContent').addClass('d-none');
@@ -299,15 +348,20 @@
                                 <td>${index + 1}</td>
                                 <td>
                                     <strong class="d-block text-dark">${g.subject}</strong>
-                                    <small class="text-muted">${g.id}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark font-monospace border px-2 py-1" style="font-size: 11px;">${g.id}</span>
                                 </td>
                                 <td>
                                     <span class="badge badge--info fs-6">${g.participantsCount} Members</span>
                                 </td>
                                 <td>
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex gap-1 flex-wrap">
+                                        <button type="button" class="btn btn-sm btn-outline--info btnOpenGroupMessage" data-session-id="${sessionId}" data-group-name="${encodeURIComponent(g.subject)}" data-group-id="${g.id}" title="Send text message directly to this group">
+                                            <i class="lab la-whatsapp me-1"></i> Message Group
+                                        </button>
                                         <button type="button" class="btn btn-sm btn-outline--primary btnImportGroupContacts" data-group-name="${encodeURIComponent(g.subject)}" data-group-id="${g.id}" data-participants='${JSON.stringify(g.participants)}' title="Import group members directly into Contact List">
-                                            <i class="las la-file-import me-1"></i> Import Contacts
+                                            <i class="las la-file-import me-1"></i> Import
                                         </button>
                                         <button type="button" class="btn btn-sm btn-outline--success btnCopyGroupNumbers" data-numbers='${JSON.stringify(g.participants.map(p => p.phone).filter(Boolean))}' title="Copy Member Phone Numbers">
                                             <i class="las la-copy me-1"></i> Copy
@@ -334,6 +388,65 @@
         });
     });
 
+    // Open Group Message Modal
+    $(document).on('click', '.btnOpenGroupMessage', function(){
+        const sessionId = $(this).data('session-id');
+        const groupName = decodeURIComponent($(this).data('group-name'));
+        const groupId = $(this).data('group-id');
+
+        $('#grp_msg_session_id').val(sessionId);
+        $('#grp_msg_group_display').val(groupName);
+        $('#grp_msg_group_id').val(groupId);
+
+        $('#groupMessageModal').modal('show');
+    });
+
+    // Submit Group Message
+    $('#formSendGroupMessage').on('submit', function(e){
+        e.preventDefault();
+
+        const sessionId = $('#grp_msg_session_id').val();
+        const receiver = $('#grp_msg_group_id').val();
+        const message = $('#grp_msg_text').val().trim();
+
+        if(!message){
+            notify('error', 'Please enter a message to send to the group');
+            return;
+        }
+
+        $('#btnSubmitGroupMessage').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Sending to Group...');
+
+        $.ajax({
+            url: "{{ route('admin.account.listing.test.message') }}",
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}",
+                session_id: sessionId,
+                receiver: receiver,
+                message: message,
+                isGroup: 1
+            },
+            success: function(res){
+                $('#btnSubmitGroupMessage').prop('disabled', false).html('<i class="las la-paper-plane me-1"></i> Send to Group');
+                if(res.status === 'success'){
+                    $('#groupMessageModal').modal('hide');
+                    notify('success', 'Message posted to WhatsApp group successfully!');
+                } else {
+                    notify('error', res.error || 'Failed to send message to group.');
+                }
+            },
+            error: function(xhr){
+                $('#btnSubmitGroupMessage').prop('disabled', false).html('<i class="las la-paper-plane me-1"></i> Send to Group');
+                let errMsg = 'Failed to send message to group.';
+                if(xhr.responseJSON && xhr.responseJSON.error){
+                    errMsg = xhr.responseJSON.error;
+                }
+                notify('error', errMsg);
+            }
+        });
+    });
+
+    // Import Group Contacts
     $(document).on('click', '.btnImportGroupContacts', function(){
         const btn = $(this);
         const groupName = decodeURIComponent(btn.data('group-name'));
@@ -365,7 +478,7 @@
                 }
             },
             error: function(xhr){
-                btn.prop('disabled', false).html('<i class="las la-file-import me-1"></i> Import Contacts');
+                btn.prop('disabled', false).html('<i class="las la-file-import me-1"></i> Import');
                 let errMsg = 'Failed to import group contacts.';
                 if(xhr.responseJSON && xhr.responseJSON.error){
                     errMsg = xhr.responseJSON.error;
@@ -375,6 +488,7 @@
         });
     });
 
+    // Copy Group Numbers
     $(document).on('click', '.btnCopyGroupNumbers', function(){
         const numbers = $(this).data('numbers');
         if(numbers && numbers.length > 0){

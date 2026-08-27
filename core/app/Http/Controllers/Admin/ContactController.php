@@ -46,8 +46,9 @@ class ContactController extends Controller
 
         $totalContactsCount = Contact::count();
         $selectedGroup = $request->group ?? $request->group_id ?? null;
+        $connectedAccounts = WhatsappAccount::active()->latest()->get();
 
-        return view('admin.contact.index', compact('pageTitle', 'contacts', 'groups', 'totalContactsCount', 'selectedGroup'));
+        return view('admin.contact.index', compact('pageTitle', 'contacts', 'groups', 'totalContactsCount', 'selectedGroup', 'connectedAccounts'));
     }
 
     public function create()

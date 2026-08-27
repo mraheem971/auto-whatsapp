@@ -306,10 +306,10 @@ app.post('/api/sessions/delete/:sessionId', async (req, res) => {
     res.json({ success: true, message: 'Session deleted' });
 });
 
-// Send Message
+// Send Message (Direct Contact or Group)
 app.post('/api/messages/send', async (req, res) => {
     try {
-        const { sessionId, receiver, message } = req.body;
+        const { sessionId, receiver, message, isGroup } = req.body;
 
         if (!sessionId || !receiver || !message) {
             return res.status(400).json({ error: 'sessionId, receiver, and message are required' });
@@ -336,15 +336,29 @@ app.post('/api/messages/send', async (req, res) => {
             });
         }
 
-        // Format receiver number to WhatsApp JID
-        let cleaned = receiver.toString().replace(/[^0-9]/g, '');
-        let jid = cleaned.includes('@s.whatsapp.net') ? cleaned : `${cleaned}@s.whatsapp.net`;
+        // Format receiver to either WhatsApp user JID or group JID
+        let target = receiver.toString().trim();
+        let jid;
 
+        if (target.endsWith('@g.us')) {
+            jid = target;
+        } else if (target.endsWith('@s.whatsapp.net')) {
+            jid = target;
+        } else if (isGroup || target.includes('-') || (target.startsWith('120') && target.length >= 18)) {
+            let cleanGroup = target.replace(/[^0-9\-]/g, '');
+            jid = `${cleanGroup}@g.us`;
+        } else {
+            let cleaned = target.replace(/[^0-9]/g, '');
+            jid = `${cleaned}@s.whatsapp.net`;
+        }
+
+        console.log(`[Baileys] Sending message via session ${sessionId} to JID: ${jid}`);
         const result = await session.socket.sendMessage(jid, { text: message });
 
         res.json({
             success: true,
             message: 'Message sent successfully!',
+            targetJid: jid,
             messageId: result?.key?.id,
             timestamp: new Date()
         });

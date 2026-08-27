@@ -22,7 +22,7 @@
                                     <div class="d-flex align-items-start justify-content-between mb-2">
                                         <div class="d-flex align-items-center me-2">
                                             <i class="lab la-whatsapp text--success fs-4 me-2"></i>
-                                            <strong class="text-dark d-block text-truncate" style="max-width: 180px;" title="{{ $grp->group_name ?: 'Unnamed Group' }}">
+                                            <strong class="text-dark d-block text-truncate" style="max-width: 170px;" title="{{ $grp->group_name ?: 'Unnamed Group' }}">
                                                 {{ $grp->group_name ?: trans('Unnamed Group') }}
                                             </strong>
                                         </div>
@@ -37,15 +37,23 @@
                                     </div>
                                 </div>
 
-                                <div class="d-flex align-items-center justify-content-between pt-2 border-top">
-                                    <a href="{{ route('admin.contacts.index', ['group' => $grp->group_name, 'group_id' => $grp->group_id]) }}" class="btn btn-sm btn-outline--primary py-1 px-2">
-                                        <i class="las la-filter me-1"></i>@lang('View Members')
+                                <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1 flex-wrap">
+                                    <button type="button" class="btn btn-sm btn-outline--info py-1 px-2 btnOpenGroupMessage" 
+                                        data-group-name="{{ $grp->group_name }}" 
+                                        data-group-id="{{ $grp->group_id }}"
+                                        title="@lang('Send message to this group')">
+                                        <i class="lab la-whatsapp me-1"></i>@lang('Message')
+                                    </button>
+
+                                    <a href="{{ route('admin.contacts.index', ['group' => $grp->group_name, 'group_id' => $grp->group_id]) }}" class="btn btn-sm btn-outline--primary py-1 px-2" title="@lang('Filter this group members')">
+                                        <i class="las la-filter me-1"></i>@lang('Members')
                                     </a>
 
                                     <button type="button" class="btn btn-sm btn-outline--danger py-1 px-2 confirmationBtn"
                                         data-action="{{ route('admin.contacts.delete.group') }}?group_id={{ urlencode($grp->group_id) }}&group_name={{ urlencode($grp->group_name) }}"
-                                        data-question="@lang('Are you sure you want to delete all contacts in this group?')">
-                                        <i class="las la-trash me-1"></i>@lang('Delete Group')
+                                        data-question="@lang('Are you sure you want to delete all contacts in this group?')"
+                                        title="@lang('Delete Group')">
+                                        <i class="las la-trash"></i>
                                     </button>
                                 </div>
                             </div>
@@ -176,6 +184,65 @@
     </div>
 </div>
 
+<!-- Send Group Message Modal -->
+<div id="contactGroupMessageModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg--dark text-white">
+                <h5 class="modal-title text-white d-flex align-items-center">
+                    <i class="lab la-whatsapp text--success me-2 fs-4"></i> @lang('Send Message to WhatsApp Group')
+                </h5>
+                <button type="button" class="close text-white bg-transparent border-0 fs-4" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="las la-times"></i>
+                </button>
+            </div>
+            <form id="formContactGroupMessage">
+                @csrf
+                <input type="hidden" name="isGroup" value="1">
+                <div class="modal-body p-4">
+                    
+                    <div class="form-group mb-3">
+                        <label class="fw-bold mb-1">@lang('Send From Connected WhatsApp') <span class="text--danger">*</span></label>
+                        <select name="session_id" id="contact_grp_session_id" class="form-control form-select" required>
+                            @forelse($connectedAccounts as $acc)
+                                <option value="{{ $acc->session_id }}">
+                                    {{ $acc->account_name }} ({{ $acc->phone_number ? '+' . $acc->phone_number : 'Connected' }})
+                                </option>
+                            @empty
+                                <option value="" disabled selected>@lang('No active WhatsApp account connected')</option>
+                            @endforelse
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="fw-bold mb-1">@lang('Target WhatsApp Group')</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="las la-users text--primary fs-5"></i></span>
+                            <input type="text" id="contact_grp_display" class="form-control border-start-0" style="background-color: #f8fafc !important; color: #1e293b !important; font-weight: 600;" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="fw-bold mb-1">@lang('Group JID / ID')</label>
+                        <input type="text" name="receiver" id="contact_grp_id" class="form-control bg-light font-monospace" readonly required>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label class="fw-bold mb-1">@lang('Message Text') <span class="text--danger">*</span></label>
+                        <textarea name="message" id="contact_grp_text" rows="4" class="form-control" placeholder="@lang('Type your message to the group here...')" required>Hello everyone! This is a message sent from Auto WhatsApp.</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn--dark btn-sm px-3" data-bs-dismiss="modal">@lang('Cancel')</button>
+                    <button type="submit" class="btn btn--success btn-sm px-3 fw-bold" id="btnSendContactGroupMsg">
+                        <i class="las la-paper-plane me-1"></i> @lang('Send to Group')
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <x-confirmation-modal />
 @endsection
 
@@ -186,4 +253,76 @@
     <a href="{{ route('admin.contacts.create') }}" class="btn btn-sm btn-outline--primary">
         <i class="las la-plus me-1"></i>@lang('Add New Contact')
     </a>
+@endpush
+
+@push('script')
+<script>
+(function($){
+    "use strict";
+
+    $('.btnOpenGroupMessage').on('click', function(){
+        const groupName = $(this).data('group-name');
+        const groupId = $(this).data('group-id');
+
+        if(!groupId){
+            notify('warning', 'This group does not have a WhatsApp Group JID.');
+            return;
+        }
+
+        $('#contact_grp_display').val(groupName);
+        $('#contact_grp_id').val(groupId);
+        $('#contactGroupMessageModal').modal('show');
+    });
+
+    $('#formContactGroupMessage').on('submit', function(e){
+        e.preventDefault();
+
+        const sessionId = $('#contact_grp_session_id').val();
+        const receiver = $('#contact_grp_id').val();
+        const message = $('#contact_grp_text').val().trim();
+
+        if(!sessionId){
+            notify('error', 'Please select an active WhatsApp account');
+            return;
+        }
+
+        if(!message){
+            notify('error', 'Please enter a message to send');
+            return;
+        }
+
+        $('#btnSendContactGroupMsg').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Sending...');
+
+        $.ajax({
+            url: "{{ route('admin.account.listing.test.message') }}",
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}",
+                session_id: sessionId,
+                receiver: receiver,
+                message: message,
+                isGroup: 1
+            },
+            success: function(res){
+                $('#btnSendContactGroupMsg').prop('disabled', false).html('<i class="las la-paper-plane me-1"></i> Send to Group');
+                if(res.status === 'success'){
+                    $('#contactGroupMessageModal').modal('hide');
+                    notify('success', 'Message posted to WhatsApp group successfully!');
+                } else {
+                    notify('error', res.error || 'Failed to send message to group.');
+                }
+            },
+            error: function(xhr){
+                $('#btnSendContactGroupMsg').prop('disabled', false).html('<i class="las la-paper-plane me-1"></i> Send to Group');
+                let errMsg = 'Failed to send message to group.';
+                if(xhr.responseJSON && xhr.responseJSON.error){
+                    errMsg = xhr.responseJSON.error;
+                }
+                notify('error', errMsg);
+            }
+        });
+    });
+
+})(jQuery);
+</script>
 @endpush
