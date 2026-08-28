@@ -218,6 +218,12 @@ Route::middleware('admin')->group(function () {
         Route::post('delete/{id}', 'delete')->name('delete');
     });
 
+    // Compatibility Route Aliases
+    Route::controller('ContactController')->group(function () {
+        Route::get('contacts/lists-alias', 'listsIndex')->name('contact.lists.index');
+        Route::get('contacts/lists-alias/{id}', 'listShow')->name('contact.lists.show');
+    });
+
     // Message Templates
     Route::controller('TemplateController')->prefix('templates')->name('templates.')->group(function () {
         Route::get('/', 'index')->name('index');

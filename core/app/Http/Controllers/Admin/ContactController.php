@@ -106,7 +106,7 @@ class ContactController extends Controller
         $list->delete();
 
         $notify[] = ['success', "Contact List and all its members deleted successfully!"];
-        return redirect()->route('admin.contact.lists.index')->withNotify($notify);
+        return redirect()->route('admin.contacts.lists.index')->withNotify($notify);
     }
 
     // 6. Import Extracted Groups into a Named List (No. 1 in User Request)
@@ -407,7 +407,7 @@ class ContactController extends Controller
         $contact->save();
 
         $notify[] = ['success', 'Contact added successfully'];
-        return redirect()->route('admin.contact.lists.index')->withNotify($notify);
+        return redirect()->route('admin.contacts.lists.index')->withNotify($notify);
     }
 
     // 11. CSV / Excel Import View (No. 5 in User Request)
@@ -499,7 +499,7 @@ class ContactController extends Controller
         fclose($handle);
 
         $notify[] = ['success', "Successfully imported {$imported} contacts into list!" . ($skipped > 0 ? " ({$skipped} duplicates skipped)" : "")];
-        return redirect()->route('admin.contact.lists.show', $listId)->withNotify($notify);
+        return redirect()->route('admin.contacts.lists.show', $listId)->withNotify($notify);
     }
 
     // 13. Sync WhatsApp View
