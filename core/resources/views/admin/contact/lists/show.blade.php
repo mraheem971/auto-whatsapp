@@ -33,8 +33,7 @@
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>@lang('Type')</th>
-                                <th>@lang('Name / Subject')</th>
+                                <th>@lang('Name & Type')</th>
                                 <th>@lang('Phone / Group JID')</th>
                                 <th>@lang('Group / Source')</th>
                                 <th>@lang('Added At')</th>
@@ -46,23 +45,12 @@
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
                                     <td>
+                                        <span class="name fw-bold text-dark d-block mb-1">{{ __($contact->name) }}</span>
                                         @if($contact->type === 'group')
                                             <span class="badge badge--warning"><i class="las la-users me-1"></i> @lang('Group')</span>
                                         @else
                                             <span class="badge badge--primary"><i class="las la-user me-1"></i> @lang('Contact')</span>
                                         @endif
-                                    </td>
-                                    <td>
-                                        <div class="user">
-                                            <div class="thumb me-2">
-                                                @if($contact->type === 'group')
-                                                    <i class="lab la-whatsapp text--success fs-4"></i>
-                                                @else
-                                                    <i class="las la-user-circle text--primary fs-4"></i>
-                                                @endif
-                                            </div>
-                                            <span class="name fw-bold">{{ __($contact->name) }}</span>
-                                        </div>
                                     </td>
                                     <td>
                                         @if($contact->type === 'group')
