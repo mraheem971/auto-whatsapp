@@ -454,6 +454,12 @@
             return;
         }
 
+        const simplified = extractedGroupsList.map(g => ({
+            id: g.id,
+            subject: g.subject || g.name || 'WhatsApp Group',
+            participantsCount: g.participantsCount || (g.participants ? g.participants.length : 0)
+        }));
+
         $('#btnSubmitSaveAllGroups').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
 
         $.ajax({
@@ -462,7 +468,7 @@
             data: {
                 _token: "{{ csrf_token() }}",
                 list_name: listName,
-                groups: extractedGroupsList
+                groups: JSON.stringify(simplified)
             },
             success: function(res){
                 $('#btnSubmitSaveAllGroups').prop('disabled', false).html('<i class="las la-save me-1"></i> Save into Contact List');
@@ -531,7 +537,7 @@
                 list_name: listName,
                 source_group_id: groupId,
                 source_group_name: groupName,
-                participants: matchedGroup.participants
+                participants: JSON.stringify(matchedGroup.participants)
             },
             success: function(res){
                 $('#btnSubmitSingleExtract').prop('disabled', false).html('<i class="las la-file-import me-1"></i> Extract & Save List');

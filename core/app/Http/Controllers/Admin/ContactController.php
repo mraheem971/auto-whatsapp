@@ -114,8 +114,16 @@ class ContactController extends Controller
     {
         $request->validate([
             'list_name' => 'required|string|max:150',
-            'groups'    => 'required|array|min:1',
         ]);
+
+        $groupsData = $request->groups;
+        if (is_string($groupsData)) {
+            $groupsData = json_decode($groupsData, true);
+        }
+
+        if (!is_array($groupsData) || empty($groupsData)) {
+            return response()->json(['success' => false, 'error' => 'No groups provided to import.'], 400);
+        }
 
         $adminId = auth('admin')->id() ?? 1;
 
@@ -128,7 +136,7 @@ class ContactController extends Controller
         $imported = 0;
         $skipped = 0;
 
-        foreach ($request->groups as $gJson) {
+        foreach ($groupsData as $gJson) {
             $g = is_string($gJson) ? json_decode($gJson, true) : $gJson;
             if (!$g || empty($g['id'])) continue;
 
@@ -174,8 +182,16 @@ class ContactController extends Controller
             'list_name'         => 'required|string|max:150',
             'source_group_id'   => 'required|string',
             'source_group_name' => 'nullable|string',
-            'participants'      => 'required|array|min:1',
         ]);
+
+        $participantsData = $request->participants;
+        if (is_string($participantsData)) {
+            $participantsData = json_decode($participantsData, true);
+        }
+
+        if (!is_array($participantsData) || empty($participantsData)) {
+            return response()->json(['success' => false, 'error' => 'No participants provided to extract.'], 400);
+        }
 
         $adminId = auth('admin')->id() ?? 1;
         $sourceGroupName = $request->source_group_name ?: 'WhatsApp Group';
@@ -190,7 +206,7 @@ class ContactController extends Controller
         $imported = 0;
         $skipped = 0;
 
-        foreach ($request->participants as $p) {
+        foreach ($participantsData as $p) {
             $pData = is_string($p) ? json_decode($p, true) : $p;
             if (!$pData) continue;
 
@@ -241,8 +257,16 @@ class ContactController extends Controller
     {
         $request->validate([
             'list_name' => 'required|string|max:150',
-            'contacts'  => 'required|array|min:1',
         ]);
+
+        $contactsData = $request->contacts;
+        if (is_string($contactsData)) {
+            $contactsData = json_decode($contactsData, true);
+        }
+
+        if (!is_array($contactsData) || empty($contactsData)) {
+            return response()->json(['success' => false, 'error' => 'No contacts provided to import.'], 400);
+        }
 
         $adminId = auth('admin')->id() ?? 1;
 
@@ -254,7 +278,7 @@ class ContactController extends Controller
         $imported = 0;
         $skipped = 0;
 
-        foreach ($request->contacts as $itemJson) {
+        foreach ($contactsData as $itemJson) {
             $data = is_string($itemJson) ? json_decode($itemJson, true) : $itemJson;
             if (!$data) continue;
 
