@@ -194,16 +194,27 @@ Route::middleware('admin')->group(function () {
         Route::get('details/{id}', 'details')->name('detail');
     });
 
-    // Contact Management
+    // Contact Management & Named Lists
     Route::controller('ContactController')->prefix('contacts')->name('contacts.')->group(function () {
-        Route::get('/', 'index')->name('index');
+        Route::get('/', 'listsIndex')->name('index');
+        Route::get('lists', 'listsIndex')->name('lists.index');
+        Route::get('lists/{id}', 'listShow')->name('lists.show');
+        Route::post('lists/store', 'listStore')->name('lists.store');
+        Route::post('lists/update/{id}', 'listUpdate')->name('lists.update');
+        Route::post('lists/delete/{id}', 'listDelete')->name('lists.delete');
+
         Route::get('create', 'create')->name('create');
         Route::post('store', 'store')->name('store');
+        Route::get('import/csv', 'csvImportView')->name('import.csv.view');
+        Route::post('import/csv', 'csvImportProcess')->name('import.csv.process');
+
         Route::get('sync', 'sync')->name('sync');
         Route::get('fetch/{sessionId}', 'fetchWhatsAppContacts')->name('fetch');
-        Route::post('import', 'importContacts')->name('import');
-        Route::post('import-group', 'importGroupContacts')->name('import.group');
-        Route::post('delete-group', 'deleteGroup')->name('delete.group');
+
+        Route::post('import-groups-to-list', 'importGroupsToList')->name('import.groups.list');
+        Route::post('extract-group-members-to-list', 'extractGroupMembersToList')->name('extract.group.members.list');
+        Route::post('import-contacts-to-list', 'importContactsToList')->name('import.contacts.list');
+
         Route::post('delete/{id}', 'delete')->name('delete');
     });
 

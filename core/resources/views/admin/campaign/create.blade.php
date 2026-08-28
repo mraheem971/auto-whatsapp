@@ -38,7 +38,10 @@
                         <div class="col-md-7">
                             <label class="fw-bold mb-1">@lang('Target Audience') <span class="text--danger">*</span></label>
                             <select name="target_type" id="target_type" class="form-control form-select" required>
-                                <option value="groups" selected>📢 @lang('All WhatsApp Groups') ({{ $totalGroups }} @lang('Groups'))</option>
+                                @if(isset($contactLists) && $contactLists->count() > 0)
+                                    <option value="contact_list" selected>📂 @lang('Target Specific Contact List')</option>
+                                @endif
+                                <option value="groups" {{ (!isset($contactLists) || $contactLists->count() == 0) ? 'selected' : '' }}>📢 @lang('All WhatsApp Groups') ({{ $totalGroups }} @lang('Groups'))</option>
                                 <option value="selected_groups">🎯 @lang('Select Multiple Specific Groups')</option>
                                 <option value="selected_group">📌 @lang('Single Specific Group')</option>
                                 <option value="contacts">👤 @lang('All Direct Contacts') ({{ $totalContacts }} @lang('Contacts'))</option>
@@ -51,6 +54,20 @@
                             <label class="fw-bold mb-1">@lang('Anti-Ban Cooldown Delay (Seconds)') <span class="text--danger">*</span></label>
                             <input type="number" name="delay_seconds" class="form-control" value="5" min="2" max="60" required>
                             <small class="text-muted"><i class="las la-shield-alt me-1 text--success"></i>@lang('Recommended 5-10s between messages to prevent spam detection')</small>
+                        </div>
+
+                        <!-- Contact List Target Dropdown -->
+                        <div class="col-12 {{ (isset($contactLists) && $contactLists->count() > 0) ? '' : 'd-none' }}" id="contact_list_wrapper">
+                            <label class="fw-bold mb-1">@lang('Choose Target Contact List') <span class="text--danger">*</span></label>
+                            <select name="contact_list_id" id="contact_list_id" class="form-control form-select">
+                                @if(isset($contactLists))
+                                    @foreach($contactLists as $lst)
+                                        <option value="{{ $lst->id }}">
+                                            📁 {{ $lst->name }} ({{ $lst->contacts_count }} items - {{ $lst->type }})
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
                         </div>
 
                         <!-- Multiple Specific Groups Selector (Hidden by default) -->
@@ -163,17 +180,29 @@
     $('#target_type').on('change', function(){
         const val = $(this).val();
 
-        if(val === 'selected_groups'){
-            $('#multiple_groups_wrapper').removeClass('d-none');
+        if(val === 'contact_list'){
+            $('#contact_list_wrapper').removeClass('d-none');
+            $('#multiple_groups_wrapper').addClass('d-none');
             $('#single_group_wrapper').addClass('d-none');
+            $('#contact_list_id').prop('required', true);
+            $('#target_group_id').prop('required', false);
+        } else if(val === 'selected_groups'){
+            $('#multiple_groups_wrapper').removeClass('d-none');
+            $('#contact_list_wrapper').addClass('d-none');
+            $('#single_group_wrapper').addClass('d-none');
+            $('#contact_list_id').prop('required', false);
             $('#target_group_id').prop('required', false);
         } else if(val === 'selected_group'){
             $('#single_group_wrapper').removeClass('d-none');
             $('#multiple_groups_wrapper').addClass('d-none');
+            $('#contact_list_wrapper').addClass('d-none');
             $('#target_group_id').prop('required', true);
+            $('#contact_list_id').prop('required', false);
         } else {
+            $('#contact_list_wrapper').addClass('d-none');
             $('#multiple_groups_wrapper').addClass('d-none');
             $('#single_group_wrapper').addClass('d-none');
+            $('#contact_list_id').prop('required', false);
             $('#target_group_id').prop('required', false);
         }
     });

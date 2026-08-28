@@ -8,8 +8,8 @@
                 <h5 class="card-title text-white mb-0 d-flex align-items-center">
                     <i class="lab la-whatsapp me-2 fs-4"></i> @lang('Sync Contacts & WhatsApp Groups')
                 </h5>
-                <a href="{{ route('admin.contacts.index') }}" class="btn btn-sm btn-outline-light">
-                    <i class="las la-list me-1"></i> @lang('Contact List')
+                <a href="{{ route('admin.contacts.lists.index') }}" class="btn btn-sm btn-outline-light">
+                    <i class="las la-list me-1"></i> @lang('All Contact Lists')
                 </a>
             </div>
             <div class="card-body p-4">
@@ -32,12 +32,12 @@
                     <div class="col-lg-7 col-md-6">
                         <div class="d-flex gap-2 flex-wrap">
                             <button type="button" class="btn btn--warning text-dark fw-bold h-45 px-3 flex-grow-1 btnFetchAction" data-mode="groups_only" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }}>
-                                <i class="las la-users me-1"></i> @lang('Fetch Groups Only (No Numbers)')
+                                <i class="las la-users me-1"></i> @lang('Fetch Groups Only')
                             </button>
                             <button type="button" class="btn btn--primary h-45 px-3 flex-grow-1 btnFetchAction" data-mode="contacts_only" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }}>
                                 <i class="las la-user me-1"></i> @lang('Fetch Contacts Only')
                             </button>
-                            <button type="button" class="btn btn--dark h-45 px-3 btnFetchAction" data-mode="all" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }} title="@lang('Fetch everything including group members')">
+                            <button type="button" class="btn btn--dark h-45 px-3 btnFetchAction" data-mode="all" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }} title="@lang('Fetch everything including group participants')">
                                 <i class="las la-sync me-1"></i> @lang('Fetch All')
                             </button>
                         </div>
@@ -58,7 +58,7 @@
                         <i class="lab la-whatsapp text--success" style="font-size: 70px;"></i>
                     </div>
                     <h5 class="text-dark fw-bold mb-1">@lang('Extract WhatsApp Groups & Contacts')</h5>
-                    <p class="text-muted small mb-0">@lang('Click "Fetch Groups Only" to sync all participating groups with their Group JIDs directly into your Contact List.')</p>
+                    <p class="text-muted small mb-0">@lang('Retrieve all participating WhatsApp groups or contacts, and save them directly into a custom named Contact List.')</p>
                 </div>
 
                 <!-- Results Table -->
@@ -81,8 +81,8 @@
                             <button type="button" class="btn btn-sm btn-outline--dark" id="btnSelectAll">@lang('Select All')</button>
                             <button type="button" class="btn btn-sm btn-outline--secondary" id="btnDeselectAll">@lang('Deselect All')</button>
                             
-                            <button type="button" class="btn btn-sm btn--success fw-bold px-3" id="btnImportSelected">
-                                <i class="las la-file-import me-1"></i> @lang('Import Selected')
+                            <button type="button" class="btn btn-sm btn--success fw-bold px-3" id="btnOpenImportModal">
+                                <i class="las la-file-import me-1"></i> @lang('Save to Contact List')
                             </button>
                         </div>
                     </div>
@@ -96,8 +96,8 @@
                                     </th>
                                     <th>#</th>
                                     <th>@lang('Type')</th>
-                                    <th>@lang('Name / Subject')</th>
-                                    <th>@lang('Target Phone / Group JID')</th>
+                                    <th>@lang('WhatsApp Contact Name')</th>
+                                    <th>@lang('Phone / Group JID')</th>
                                     <th>@lang('Group / Source')</th>
                                 </tr>
                             </thead>
@@ -112,14 +112,53 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Prompt for List Name when saving extracted contacts (No. 3 in User Request) -->
+<div id="saveSyncContactsModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg--primary text-white">
+                <h5 class="modal-title text-white d-flex align-items-center">
+                    <i class="las la-folder-plus me-2 fs-4"></i> @lang('Save Extracted Items to Contact List')
+                </h5>
+                <button type="button" class="close text-white bg-transparent border-0 fs-4" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="las la-times"></i>
+                </button>
+            </div>
+            <form id="formSaveSyncContacts">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="form-group mb-3">
+                        <label class="fw-bold mb-1">@lang('Choose Existing Contact List')</label>
+                        <select id="sync_existing_list_id" class="form-control form-select">
+                            <option value="">@lang('-- Or create a new list below --')</option>
+                            @foreach($lists as $lst)
+                                <option value="{{ $lst->name }}">{{ $lst->name }} ({{ $lst->type }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label class="fw-bold mb-1">@lang('Or Enter New Contact List Name') <span class="text--danger">*</span></label>
+                        <input type="text" id="sync_target_list_name" class="form-control" placeholder="@lang('e.g. My Personal Contacts')" value="My WhatsApp Contacts" required>
+                        <small class="text-muted d-block mt-1">@lang('All selected items will be saved under this named list.')</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn--dark btn-sm px-3" data-bs-dismiss="modal">@lang('Cancel')</button>
+                    <button type="submit" class="btn btn--primary btn-sm px-4 fw-bold" id="btnSubmitSaveSync">
+                        <i class="las la-save me-1"></i> @lang('Save into List')
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('breadcrumb-plugins')
-    <a href="{{ route('admin.campaigns.create') }}" class="btn btn-sm btn--warning text-dark fw-bold me-2">
-        <i class="las la-bullhorn me-1"></i> @lang('Create Campaign')
-    </a>
-    <a href="{{ route('admin.contacts.index') }}" class="btn btn-sm btn-outline--primary">
-        <i class="las la-list me-1"></i> @lang('Contact List')
+    <a href="{{ route('admin.contacts.lists.index') }}" class="btn btn-sm btn-outline--primary">
+        <i class="las la-list me-1"></i> @lang('All Contact Lists')
     </a>
 @endpush
 
@@ -147,7 +186,7 @@
         if(mode === 'groups_only'){
             $('#loadingText').text('Extracting WhatsApp participating groups...');
         } else if(mode === 'contacts_only'){
-            $('#loadingText').text('Extracting WhatsApp contacts...');
+            $('#loadingText').text('Extracting WhatsApp contacts with genuine names...');
         } else {
             $('#loadingText').text('Extracting all WhatsApp groups and contacts...');
         }
@@ -181,9 +220,7 @@
                 $('.btnFetchAction').prop('disabled', false);
 
                 let errMsg = 'Failed to fetch WhatsApp data.';
-                if(xhr.responseJSON && xhr.responseJSON.error){
-                    errMsg = xhr.responseJSON.error;
-                }
+                if(xhr.responseJSON && xhr.responseJSON.error) errMsg = xhr.responseJSON.error;
                 notify('error', errMsg);
             }
         });
@@ -288,41 +325,71 @@
         $('#selectedCountBadge').text(`${totalSelected} Selected`);
     }
 
-    // Import Selected Contacts & Groups
-    $('#btnImportSelected').on('click', function(){
+    // Open Save Modal
+    $('#btnOpenImportModal').on('click', function(){
+        const totalSelected = $('.contact-checkbox:checked').length;
+        if(totalSelected === 0){
+            notify('error', 'Please select at least one item to import');
+            return;
+        }
+        $('#saveSyncContactsModal').modal('show');
+    });
+
+    $('#sync_existing_list_id').on('change', function(){
+        if($(this).val()){
+            $('#sync_target_list_name').val($(this).val());
+        }
+    });
+
+    // Handle Save into Named List Submit
+    $('#formSaveSyncContacts').on('submit', function(e){
+        e.preventDefault();
+
+        const listName = $('#sync_target_list_name').val().trim();
         const selected = [];
         $('.contact-checkbox:checked').each(function(){
             selected.push($(this).val());
         });
 
-        if(selected.length === 0){
-            notify('error', 'Please select at least one item to import');
+        if(!listName){
+            notify('error', 'Please enter a name for the Contact List');
             return;
         }
 
-        $('#btnImportSelected').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Importing...');
+        if(selected.length === 0){
+            notify('error', 'No items selected');
+            return;
+        }
+
+        $('#btnSubmitSaveSync').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
 
         $.ajax({
-            url: "{{ route('admin.contacts.import') }}",
+            url: "{{ route('admin.contacts.import.contacts.list') }}",
             type: "POST",
             data: {
                 _token: "{{ csrf_token() }}",
+                list_name: listName,
                 contacts: selected
             },
             success: function(res){
-                $('#btnImportSelected').prop('disabled', false).html('<i class="las la-file-import me-1"></i> Import Selected');
+                $('#btnSubmitSaveSync').prop('disabled', false).html('<i class="las la-save me-1"></i> Save into List');
+                $('#saveSyncContactsModal').modal('hide');
+
                 if(res.success){
                     notify('success', res.message);
+                    if(res.list_id){
+                        setTimeout(() => {
+                            window.location.href = "{{ url('admin/contacts/lists') }}/" + res.list_id;
+                        }, 1000);
+                    }
                 } else {
-                    notify('error', res.error || 'Failed to import items');
+                    notify('error', res.error || 'Failed to save items');
                 }
             },
             error: function(xhr){
-                $('#btnImportSelected').prop('disabled', false).html('<i class="las la-file-import me-1"></i> Import Selected');
-                let errMsg = 'Failed to import items.';
-                if(xhr.responseJSON && xhr.responseJSON.error){
-                    errMsg = xhr.responseJSON.error;
-                }
+                $('#btnSubmitSaveSync').prop('disabled', false).html('<i class="las la-save me-1"></i> Save into List');
+                let errMsg = 'Failed to save contacts to list.';
+                if(xhr.responseJSON && xhr.responseJSON.error) errMsg = xhr.responseJSON.error;
                 notify('error', errMsg);
             }
         });

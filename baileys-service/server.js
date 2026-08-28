@@ -109,6 +109,22 @@ async function initBaileysSession(sessionId, accountName) {
         }
     });
 
+    sock.ev.on('messages.upsert', ({ messages }) => {
+        for (const msg of messages) {
+            if (msg.key && msg.pushName && !msg.key.fromMe) {
+                const jid = msg.key.participant || msg.key.remoteJid;
+                if (jid && !jid.endsWith('@g.us') && !jid.endsWith('@broadcast')) {
+                    const phone = jid.split('@')[0].split(':')[0];
+                    const existing = sessionData.contacts.get(phone) || { id: jid, phone: phone };
+                    if (!existing.name || existing.name.startsWith('+')) {
+                        existing.name = msg.pushName;
+                    }
+                    sessionData.contacts.set(phone, existing);
+                }
+            }
+        }
+    });
+
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
@@ -411,11 +427,17 @@ app.get('/api/groups/:sessionId', async (req, res) => {
             creation: g.creation || 0,
             desc: g.desc ? g.desc.toString() : '',
             participantsCount: g.participants ? g.participants.length : 0,
-            participants: (g.participants || []).map(p => ({
-                id: p.id,
-                admin: p.admin || null,
-                phone: p.id ? p.id.split('@')[0].split(':')[0] : ''
-            }))
+            participants: (g.participants || []).map(p => {
+                const phone = p.id ? p.id.split('@')[0].split(':')[0] : '';
+                const cached = session.contacts ? session.contacts.get(phone) : null;
+                const resolvedName = (cached && cached.name && !cached.name.startsWith('+')) ? cached.name : (p.name || `+${phone}`);
+                return {
+                    id: p.id,
+                    admin: p.admin || null,
+                    phone: phone,
+                    name: resolvedName
+                };
+            })
         }));
 
         res.json({

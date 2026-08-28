@@ -63,22 +63,28 @@
         "icon": "las la-address-book",
         "menu_active": "admin.contacts*",
         "submenu": [{
+                "keyword": ["Contact Lists", "All Lists", "Audience lists", "Groups list"],
+                "title": "Contact Lists",
+                "route_name": "admin.contacts.lists.index",
+                "menu_active": "admin.contacts.lists*"
+            },
+            {
                 "keyword": ["Add contact", "New contact", "Create contact", "Save contact"],
                 "title": "Add Contact",
                 "route_name": "admin.contacts.create",
                 "menu_active": "admin.contacts.create"
             },
             {
+                "keyword": ["Import CSV", "Excel import", "Bulk upload", "CSV contacts"],
+                "title": "Import CSV / Excel",
+                "route_name": "admin.contacts.import.csv.view",
+                "menu_active": "admin.contacts.import.csv*"
+            },
+            {
                 "keyword": ["Sync contacts", "Import contacts", "Extract contacts", "WhatsApp contacts", "Fetch contacts"],
                 "title": "Sync from WhatsApp",
                 "route_name": "admin.contacts.sync",
                 "menu_active": "admin.contacts.sync"
-            },
-            {
-                "keyword": ["All contacts", "Contact list", "Phone numbers", "Address book"],
-                "title": "Contact List",
-                "route_name": "admin.contacts.index",
-                "menu_active": "admin.contacts.index"
             }
         ]
     },

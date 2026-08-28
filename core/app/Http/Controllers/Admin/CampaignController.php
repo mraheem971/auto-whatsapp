@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\Contact;
+use App\Models\ContactList;
 use App\Models\MessageTemplate;
 use App\Models\WhatsappAccount;
 use Illuminate\Http\Request;
@@ -34,6 +35,7 @@ class CampaignController extends Controller
         $pageTitle = 'Create New Campaign';
         $connectedAccounts = WhatsappAccount::active()->latest()->get();
         $templates = MessageTemplate::latest()->get();
+        $contactLists = ContactList::withCount('contacts')->latest()->get();
         
         // Distinct groups from contacts table
         $groups = Contact::whereNotNull('group_id')
@@ -45,7 +47,7 @@ class CampaignController extends Controller
         $totalContacts = Contact::where('type', 'contact')->count();
         $totalGroups = $groups->count();
 
-        return view('admin.campaign.create', compact('pageTitle', 'connectedAccounts', 'templates', 'groups', 'totalContacts', 'totalGroups'));
+        return view('admin.campaign.create', compact('pageTitle', 'connectedAccounts', 'templates', 'contactLists', 'groups', 'totalContacts', 'totalGroups'));
     }
 
     public function store(Request $request)
@@ -53,7 +55,8 @@ class CampaignController extends Controller
         $request->validate([
             'name'             => 'required|string|max:190',
             'session_id'       => 'required|string',
-            'target_type'      => 'required|string|in:groups,selected_groups,contacts,all,selected_group',
+            'target_type'      => 'required|string|in:contact_list,groups,selected_groups,contacts,all,selected_group',
+            'contact_list_id'  => 'nullable|integer',
             'target_group_ids' => 'nullable|array',
             'target_group_id'  => 'nullable|string',
             'message'          => 'required|string',
@@ -62,7 +65,19 @@ class CampaignController extends Controller
 
         // Calculate recipients list based on target type
         $recipients = [];
-        if ($request->target_type === 'groups') {
+        if ($request->target_type === 'contact_list') {
+            $contacts = Contact::where('contact_list_id', $request->contact_list_id)->get();
+            foreach ($contacts as $c) {
+                $recipients[] = [
+                    'type'       => $c->type,
+                    'name'       => $c->name,
+                    'target_jid' => $c->target_jid ?: ($c->type === 'group' ? $c->group_id : "{$c->phone_number}@s.whatsapp.net"),
+                    'phone'      => $c->phone_number,
+                    'group_name' => $c->group_name,
+                    'group_id'   => $c->group_id,
+                ];
+            }
+        } elseif ($request->target_type === 'groups') {
             $groups = Contact::whereNotNull('group_id')
                 ->where('group_id', '!=', '')
                 ->selectRaw('group_name, group_id')
@@ -159,6 +174,7 @@ class CampaignController extends Controller
         $campaign->name             = $request->name;
         $campaign->session_id       = $request->session_id;
         $campaign->target_type      = $request->target_type;
+        $campaign->contact_list_id  = $request->contact_list_id;
         $campaign->target_group_ids = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
         $campaign->target_group_id  = $request->target_group_id;
         $campaign->message          = $request->message;
@@ -181,7 +197,18 @@ class CampaignController extends Controller
 
         // Fetch targets list for live execution
         $targets = [];
-        if ($campaign->target_type === 'groups') {
+        if ($campaign->target_type === 'contact_list') {
+            $contacts = Contact::where('contact_list_id', $campaign->contact_list_id)->get();
+            foreach ($contacts as $c) {
+                $targets[] = [
+                    'type'       => $c->type,
+                    'name'       => $c->name,
+                    'target_jid' => $c->target_jid ?: ($c->type === 'group' ? $c->group_id : "{$c->phone_number}@s.whatsapp.net"),
+                    'phone'      => $c->phone_number,
+                    'group_name' => $c->group_name,
+                ];
+            }
+        } elseif ($campaign->target_type === 'groups') {
             $groups = Contact::whereNotNull('group_id')
                 ->where('group_id', '!=', '')
                 ->selectRaw('group_name, group_id')
