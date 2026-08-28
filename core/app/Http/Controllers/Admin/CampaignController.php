@@ -52,10 +52,19 @@ class CampaignController extends Controller
 
     public function store(Request $request)
     {
+        $targetType = $request->target_type;
+        $listId = $request->contact_list_id;
+
+        if (str_starts_with($targetType, 'list_')) {
+            $listId = (int) str_replace('list_', '', $targetType);
+            $targetType = 'contact_list';
+            $request->merge(['target_type' => 'contact_list', 'contact_list_id' => $listId]);
+        }
+
         $request->validate([
             'name'             => 'required|string|max:190',
             'session_id'       => 'required|string',
-            'target_type'      => 'required|string|in:contact_list,groups,selected_groups,contacts,all,selected_group',
+            'target_type'      => 'required|string',
             'contact_list_id'  => 'nullable|integer',
             'target_group_ids' => 'nullable|array',
             'target_group_id'  => 'nullable|string',
@@ -65,8 +74,8 @@ class CampaignController extends Controller
 
         // Calculate recipients list based on target type
         $recipients = [];
-        if ($request->target_type === 'contact_list') {
-            $contacts = Contact::where('contact_list_id', $request->contact_list_id)->get();
+        if ($targetType === 'contact_list' || $listId) {
+            $contacts = Contact::where('contact_list_id', $listId)->get();
             foreach ($contacts as $c) {
                 $recipients[] = [
                     'type'       => $c->type,
