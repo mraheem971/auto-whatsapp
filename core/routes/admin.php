@@ -216,6 +216,7 @@ Route::middleware('admin')->group(function () {
         Route::post('import-contacts-to-list', 'importContactsToList')->name('import.contacts.list');
 
         Route::post('delete/{id}', 'delete')->name('delete');
+        Route::post('bulk-delete', 'bulkDelete')->name('bulk.delete');
     });
 
     // Compatibility Route Aliases

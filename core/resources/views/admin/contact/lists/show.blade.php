@@ -27,15 +27,30 @@
                 </form>
             </div>
 
+            <!-- Bulk Actions Floating Bar -->
+            <div id="bulkActionsBar" class="d-none bg-light border-bottom p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge badge--primary fs-6" id="selectedCounter">0 Selected</span>
+                    <span class="text-muted small">@lang('Select multiple items to perform bulk actions')</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn--danger fw-bold px-3" id="btnTriggerBulkDelete">
+                        <i class="las la-trash me-1"></i> @lang('Delete Selected')
+                    </button>
+                </div>
+            </div>
+
             <div class="card-body p-0">
                 <div class="table-responsive--lg table-responsive">
                     <table class="table--light style--two table">
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>@lang('Name & Type')</th>
+                                <th style="width: 50px;" class="text-center">
+                                    <input type="checkbox" class="form-check-input" id="checkMaster">
+                                </th>
+                                <th style="width: 50px;">#</th>
+                                <th>@lang('Name & Details')</th>
                                 <th>@lang('Phone / Group JID')</th>
-                                <th>@lang('Group / Source')</th>
                                 <th>@lang('Added At')</th>
                                 <th class="text-end pe-4">@lang('Action')</th>
                             </tr>
@@ -43,14 +58,23 @@
                         <tbody>
                             @forelse($contacts as $contact)
                                 <tr>
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input row-chk" value="{{ $contact->id }}">
+                                    </td>
                                     <td>{{ $loop->iteration }}</td>
                                     <td>
-                                        <span class="name fw-bold text-dark d-block mb-1">{{ __($contact->name) }}</span>
-                                        @if($contact->type === 'group')
-                                            <span class="badge badge--warning"><i class="las la-users me-1"></i> @lang('Group')</span>
-                                        @else
-                                            <span class="badge badge--primary"><i class="las la-user me-1"></i> @lang('Contact')</span>
-                                        @endif
+                                        <span class="name fw-bold text-dark d-block mb-1 fs-6">{{ __($contact->name) }}</span>
+                                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                                            @if($contact->type === 'group')
+                                                <span class="badge badge--warning text-xs"><i class="las la-users me-1"></i> @lang('Group')</span>
+                                            @else
+                                                <span class="badge badge--primary text-xs"><i class="las la-user me-1"></i> @lang('Contact')</span>
+                                            @endif
+
+                                            @if($contact->group_name && $contact->group_name !== $contact->name)
+                                                <span class="badge badge--dark text-xs"><i class="las la-tag me-1"></i> {{ __($contact->group_name) }}</span>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td>
                                         @if($contact->type === 'group')
@@ -59,13 +83,6 @@
                                             </span>
                                         @else
                                             <span class="badge badge--info fs-6">+{{ $contact->phone_number }}</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($contact->group_name)
-                                            <span class="badge badge--dark px-2 py-1">{{ __($contact->group_name) }}</span>
-                                        @else
-                                            <span class="text-muted small">@lang('Direct')</span>
                                         @endif
                                     </td>
                                     <td>
@@ -99,7 +116,7 @@
 
                                             <button type="button" class="btn btn-sm btn-outline--danger confirmationBtn" 
                                                 data-action="{{ route('admin.contacts.delete', $contact->id) }}"
-                                                data-question="@lang('Are you sure you want to remove this contact from the list?')">
+                                                data-question="@lang('Are you sure you want to remove this item from the list?')">
                                                 <i class="las la-trash"></i>
                                             </button>
                                         </div>
@@ -139,7 +156,13 @@
     </div>
 </div>
 
-<!-- Modal: Extract Group Members to a New Contact List (No. 2) -->
+<!-- Bulk Delete Confirmation Form (Hidden) -->
+<form id="bulkDeleteForm" action="{{ route('admin.contacts.bulk.delete') }}" method="POST" class="d-none">
+    @csrf
+    <div id="bulkDeleteInputs"></div>
+</form>
+
+<!-- Modal: Extract Group Members to a New Contact List -->
 <div id="extractMembersModal" class="modal fade" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
@@ -314,7 +337,7 @@
     <button type="button" class="btn btn-sm btn--primary me-2" data-bs-toggle="modal" data-bs-target="#addContactModal">
         <i class="las la-plus me-1"></i> @lang('Add Contact')
     </button>
-    <a href="{{ route('admin.campaigns.create') }}" class="btn btn-sm btn--warning text-dark fw-bold">
+    <a href="{{ route('admin.campaigns.create') }}?list_id={{ $list->id }}" class="btn btn-sm btn--warning text-dark fw-bold">
         <i class="las la-bullhorn me-1"></i> @lang('Create Campaign')
     </a>
 @endpush
@@ -323,6 +346,54 @@
 <script>
 (function($){
     "use strict";
+
+    // Master Checkbox Toggle
+    $('#checkMaster').on('change', function(){
+        const isChecked = $(this).is(':checked');
+        $('.row-chk').prop('checked', isChecked);
+        updateBulkBar();
+    });
+
+    $(document).on('change', '.row-chk', function(){
+        updateBulkBar();
+    });
+
+    function updateBulkBar(){
+        const checkedCount = $('.row-chk:checked').length;
+        if(checkedCount > 0){
+            $('#bulkActionsBar').removeClass('d-none');
+            $('#selectedCounter').text(`${checkedCount} Selected`);
+        } else {
+            $('#bulkActionsBar').addClass('d-none');
+            $('#checkMaster').prop('checked', false);
+        }
+    }
+
+    // Trigger Bulk Delete
+    $('#btnTriggerBulkDelete').on('click', function(){
+        const selectedIds = [];
+        $('.row-chk:checked').each(function(){
+            selectedIds.push($(this).val());
+        });
+
+        if(selectedIds.length === 0){
+            notify('error', 'Please select at least one item to delete');
+            return;
+        }
+
+        const modal = $('#confirmationModal');
+        modal.find('.modal-body p').text(`Are you sure you want to delete ${selectedIds.length} selected items from this list?`);
+        
+        // Prepare inputs in bulk form
+        const container = $('#bulkDeleteInputs');
+        container.empty();
+        selectedIds.forEach(id => {
+            container.append(`<input type="hidden" name="ids[]" value="${id}">`);
+        });
+
+        modal.find('form').attr('action', "{{ route('admin.contacts.bulk.delete') }}");
+        modal.modal('show');
+    });
 
     // Open Extract Members Modal
     $('.btnExtractMembersFromGroup').on('click', function(){
@@ -377,7 +448,7 @@
                                 list_name: targetListName,
                                 source_group_id: groupId,
                                 source_group_name: groupName,
-                                participants: matchedGroup.participants
+                                participants: JSON.stringify(matchedGroup.participants)
                             },
                             success: function(saveRes){
                                 $('#extractMembersModal').modal('hide');

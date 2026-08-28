@@ -541,4 +541,23 @@ class ContactController extends Controller
         $notify[] = ['success', 'Contact removed successfully'];
         return back()->withNotify($notify);
     }
+
+    // 16. Bulk Delete Contacts / Groups
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->ids;
+        if (is_string($ids)) {
+            $ids = json_decode($ids, true);
+        }
+
+        if (!is_array($ids) || empty($ids)) {
+            $notify[] = ['error', 'No items selected to delete'];
+            return back()->withNotify($notify);
+        }
+
+        $count = Contact::whereIn('id', $ids)->delete();
+
+        $notify[] = ['success', "{$count} items deleted successfully!"];
+        return back()->withNotify($notify);
+    }
 }
