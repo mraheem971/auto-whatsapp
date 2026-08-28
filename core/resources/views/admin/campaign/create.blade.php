@@ -1,13 +1,21 @@
 @extends('admin.layouts.app')
 
 @section('panel')
-<div class="row justify-content-center">
-    <div class="col-lg-10">
+<div class="row">
+    <div class="col-12">
         <div class="card b-radius--10 shadow-sm">
-            <div class="card-header bg--primary text-white py-3">
+            <div class="card-header bg--primary text-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="card-title text-white mb-0 d-flex align-items-center">
                     <i class="las la-bullhorn me-2 fs-4"></i> @lang('Create WhatsApp Marketing Campaign')
                 </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('admin.campaigns.cron.manual') }}" class="btn btn-xs btn--warning text-dark fw-bold" title="@lang('Trigger cron job manually on localhost')">
+                        <i class="las la-clock me-1"></i> @lang('Run Cron Job')
+                    </a>
+                    <a href="{{ route('admin.campaigns.index') }}" class="btn btn-xs btn-outline-light">
+                        <i class="las la-list me-1"></i> @lang('All Campaigns')
+                    </a>
+                </div>
             </div>
             <form action="{{ route('admin.campaigns.store') }}" method="POST">
                 @csrf
@@ -15,13 +23,13 @@
                     <div class="row gy-3">
                         
                         <!-- Campaign Name -->
-                        <div class="col-md-7">
+                        <div class="col-lg-6 col-md-12">
                             <label class="fw-bold mb-1">@lang('Campaign Name') <span class="text--danger">*</span></label>
                             <input type="text" name="name" class="form-control" placeholder="@lang('e.g. Weekly Deals Broadcast 2026')" value="{{ old('name') }}" required>
                         </div>
 
                         <!-- Sender Account -->
-                        <div class="col-md-5">
+                        <div class="col-lg-6 col-md-12">
                             <label class="fw-bold mb-1">@lang('Sender WhatsApp Account') <span class="text--danger">*</span></label>
                             <select name="session_id" class="form-control form-select" required>
                                 @forelse($connectedAccounts as $acc)
@@ -35,7 +43,7 @@
                         </div>
 
                         <!-- Dynamic Target Audience Dropdown -->
-                        <div class="col-md-7">
+                        <div class="col-lg-6 col-md-12">
                             <div class="d-flex align-items-center justify-content-between mb-1">
                                 <label class="fw-bold mb-0">@lang('Target Audience / Contact List') <span class="text--danger">*</span></label>
                                 <a href="{{ route('admin.contacts.lists.index') }}" class="small text--primary text-decoration-none fw-bold">
@@ -60,17 +68,25 @@
                             </select>
                         </div>
 
-                        <!-- Anti-Ban Delay -->
-                        <div class="col-md-5">
-                            <label class="fw-bold mb-1">@lang('Anti-Ban Cooldown Delay (Seconds)') <span class="text--danger">*</span></label>
-                            <input type="number" name="delay_seconds" class="form-control" value="5" min="2" max="60" required>
-                            <small class="text-muted"><i class="las la-shield-alt me-1 text--success"></i>@lang('Recommended 5-10s between messages to prevent spam detection')</small>
+                        <!-- Anti-Ban Random Delay Time Range (Min - Max) -->
+                        <div class="col-lg-6 col-md-12">
+                            <label class="fw-bold mb-1">@lang('Anti-Ban Random Delay Range (Seconds)') <span class="text--danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white small fw-bold"><i class="las la-stopwatch me-1 text--primary"></i>Min</span>
+                                <input type="number" name="min_delay" id="min_delay" class="form-control" value="5" min="1" max="60" required placeholder="5">
+                                <span class="input-group-text bg-white small fw-bold">to</span>
+                                <input type="number" name="max_delay" id="max_delay" class="form-control" value="15" min="2" max="120" required placeholder="15">
+                                <span class="input-group-text bg-light small">Seconds</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                <i class="las la-shield-alt text--success me-1"></i>@lang('Random delay between Min and Max seconds will be chosen for each message to mimic human behavior and avoid WhatsApp ban.')
+                            </small>
                         </div>
 
                         <!-- Multiple Specific Groups Selector (Hidden by default) -->
                         <div class="col-12 d-none" id="multiple_groups_wrapper">
                             <div class="card border bg-light">
-                                <div class="card-header bg-white d-flex align-items-center justify-content-between py-2">
+                                <div class="card-header bg-white d-flex align-items-center justify-content-between py-2 flex-wrap gap-2">
                                     <div class="d-flex align-items-center gap-2">
                                         <span class="fw-bold text-dark"><i class="las la-tasks text--primary me-1"></i> @lang('Select Target WhatsApp Groups'):</span>
                                         <span class="badge badge--primary" id="selectedGroupsCount">0 @lang('Selected')</span>
@@ -86,7 +102,7 @@
                                     </div>
                                     <div class="row g-2" id="groupsChecklist" style="max-height: 260px; overflow-y: auto;">
                                         @forelse($groups as $g)
-                                            <div class="col-md-6 group-item-col">
+                                            <div class="col-lg-4 col-md-6 group-item-col">
                                                 <label class="p-2 border rounded bg-white w-100 d-flex align-items-center justify-content-between mb-0 cursor-pointer hover-shadow">
                                                     <div class="d-flex align-items-center text-truncate me-2">
                                                         <input type="checkbox" name="target_group_ids[]" value="{{ $g->group_id }}" class="form-check-input group-chk me-2">

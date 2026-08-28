@@ -18,7 +18,7 @@
 @endphp
 
 <!-- navbar-wrapper start -->
-<nav class="navbar-wrapper bg--dark d-flex flex-wrap">
+<nav class="navbar-wrapper bg--dark d-flex flex-wrap sticky-top" style="position: sticky !important; top: 0 !important; z-index: 999 !important;">
     <div class="navbar__left">
         <button type="button" class="res-sidebar-open-btn me-3"><i class="las la-bars"></i></button>
         <form class="navbar-search">
@@ -30,6 +30,11 @@
     </div>
     <div class="navbar__right">
         <ul class="navbar__action-list">
+            <li>
+                <button type="button" class="primary--layer" data-bs-toggle="tooltip" data-bs-placement="bottom" title="@lang('Run Cron Job Manually')">
+                    <a href="{{ route('admin.campaigns.cron.manual') }}" class="primary--layer text--warning"><i class="las la-clock"></i></a>
+                </button>
+            </li>
             @if(version_compare(gs('available_version'),systemDetails()['version'],'>'))
             <li><button type="button" class="primary--layer" data-bs-toggle="tooltip" data-bs-placement="bottom" title="@lang('Update Available')"><a href="{{ route('admin.system.update') }}" class="primary--layer"><i class="las la-download text--warning"></i></a> </button></li>
             @endif

@@ -61,6 +61,12 @@ class CampaignController extends Controller
             $request->merge(['target_type' => 'contact_list', 'contact_list_id' => $listId]);
         }
 
+        $minDelay = (int) ($request->min_delay ?: 5);
+        $maxDelay = (int) ($request->max_delay ?: 15);
+        if ($maxDelay < $minDelay) {
+            $maxDelay = $minDelay;
+        }
+
         $request->validate([
             'name'             => 'required|string|max:190',
             'session_id'       => 'required|string',
@@ -69,7 +75,8 @@ class CampaignController extends Controller
             'target_group_ids' => 'nullable|array',
             'target_group_id'  => 'nullable|string',
             'message'          => 'required|string',
-            'delay_seconds'    => 'required|integer|min:1|max:60',
+            'min_delay'        => 'nullable|integer|min:1|max:120',
+            'max_delay'        => 'nullable|integer|min:1|max:120',
         ]);
 
         // Calculate recipients list based on target type
@@ -187,7 +194,9 @@ class CampaignController extends Controller
         $campaign->target_group_ids = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
         $campaign->target_group_id  = $request->target_group_id;
         $campaign->message          = $request->message;
-        $campaign->delay_seconds    = $request->delay_seconds;
+        $campaign->min_delay        = $minDelay;
+        $campaign->max_delay        = $maxDelay;
+        $campaign->delay_seconds    = $minDelay;
         $campaign->status           = 'ready';
         $campaign->total_targets    = count($recipients);
         $campaign->sent_count       = 0;
@@ -380,6 +389,16 @@ class CampaignController extends Controller
         $campaign->delete();
 
         $notify[] = ['success', 'Campaign deleted successfully'];
+        return back()->withNotify($notify);
+    }
+
+    public function runCronManual()
+    {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('schedule:run');
+        } catch (\Exception $e) {}
+
+        $notify[] = ['success', 'Cron job triggered manually on localhost!'];
         return back()->withNotify($notify);
     }
 }

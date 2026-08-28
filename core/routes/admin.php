@@ -244,6 +244,7 @@ Route::middleware('admin')->group(function () {
         Route::post('send-single/{id}', 'sendSingle')->name('send.single');
         Route::post('update-status/{id}', 'updateStatus')->name('update.status');
         Route::post('delete/{id}', 'delete')->name('delete');
+        Route::get('cron-manual', 'runCronManual')->name('cron.manual');
     });
 
 

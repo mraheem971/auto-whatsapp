@@ -3,99 +3,83 @@
 @section('panel')
 <div class="row gy-4">
     
-    <!-- Left Col: Campaign Control & Progress -->
+    <!-- Left Col: Campaign Overview & Controls -->
     <div class="col-xl-4 col-lg-5">
         <div class="card b-radius--10 shadow-sm border-0 mb-4">
             <div class="card-header bg--primary text-white py-3">
                 <h5 class="card-title text-white mb-0 d-flex align-items-center">
-                    <i class="las la-rocket me-2 fs-4"></i> @lang('Campaign Control Center')
+                    <i class="las la-bullhorn me-2 fs-4"></i> {{ __($campaign->name) }}
                 </h5>
             </div>
             <div class="card-body p-4">
-                <div class="mb-3">
-                    <label class="text-muted small fw-bold text-uppercase d-block mb-1">@lang('Campaign Name')</label>
-                    <h5 class="fw-bold text-dark mb-0">{{ $campaign->name }}</h5>
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                    <span class="text-muted">@lang('Status')</span>
+                    <span id="campaignStatusBadge" class="badge badge--dark text-capitalize">{{ $campaign->status }}</span>
                 </div>
 
-                <div class="mb-3">
-                    <label class="text-muted small fw-bold text-uppercase d-block mb-1">@lang('Sending Account')</label>
-                    <div class="d-flex align-items-center text-dark">
-                        <i class="lab la-whatsapp text--success fs-4 me-2"></i>
-                        <span class="fw-bold">{{ $account->account_name ?? 'Connected WhatsApp' }} (+{{ $account->phone_number ?? '' }})</span>
-                    </div>
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                    <span class="text-muted">@lang('Sender Account')</span>
+                    <strong class="text-dark">{{ $account ? $account->account_name : $campaign->session_id }}</strong>
                 </div>
 
-                <div class="mb-3">
-                    <label class="text-muted small fw-bold text-uppercase d-block mb-1">@lang('Target Audience')</label>
-                    @if($campaign->target_type === 'groups')
-                        <span class="badge badge--warning fs-6"><i class="las la-users me-1"></i> @lang('All WhatsApp Groups') ({{ count($targets) }})</span>
-                    @elseif($campaign->target_type === 'contacts')
-                        <span class="badge badge--primary fs-6"><i class="las la-user me-1"></i> @lang('All Direct Contacts') ({{ count($targets) }})</span>
-                    @elseif($campaign->target_type === 'selected_group')
-                        <span class="badge badge--info fs-6"><i class="las la-layer-group me-1"></i> @lang('Specific Group') ({{ count($targets) }})</span>
-                    @else
-                        <span class="badge badge--dark fs-6"><i class="las la-globe me-1"></i> @lang('All Combined') ({{ count($targets) }})</span>
-                    @endif
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                    <span class="text-muted">@lang('Target Type')</span>
+                    <span class="badge badge--info text-capitalize">{{ str_replace('_', ' ', $campaign->target_type) }}</span>
                 </div>
 
-                <div class="mb-4">
-                    <label class="text-muted small fw-bold text-uppercase d-block mb-1">@lang('Anti-Ban Cooldown Delay')</label>
-                    <span class="badge bg-light text-dark border fs-6">
-                        <i class="las la-stopwatch text--primary me-1"></i> {{ $campaign->delay_seconds }} @lang('Seconds per Message')
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                    <span class="text-muted">@lang('Anti-Ban Cooldown')</span>
+                    <span class="badge bg-light text-dark border font-monospace">
+                        {{ $campaign->min_delay ?: $campaign->delay_seconds }}-{{ $campaign->max_delay ?: ($campaign->delay_seconds + 5) }}s Random
                     </span>
                 </div>
 
-                <!-- Live Progress Card -->
-                <div class="p-3 bg-light rounded border mb-4">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="fw-bold text-dark">@lang('Delivery Progress')</span>
-                        <span class="fw-bold text--primary" id="progressPercentage">0%</span>
+                <div class="mb-4">
+                    <label class="fw-bold text-muted small mb-1">@lang('Message Content'):</label>
+                    <div class="p-3 bg-light rounded border text-dark font-monospace small" style="white-space: pre-wrap; max-height: 160px; overflow-y: auto;">{{ $campaign->message }}</div>
+                </div>
+
+                <!-- Live Progress Bar -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small fw-bold mb-1">
+                        <span>@lang('Broadcast Progress')</span>
+                        <span id="progressPercent">0%</span>
                     </div>
-                    <div class="progress mb-3" style="height: 12px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated bg--success" id="campaignProgressBar" role="progressbar" style="width: 0%"></div>
+                    <div class="progress" style="height: 12px;">
+                        <div id="progressBar" class="progress-bar bg--success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
                     </div>
-                    <div class="d-flex justify-content-between text-center">
-                        <div>
-                            <small class="text-muted d-block">@lang('Sent')</small>
-                            <span class="fw-bold text--success fs-5" id="counterSent">{{ $campaign->sent_count }}</span>
+                </div>
+
+                <!-- Counters -->
+                <div class="row text-center g-2 mb-4">
+                    <div class="col-4">
+                        <div class="p-2 border rounded bg-light">
+                            <h5 class="mb-0 text--primary fw-bold" id="totalCountDisplay">{{ count($targets) }}</h5>
+                            <small class="text-muted" style="font-size: 11px;">@lang('Total')</small>
                         </div>
-                        <div>
-                            <small class="text-muted d-block">@lang('Failed')</small>
-                            <span class="fw-bold text--danger fs-5" id="counterFailed">{{ $campaign->failed_count }}</span>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 border rounded bg-light">
+                            <h5 class="mb-0 text--success fw-bold" id="sentCountDisplay">{{ $campaign->sent_count }}</h5>
+                            <small class="text-muted" style="font-size: 11px;">@lang('Sent')</small>
                         </div>
-                        <div>
-                            <small class="text-muted d-block">@lang('Remaining')</small>
-                            <span class="fw-bold text--warning fs-5" id="counterRemaining">{{ count($targets) - $campaign->sent_count }}</span>
-                        </div>
-                        <div>
-                            <small class="text-muted d-block">@lang('Total')</small>
-                            <span class="fw-bold text-dark fs-5">{{ count($targets) }}</span>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 border rounded bg-light">
+                            <h5 class="mb-0 text--danger fw-bold" id="failedCountDisplay">{{ $campaign->failed_count }}</h5>
+                            <small class="text-muted" style="font-size: 11px;">@lang('Failed')</small>
                         </div>
                     </div>
                 </div>
 
-                <!-- Action Controls -->
+                <!-- Broadcast Action Controls -->
                 <div class="d-grid gap-2">
-                    <button type="button" class="btn btn--success btn-lg fw-bold py-3" id="btnStartBroadcast">
-                        <i class="las la-paper-plane me-1"></i> @lang('Start Auto Broadcast')
+                    <button type="button" class="btn btn--success btn-lg fw-bold" id="btnStartBroadcast">
+                        <i class="las la-play me-1"></i> @lang('Start Auto-Broadcast')
                     </button>
-                    <button type="button" class="btn btn--warning btn-lg fw-bold py-3 d-none" id="btnPauseBroadcast">
-                        <i class="las la-pause-circle me-1"></i> @lang('Pause Broadcast')
+                    <button type="button" class="btn btn--warning btn-lg fw-bold d-none text-dark" id="btnPauseBroadcast">
+                        <i class="las la-pause me-1"></i> @lang('Pause Broadcast')
                     </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Message Preview Card -->
-        <div class="card b-radius--10 shadow-sm border-0">
-            <div class="card-header bg--dark text-white py-2">
-                <h6 class="card-title text-white mb-0 d-flex align-items-center">
-                    <i class="las la-comment-dots me-2"></i> @lang('Broadcast Message Preview')
-                </h6>
-            </div>
-            <div class="card-body p-3">
-                <div class="p-3 rounded" style="background-color: #dcf8c6; border-left: 4px solid #25d366;">
-                    <p class="mb-0 text-dark font-monospace" style="white-space: pre-wrap; font-size: 13px;">{{ $campaign->message }}</p>
                 </div>
             </div>
         </div>
@@ -155,6 +139,9 @@
 @endsection
 
 @push('breadcrumb-plugins')
+    <a href="{{ route('admin.campaigns.cron.manual') }}" class="btn btn-sm btn--warning text-dark fw-bold me-2" title="@lang('Trigger cron manually on localhost')">
+        <i class="las la-clock me-1"></i> @lang('Run Cron Job')
+    </a>
     <a href="{{ route('admin.campaigns.index') }}" class="btn btn-sm btn-outline--primary">
         <i class="las la-arrow-left me-1"></i> @lang('All Campaigns')
     </a>
@@ -167,7 +154,8 @@
 
     const targets = @json($targets);
     const campaignId = "{{ $campaign->id }}";
-    const delaySeconds = {{ $campaign->delay_seconds }};
+    const minDelay = {{ $campaign->min_delay ?: ($campaign->delay_seconds ?: 5) }};
+    const maxDelay = {{ $campaign->max_delay ?: ($campaign->delay_seconds ?: 15) }};
     const totalTargets = targets.length;
 
     let currentIndex = 0;
@@ -175,24 +163,36 @@
     let sentCount = {{ $campaign->sent_count }};
     let failedCount = {{ $campaign->failed_count }};
 
+    function getRandomDelay() {
+        return Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+    }
+
     function updateProgressBar(){
         const totalProcessed = sentCount + failedCount;
         const pct = totalTargets > 0 ? Math.round((totalProcessed / totalTargets) * 100) : 0;
-        $('#progressPercentage').text(pct + '%');
-        $('#campaignProgressBar').css('width', pct + '%');
-        $('#counterSent').text(sentCount);
-        $('#counterFailed').text(failedCount);
-        $('#counterRemaining').text(Math.max(0, totalTargets - totalProcessed));
+        $('#progressBar').css('width', pct + '%');
+        $('#progressPercent').text(pct + '%');
+        $('#sentCountDisplay').text(sentCount);
+        $('#failedCountDisplay').text(failedCount);
     }
 
-    updateProgressBar();
-
     $('#btnStartBroadcast').on('click', function(){
-        if(isRunning) return;
+        if(totalTargets === 0){
+            notify('warning', 'No targets in queue to broadcast.');
+            return;
+        }
+
         isRunning = true;
         $('#btnStartBroadcast').addClass('d-none');
         $('#btnPauseBroadcast').removeClass('d-none');
-        $('#queueStatusBadge').removeClass('bg--success').addClass('badge--warning').text('Broadcasting in Progress...');
+        $('#campaignStatusBadge').removeClass('badge--dark').addClass('badge--success').text('Running');
+        $('#queueStatusBadge').removeClass('badge--info').addClass('badge--warning').text('Broadcasting live...');
+
+        $.post("{{ url('admin/campaigns/update-status') }}/" + campaignId, {
+            _token: "{{ csrf_token() }}",
+            status: 'running'
+        });
+
         processNextTarget();
     });
 
@@ -252,8 +252,9 @@
                 currentIndex++;
 
                 if(isRunning && currentIndex < totalTargets){
-                    statusCell.append(` <small class="text-muted">(${delaySeconds}s delay)</small>`);
-                    setTimeout(processNextTarget, delaySeconds * 1000);
+                    const waitDelay = getRandomDelay();
+                    statusCell.append(` <small class="text-muted">(${waitDelay}s anti-ban delay)</small>`);
+                    setTimeout(processNextTarget, waitDelay * 1000);
                 } else if(currentIndex >= totalTargets){
                     processNextTarget();
                 }
@@ -266,11 +267,14 @@
                 currentIndex++;
 
                 if(isRunning && currentIndex < totalTargets){
-                    setTimeout(processNextTarget, delaySeconds * 1000);
+                    const waitDelay = getRandomDelay();
+                    setTimeout(processNextTarget, waitDelay * 1000);
                 }
             }
         });
     }
+
+    updateProgressBar();
 
 })(jQuery);
 </script>
