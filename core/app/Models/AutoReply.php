@@ -16,6 +16,10 @@ class AutoReply extends Model
         'session_id',
         'name',
         'chat_scope',
+        'target_type',
+        'target_contacts',
+        'target_group_ids',
+        'contact_list_id',
         'match_type',
         'keywords',
         'reply_message',
@@ -33,6 +37,11 @@ class AutoReply extends Model
     public function account()
     {
         return $this->belongsTo(WhatsappAccount::class, 'session_id', 'session_id');
+    }
+
+    public function contactList()
+    {
+        return $this->belongsTo(ContactList::class, 'contact_list_id');
     }
 
     public function scopeActive($query)
@@ -62,5 +71,35 @@ class AutoReply extends Model
             return $decoded;
         }
         return array_values(array_filter(array_map('trim', explode(',', $this->keywords))));
+    }
+
+    /**
+     * Get target contacts as an array
+     */
+    public function getTargetContactsArrayAttribute()
+    {
+        if (empty($this->target_contacts)) {
+            return [];
+        }
+        $decoded = json_decode($this->target_contacts, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+        return array_values(array_filter(array_map('trim', explode(',', $this->target_contacts))));
+    }
+
+    /**
+     * Get target group ids as an array
+     */
+    public function getTargetGroupIdsArrayAttribute()
+    {
+        if (empty($this->target_group_ids)) {
+            return [];
+        }
+        $decoded = json_decode($this->target_group_ids, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+        return array_values(array_filter(array_map('trim', explode(',', $this->target_group_ids))));
     }
 }

@@ -88,8 +88,32 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
     let fallbackRule = null;
 
     for (const rule of rules) {
-        if (rule.chat_scope !== 'all' && rule.chat_scope !== chatType) {
-            continue;
+        // Target Type & Scope check
+        const targetType = rule.target_type || 'all';
+
+        if (targetType === 'all_individual' && chatType !== 'individual') continue;
+        if (targetType === 'all_group' && chatType !== 'group') continue;
+
+        if (targetType === 'specific_contacts') {
+            if (chatType !== 'individual') continue;
+            const allowed = Array.isArray(rule.target_contacts) ? rule.target_contacts : [];
+            if (!allowed.includes(senderPhone)) continue;
+        }
+
+        if (targetType === 'specific_groups') {
+            if (chatType !== 'group') continue;
+            const allowedGroups = Array.isArray(rule.target_group_ids) ? rule.target_group_ids : [];
+            if (!allowedGroups.includes(remoteJid)) continue;
+        }
+
+        if (targetType === 'contact_list') {
+            if (chatType === 'individual') {
+                const memberPhones = Array.isArray(rule.list_member_phones) ? rule.list_member_phones : [];
+                if (!memberPhones.includes(senderPhone)) continue;
+            } else {
+                const groupIds = Array.isArray(rule.list_group_ids) ? rule.list_group_ids : [];
+                if (!groupIds.includes(remoteJid)) continue;
+            }
         }
 
         if (rule.match_type === 'fallback') {

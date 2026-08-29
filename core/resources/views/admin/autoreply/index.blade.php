@@ -95,7 +95,7 @@
                             <tr>
                                 <th style="width: 40px;" class="py-2">#</th>
                                 <th class="py-2">@lang('Bot Name & Account')</th>
-                                <th class="py-2">@lang('Scope')</th>
+                                <th class="py-2">@lang('Target Audience')</th>
                                 <th class="py-2">@lang('Match Type & Keywords')</th>
                                 <th class="py-2">@lang('Reply Message')</th>
                                 <th class="py-2 text-center" style="width: 90px;">@lang('Hits')</th>
@@ -120,12 +120,18 @@
                                         @endif
                                     </td>
                                     <td class="py-2">
-                                        @if($bot->chat_scope === 'individual')
-                                            <span class="badge badge--primary text-xs"><i class="las la-user me-1"></i>@lang('Direct Only')</span>
-                                        @elseif($bot->chat_scope === 'group')
-                                            <span class="badge badge--warning text-xs"><i class="las la-users me-1"></i>@lang('Groups Only')</span>
+                                        @if($bot->target_type === 'specific_contacts')
+                                            <span class="badge badge--info text-xs"><i class="las la-user-check me-1"></i>@lang('Specific Contacts') ({{ count($bot->target_contacts_array) }})</span>
+                                        @elseif($bot->target_type === 'specific_groups')
+                                            <span class="badge badge--warning text-xs"><i class="las la-users-cog me-1"></i>@lang('Specific Groups') ({{ count($bot->target_group_ids_array) }})</span>
+                                        @elseif($bot->target_type === 'contact_list' && $bot->contactList)
+                                            <span class="badge badge--dark text-xs"><i class="las la-folder me-1"></i>{{ $bot->contactList->name }}</span>
+                                        @elseif($bot->target_type === 'all_individual' || $bot->chat_scope === 'individual')
+                                            <span class="badge badge--primary text-xs"><i class="las la-user me-1"></i>@lang('All Direct Chats')</span>
+                                        @elseif($bot->target_type === 'all_group' || $bot->chat_scope === 'group')
+                                            <span class="badge badge--warning text-xs"><i class="las la-users me-1"></i>@lang('All Groups')</span>
                                         @else
-                                            <span class="badge badge--dark text-xs"><i class="las la-layer-group me-1"></i>@lang('All Chats')</span>
+                                            <span class="badge badge--secondary text-xs"><i class="las la-globe me-1"></i>@lang('All Chats')</span>
                                         @endif
                                     </td>
                                     <td class="py-2">
@@ -172,6 +178,7 @@
                                         <button type="button" class="btn btn-xs btn-outline--primary btnEditBot px-2 py-1 me-1"
                                             data-bot="{{ json_encode($bot) }}"
                                             data-keywords="{{ is_array($bot->keywords_array) ? implode(', ', $bot->keywords_array) : $bot->keywords }}"
+                                            data-contacts="{{ is_array($bot->target_contacts_array) ? implode(', ', $bot->target_contacts_array) : $bot->target_contacts }}"
                                             title="@lang('Edit Bot')">
                                             <i class="las la-edit"></i>
                                         </button>
@@ -231,7 +238,7 @@
                         <!-- Bot Name -->
                         <div class="col-md-7">
                             <label class="fw-bold mb-1">@lang('Bot Rule Name / Purpose') <span class="text--danger">*</span></label>
-                            <input type="text" name="name" class="form-control" placeholder="@lang('e.g. Pricing & Rates Bot, Greeting Responder')" required>
+                            <input type="text" name="name" class="form-control" placeholder="@lang('e.g. VIP Pricing Bot, Support Auto-Responder')" required>
                         </div>
 
                         <!-- Target Account -->
@@ -247,13 +254,16 @@
                             </select>
                         </div>
 
-                        <!-- Chat Scope -->
+                        <!-- Target Audience Type -->
                         <div class="col-md-6">
-                            <label class="fw-bold mb-1">@lang('Chat Scope') <span class="text--danger">*</span></label>
-                            <select name="chat_scope" class="form-control form-select" required>
-                                <option value="all" selected>🌐 @lang('All Chats (Direct & Groups)')</option>
-                                <option value="individual">👤 @lang('Direct 1-on-1 Chats Only')</option>
-                                <option value="group">👥 @lang('WhatsApp Groups Only')</option>
+                            <label class="fw-bold mb-1">@lang('Target Audience / Scope') <span class="text--danger">*</span></label>
+                            <select name="target_type" id="create_target_type" class="form-control form-select" required>
+                                <option value="all" selected>🌐 @lang('All Chats (Everyone)')</option>
+                                <option value="all_individual">👤 @lang('All Direct 1-on-1 Chats')</option>
+                                <option value="all_group">👥 @lang('All WhatsApp Groups')</option>
+                                <option value="specific_contacts">🎯 @lang('Specific Individual Contacts')</option>
+                                <option value="specific_groups">📌 @lang('Specific WhatsApp Groups')</option>
+                                <option value="contact_list">📁 @lang('Target Specific Contact List')</option>
                             </select>
                         </div>
 
@@ -266,6 +276,41 @@
                                 <option value="starts_with">⏩ @lang('Starts With')</option>
                                 <option value="ends_with">⏪ @lang('Ends With')</option>
                                 <option value="fallback">🛡️ @lang('Default / Fallback Reply (If no other matches)')</option>
+                            </select>
+                        </div>
+
+                        <!-- Dynamic Specific Contacts Box -->
+                        <div class="col-12 d-none" id="create_specific_contacts_wrapper">
+                            <label class="fw-bold mb-1">@lang('Target Specific Contacts (Phone Numbers)') <span class="text--danger">*</span></label>
+                            <input type="text" name="target_contacts" class="form-control" placeholder="@lang('e.g. 923001234567, 923219876543')">
+                            <small class="text-muted d-block mt-1"><i class="las la-info-circle me-1"></i>@lang('Enter specific WhatsApp phone numbers separated by commas.')</small>
+                        </div>
+
+                        <!-- Dynamic Specific Groups Box -->
+                        <div class="col-12 d-none" id="create_specific_groups_wrapper">
+                            <label class="fw-bold mb-1">@lang('Select Specific WhatsApp Groups') <span class="text--danger">*</span></label>
+                            <div class="p-3 border rounded bg-light" style="max-height: 180px; overflow-y: auto;">
+                                @forelse($groups as $g)
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="target_group_ids[]" value="{{ $g->group_id }}" id="cg_{{ $loop->index }}">
+                                        <label class="form-check-label fw-bold text-dark cursor-pointer" for="cg_{{ $loop->index }}">
+                                            {{ $g->group_name }} <span class="text-muted font-monospace small">({{ $g->group_id }})</span>
+                                        </label>
+                                    </div>
+                                @empty
+                                    <div class="text-muted small">@lang('No WhatsApp groups found in contacts. You can sync groups first.')</div>
+                                @endforelse
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Contact List Selector -->
+                        <div class="col-12 d-none" id="create_contact_list_wrapper">
+                            <label class="fw-bold mb-1">@lang('Choose Target Contact List') <span class="text--danger">*</span></label>
+                            <select name="contact_list_id" class="form-control form-select">
+                                <option value="">@lang('Select Contact List')</option>
+                                @foreach($contactLists as $lst)
+                                    <option value="{{ $lst->id }}">📁 {{ $lst->name }} ({{ $lst->contacts_count }} {{ $lst->type }})</option>
+                                @endforeach
                             </select>
                         </div>
 
@@ -349,13 +394,16 @@
                             </select>
                         </div>
 
-                        <!-- Chat Scope -->
+                        <!-- Target Audience -->
                         <div class="col-md-6">
-                            <label class="fw-bold mb-1">@lang('Chat Scope') <span class="text--danger">*</span></label>
-                            <select name="chat_scope" id="edit_chat_scope" class="form-control form-select" required>
-                                <option value="all">🌐 @lang('All Chats (Direct & Groups)')</option>
-                                <option value="individual">👤 @lang('Direct 1-on-1 Chats Only')</option>
-                                <option value="group">👥 @lang('WhatsApp Groups Only')</option>
+                            <label class="fw-bold mb-1">@lang('Target Audience / Scope') <span class="text--danger">*</span></label>
+                            <select name="target_type" id="edit_target_type" class="form-control form-select" required>
+                                <option value="all">🌐 @lang('All Chats (Everyone)')</option>
+                                <option value="all_individual">👤 @lang('All Direct 1-on-1 Chats')</option>
+                                <option value="all_group">👥 @lang('All WhatsApp Groups')</option>
+                                <option value="specific_contacts">🎯 @lang('Specific Individual Contacts')</option>
+                                <option value="specific_groups">📌 @lang('Specific WhatsApp Groups')</option>
+                                <option value="contact_list">📁 @lang('Target Specific Contact List')</option>
                             </select>
                         </div>
 
@@ -368,6 +416,40 @@
                                 <option value="starts_with">⏩ @lang('Starts With')</option>
                                 <option value="ends_with">⏪ @lang('Ends With')</option>
                                 <option value="fallback">🛡️ @lang('Default / Fallback Reply')</option>
+                            </select>
+                        </div>
+
+                        <!-- Dynamic Specific Contacts Box -->
+                        <div class="col-12 d-none" id="edit_specific_contacts_wrapper">
+                            <label class="fw-bold mb-1">@lang('Target Specific Contacts (Phone Numbers)') <span class="text--danger">*</span></label>
+                            <input type="text" name="target_contacts" id="edit_target_contacts" class="form-control" placeholder="@lang('e.g. 923001234567, 923219876543')">
+                        </div>
+
+                        <!-- Dynamic Specific Groups Box -->
+                        <div class="col-12 d-none" id="edit_specific_groups_wrapper">
+                            <label class="fw-bold mb-1">@lang('Select Specific WhatsApp Groups') <span class="text--danger">*</span></label>
+                            <div class="p-3 border rounded bg-light" style="max-height: 180px; overflow-y: auto;">
+                                @forelse($groups as $g)
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input edit-grp-chk" type="checkbox" name="target_group_ids[]" value="{{ $g->group_id }}" id="eg_{{ $loop->index }}">
+                                        <label class="form-check-label fw-bold text-dark cursor-pointer" for="eg_{{ $loop->index }}">
+                                            {{ $g->group_name }} <span class="text-muted font-monospace small">({{ $g->group_id }})</span>
+                                        </label>
+                                    </div>
+                                @empty
+                                    <div class="text-muted small">@lang('No WhatsApp groups found in contacts.')</div>
+                                @endforelse
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Contact List Selector -->
+                        <div class="col-12 d-none" id="edit_contact_list_wrapper">
+                            <label class="fw-bold mb-1">@lang('Choose Target Contact List') <span class="text--danger">*</span></label>
+                            <select name="contact_list_id" id="edit_contact_list_id" class="form-control form-select">
+                                <option value="">@lang('Select Contact List')</option>
+                                @foreach($contactLists as $lst)
+                                    <option value="{{ $lst->id }}">📁 {{ $lst->name }} ({{ $lst->contacts_count }} {{ $lst->type }})</option>
+                                @endforeach
                             </select>
                         </div>
 
@@ -434,18 +516,22 @@
             </div>
             <div class="modal-body p-4">
                 <p class="text-muted small mb-3">
-                    @lang('Type any incoming message below to test your keyword bots. The simulator evaluates your active rules in real time and demonstrates what response will be sent.')
+                    @lang('Test your keyword bots against specific individual contacts, groups, or universal chats in real time.')
                 </p>
 
                 <div class="row g-3 mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="fw-bold mb-1 small">@lang('Chat Type')</label>
                         <select id="sim_chat_type" class="form-control form-control-sm form-select">
                             <option value="individual" selected>👤 @lang('Direct 1-on-1 Chat')</option>
                             <option value="group">👥 @lang('WhatsApp Group')</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <label class="fw-bold mb-1 small">@lang('Sender Phone Number')</label>
+                        <input type="text" id="sim_sender_phone" class="form-control form-control-sm" placeholder="923001234567" value="923001234567">
+                    </div>
+                    <div class="col-md-4">
                         <label class="fw-bold mb-1 small">@lang('Target Account')</label>
                         <select id="sim_session_id" class="form-control form-control-sm form-select">
                             <option value="">🌐 @lang('Any Connected Account')</option>
@@ -483,7 +569,7 @@
                 </div>
 
                 <div id="simNoMatchBox" class="alert alert-warning border-0 d-none">
-                    <i class="las la-exclamation-triangle me-1"></i> <span id="simNoMatchMsg">@lang('No active bot rule matched this message.')</span>
+                    <i class="las la-exclamation-triangle me-1"></i> <span id="simNoMatchMsg">@lang('No active bot rule matched this message or sender.')</span>
                 </div>
             </div>
             <div class="modal-footer p-3">
@@ -509,6 +595,38 @@
 <script>
 (function($){
     "use strict";
+
+    // Target Type Dynamic Boxes (Create)
+    $('#create_target_type').on('change', function(){
+        const val = $(this).val();
+        $('#create_specific_contacts_wrapper').addClass('d-none');
+        $('#create_specific_groups_wrapper').addClass('d-none');
+        $('#create_contact_list_wrapper').addClass('d-none');
+
+        if(val === 'specific_contacts'){
+            $('#create_specific_contacts_wrapper').removeClass('d-none');
+        } else if(val === 'specific_groups'){
+            $('#create_specific_groups_wrapper').removeClass('d-none');
+        } else if(val === 'contact_list'){
+            $('#create_contact_list_wrapper').removeClass('d-none');
+        }
+    });
+
+    // Target Type Dynamic Boxes (Edit)
+    $('#edit_target_type').on('change', function(){
+        const val = $(this).val();
+        $('#edit_specific_contacts_wrapper').addClass('d-none');
+        $('#edit_specific_groups_wrapper').addClass('d-none');
+        $('#edit_contact_list_wrapper').addClass('d-none');
+
+        if(val === 'specific_contacts'){
+            $('#edit_specific_contacts_wrapper').removeClass('d-none');
+        } else if(val === 'specific_groups'){
+            $('#edit_specific_groups_wrapper').removeClass('d-none');
+        } else if(val === 'contact_list'){
+            $('#edit_contact_list_wrapper').removeClass('d-none');
+        }
+    });
 
     // Toggle match type keywords visibility
     $('#create_match_type').on('change', function(){
@@ -556,11 +674,29 @@
     $('.btnEditBot').on('click', function(){
         const bot = $(this).data('bot');
         const keywords = $(this).data('keywords');
+        const contacts = $(this).data('contacts');
 
         $('#editBotForm').attr('action', "{{ url('admin/autoreply/update') }}/" + bot.id);
         $('#edit_name').val(bot.name);
         $('#edit_session_id').val(bot.session_id || '');
-        $('#edit_chat_scope').val(bot.chat_scope);
+        
+        const targetType = bot.target_type || (bot.chat_scope === 'group' ? 'all_group' : (bot.chat_scope === 'individual' ? 'all_individual' : 'all'));
+        $('#edit_target_type').val(targetType).trigger('change');
+        
+        $('#edit_target_contacts').val(contacts || '');
+        $('#edit_contact_list_id').val(bot.contact_list_id || '');
+
+        // Uncheck all group checkboxes and check selected
+        $('.edit-grp-chk').prop('checked', false);
+        if(bot.target_group_ids){
+            try {
+                const grpArr = Array.isArray(bot.target_group_ids) ? bot.target_group_ids : JSON.parse(bot.target_group_ids);
+                grpArr.forEach(gid => {
+                    $(`.edit-grp-chk[value="${gid}"]`).prop('checked', true);
+                });
+            } catch(e){}
+        }
+
         $('#edit_match_type').val(bot.match_type).trigger('change');
         $('#edit_keywords').val(keywords || '');
         $('#edit_reply_msg').val(bot.reply_message);
@@ -575,6 +711,7 @@
         const text = $('#sim_input_text').val().trim();
         const chatType = $('#sim_chat_type').val();
         const sessionId = $('#sim_session_id').val();
+        const senderPhone = $('#sim_sender_phone').val().trim();
 
         if(!text){
             notify('warning', 'Please enter some text to test');
@@ -591,7 +728,8 @@
                 _token: "{{ csrf_token() }}",
                 text: text,
                 chat_type: chatType,
-                session_id: sessionId
+                session_id: sessionId,
+                sender_phone: senderPhone
             },
             success: function(res){
                 if(res.matched){
