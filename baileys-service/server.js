@@ -34,6 +34,139 @@ if (!fs.existsSync(SESSIONS_DIR)) {
 // In-memory store for active sessions
 const sessions = new Map();
 
+// Auto-Reply Engine Cache & Cooldown Store
+const autoReplyRuleCache = new Map(); // sessionId -> { rules, lastFetched }
+const userCooldowns = new Map(); // `${ruleId}_${remoteJid}_${senderPhone}` -> timestamp
+
+async function getActiveAutoReplies(sessionId) {
+    const cached = autoReplyRuleCache.get(sessionId);
+    const now = Date.now();
+    if (cached && (now - cached.lastFetched < 10000)) { // 10s memory cache
+        return cached.rules;
+    }
+
+    try {
+        const res = await fetch(`http://127.0.0.1:8000/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(3000) });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.rules)) {
+                autoReplyRuleCache.set(sessionId, { rules: data.rules, lastFetched: now });
+                return data.rules;
+            }
+        }
+    } catch (e) {
+        if (cached) return cached.rules;
+    }
+    return [];
+}
+
+async function processIncomingAutoReply(sessionId, sock, msg) {
+    if (!msg || !msg.message || msg.key?.fromMe) return;
+
+    const remoteJid = msg.key?.remoteJid;
+    if (!remoteJid || remoteJid.endsWith('@broadcast')) return;
+
+    const msgContent = msg.message;
+    const incomingText = (msgContent.conversation || 
+                          msgContent.extendedTextMessage?.text || 
+                          msgContent.imageMessage?.caption || 
+                          msgContent.videoMessage?.caption || '').trim();
+
+    if (!incomingText) return;
+
+    const isGroup = remoteJid.endsWith('@g.us');
+    const chatType = isGroup ? 'group' : 'individual';
+    const participantJid = msg.key.participant || remoteJid;
+    const senderPhone = participantJid.split('@')[0].split(':')[0];
+    const senderName = msg.pushName || `+${senderPhone}`;
+
+    const rules = await getActiveAutoReplies(sessionId);
+    if (!rules || rules.length === 0) return;
+
+    const lowerText = incomingText.toLowerCase();
+    let matchedRule = null;
+    let fallbackRule = null;
+
+    for (const rule of rules) {
+        if (rule.chat_scope !== 'all' && rule.chat_scope !== chatType) {
+            continue;
+        }
+
+        if (rule.match_type === 'fallback') {
+            fallbackRule = rule;
+            continue;
+        }
+
+        let kwList = [];
+        if (Array.isArray(rule.keywords)) {
+            kwList = rule.keywords;
+        } else if (typeof rule.keywords === 'string') {
+            try {
+                const parsed = JSON.parse(rule.keywords);
+                kwList = Array.isArray(parsed) ? parsed : [rule.keywords];
+            } catch {
+                kwList = rule.keywords.split(',').map(s => s.trim()).filter(Boolean);
+            }
+        }
+
+        let isMatch = false;
+        for (const kw of kwList) {
+            const lowerKw = kw.toLowerCase().trim();
+            if (!lowerKw) continue;
+
+            if (rule.match_type === 'exact' && lowerText === lowerKw) {
+                isMatch = true;
+                break;
+            } else if (rule.match_type === 'contains' && lowerText.includes(lowerKw)) {
+                isMatch = true;
+                break;
+            } else if (rule.match_type === 'starts_with' && lowerText.startsWith(lowerKw)) {
+                isMatch = true;
+                break;
+            } else if (rule.match_type === 'ends_with' && lowerText.endsWith(lowerKw)) {
+                isMatch = true;
+                break;
+            }
+        }
+
+        if (isMatch) {
+            matchedRule = rule;
+            break;
+        }
+    }
+
+    const targetRule = matchedRule || fallbackRule;
+    if (!targetRule) return;
+
+    // Check anti-spam cooldown
+    const cooldownKey = `${targetRule.id}_${remoteJid}_${senderPhone}`;
+    const now = Date.now();
+    if (targetRule.cooldown_seconds && targetRule.cooldown_seconds > 0) {
+        const lastHit = userCooldowns.get(cooldownKey) || 0;
+        if (now - lastHit < targetRule.cooldown_seconds * 1000) {
+            console.log(`[AutoReply Cooldown] Skipped rule "${targetRule.name}" for ${senderPhone} (Cooldown active)`);
+            return;
+        }
+    }
+    userCooldowns.set(cooldownKey, now);
+
+    // Variable substitutions
+    const processedText = targetRule.reply_message
+        .replace(/\{name\}/g, senderName)
+        .replace(/\{sender_phone\}/g, senderPhone)
+        .replace(/\{time\}/g, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+        .replace(/\{date\}/g, new Date().toLocaleDateString());
+
+    console.log(`[AutoReply Triggered] Rule: "${targetRule.name}" -> Replying to ${remoteJid}`);
+
+    try {
+        await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
+        fetch(`http://127.0.0.1:8000/api/autoreply/log-hit/${targetRule.id}`, { method: 'POST' }).catch(() => {});
+    } catch (err) {
+        console.error(`[AutoReply Send Error]:`, err?.message || err);
+    }
+}
+
 const logger = pino({ level: 'silent' });
 
 async function initBaileysSession(sessionId, accountName) {
@@ -109,7 +242,7 @@ async function initBaileysSession(sessionId, accountName) {
         }
     });
 
-    sock.ev.on('messages.upsert', ({ messages }) => {
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
         for (const msg of messages) {
             if (msg.key && msg.pushName && !msg.key.fromMe) {
                 const jid = msg.key.participant || msg.key.remoteJid;
@@ -121,6 +254,13 @@ async function initBaileysSession(sessionId, accountName) {
                     }
                     sessionData.contacts.set(phone, existing);
                 }
+            }
+
+            // Process Auto-Reply & Keyword Bot Rules
+            if (type === 'notify' || !type) {
+                processIncomingAutoReply(sessionId, sock, msg).catch(e => {
+                    console.error('[AutoReply Trigger Error]', e?.message || e);
+                });
             }
         }
     });

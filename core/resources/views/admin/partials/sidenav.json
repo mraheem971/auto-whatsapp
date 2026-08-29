@@ -124,6 +124,18 @@
             }
         ]
     },
+    "autoreply": {
+        "title": "Auto-Reply Bot",
+        "icon": "las la-robot",
+        "menu_active": "admin.autoreply*",
+        "submenu": [{
+                "keyword": ["Keyword bots", "Auto replies", "Chatbot", "Keywords", "Auto responder", "WhatsApp Bot"],
+                "title": "Keyword Bots",
+                "route_name": "admin.autoreply.index",
+                "menu_active": "admin.autoreply.index"
+            }
+        ]
+    },
     "manage_users": {
         "title": "Manage Users",
         "icon": "las la-users",

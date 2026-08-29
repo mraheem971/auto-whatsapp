@@ -247,6 +247,16 @@ Route::middleware('admin')->group(function () {
         Route::get('cron-manual', 'runCronManual')->name('cron.manual');
     });
 
+    // Auto-Reply & Keyword Bots
+    Route::controller('AutoReplyController')->prefix('autoreply')->name('autoreply.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('store', 'store')->name('store');
+        Route::post('update/{id}', 'update')->name('update');
+        Route::post('delete/{id}', 'delete')->name('delete');
+        Route::post('status/{id}', 'statusToggle')->name('status.toggle');
+        Route::post('simulate', 'simulate')->name('simulate');
+    });
+
 
     // Admin Support
     Route::controller('SupportTicketController')->prefix('ticket')->name('ticket.')->group(function(){
