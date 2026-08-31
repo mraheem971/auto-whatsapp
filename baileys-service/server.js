@@ -232,6 +232,22 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
 const logger = pino({ level: 'silent' });
 
 async function initBaileysSession(sessionId, accountName) {
+    // If session already exists, cleanly tear down previous socket and listeners
+    const existing = sessions.get(sessionId);
+    if (existing) {
+        if (existing.presenceTimer) {
+            clearInterval(existing.presenceTimer);
+            existing.presenceTimer = null;
+        }
+        if (existing.socket) {
+            try {
+                existing.socket.ev.removeAllListeners();
+                existing.socket.end(undefined);
+            } catch (e) {}
+            existing.socket = null;
+        }
+    }
+
     const sessionPath = path.join(SESSIONS_DIR, sessionId);
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     const { version } = await fetchLatestBaileysVersion();
@@ -239,7 +255,7 @@ async function initBaileysSession(sessionId, accountName) {
     const msgRetryCounterCache = new Map();
     const messageStore = new Map();
 
-    const sessionData = {
+    const sessionData = existing || {
         sessionId,
         accountName: accountName || sessionId,
         status: 'initializing',
@@ -248,10 +264,13 @@ async function initBaileysSession(sessionId, accountName) {
         user: null,
         socket: null,
         presenceTimer: null,
+        isReconnecting: false,
         contacts: new Map(),
         lastUpdated: new Date()
     };
 
+    sessionData.status = 'initializing';
+    sessionData.isReconnecting = false;
     sessions.set(sessionId, sessionData);
 
     const sock = makeWASocket({
@@ -431,19 +450,21 @@ async function initBaileysSession(sessionId, accountName) {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-            console.log(`[Baileys] Session ${sessionId} closed. StatusCode: ${statusCode}. Reconnecting: ${shouldReconnect}`);
+            console.log(`[Baileys] Session ${sessionId} closed. StatusCode: ${statusCode || 'unknown'}. Reconnecting: ${shouldReconnect}`);
 
-            if (shouldReconnect) {
+            if (shouldReconnect && !sessionData.isReconnecting) {
+                sessionData.isReconnecting = true;
                 sessionData.status = 'reconnecting';
                 setTimeout(() => {
                     if (sessions.has(sessionId)) {
                         initBaileysSession(sessionId, accountName).catch(console.error);
                     }
                 }, 3000);
-            } else {
+            } else if (!shouldReconnect) {
                 sessionData.status = 'disconnected';
                 sessionData.qr = null;
                 sessionData.qrImage = null;
+                sessionData.isReconnecting = false;
             }
             sessionData.lastUpdated = new Date();
         }
