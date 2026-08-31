@@ -278,7 +278,7 @@ async function initBaileysSession(sessionId, accountName) {
     const sock = makeWASocket({
         version,
         logger,
-        printQRInTerminal: true, // Also print ASCII QR in terminal for direct scanning
+        printQRInTerminal: false,
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, logger)
