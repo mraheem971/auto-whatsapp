@@ -507,6 +507,9 @@ app.post('/api/sessions/start', async (req, res) => {
             return res.status(400).json({ error: 'sessionId is required' });
         }
 
+        // Clean any uncompleted/abandoned previous sessions before starting new one
+        cleanupUnauthenticatedSessions(sessionId);
+
         let session = sessions.get(sessionId);
 
         if (session && session.status === 'connected') {
@@ -873,15 +876,70 @@ app.get('/api/contacts/:sessionId', async (req, res) => {
     }
 });
 
-// Auto-restore saved sessions from disk on server launch
-async function restoreSavedSessions() {
+// Purge unauthenticated or abandoned session directories from disk
+function cleanupUnauthenticatedSessions(exceptSessionId = null) {
     try {
         if (!fs.existsSync(SESSIONS_DIR)) return;
         const dirs = fs.readdirSync(SESSIONS_DIR, { withFileTypes: true });
         for (const dir of dirs) {
-            if (dir.isDirectory() && fs.existsSync(path.join(SESSIONS_DIR, dir.name, 'creds.json'))) {
-                console.log(`[Baileys] Auto-restoring session: ${dir.name}`);
-                initBaileysSession(dir.name).catch(e => console.error(`Error restoring session ${dir.name}:`, e));
+            if (!dir.isDirectory()) continue;
+            if (exceptSessionId && dir.name === exceptSessionId) continue;
+
+            const credsPath = path.join(SESSIONS_DIR, dir.name, 'creds.json');
+            let isCompleted = false;
+
+            if (fs.existsSync(credsPath)) {
+                try {
+                    const creds = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
+                    if (creds && creds.me && creds.me.id) {
+                        isCompleted = true;
+                    }
+                } catch (e) {}
+            }
+
+            // If creds.me is missing, it's an abandoned pairing attempt -> delete cleanly
+            if (!isCompleted) {
+                const sessionPath = path.join(SESSIONS_DIR, dir.name);
+                console.log(`[Baileys] 🧹 Purging unauthenticated session folder: ${dir.name}`);
+                try {
+                    const session = sessions.get(dir.name);
+                    if (session) {
+                        if (session.presenceTimer) clearInterval(session.presenceTimer);
+                        if (session.socket) {
+                            session.socket.ev.removeAllListeners();
+                            session.socket.end(undefined);
+                        }
+                    }
+                    sessions.delete(dir.name);
+                    fs.rmSync(sessionPath, { recursive: true, force: true });
+                } catch (e) {
+                    console.error(`Error deleting abandoned session folder ${dir.name}:`, e);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error in cleanupUnauthenticatedSessions:', e);
+    }
+}
+
+// Auto-restore ONLY fully authenticated saved sessions from disk on server launch
+async function restoreSavedSessions() {
+    try {
+        cleanupUnauthenticatedSessions();
+        if (!fs.existsSync(SESSIONS_DIR)) return;
+        const dirs = fs.readdirSync(SESSIONS_DIR, { withFileTypes: true });
+        for (const dir of dirs) {
+            if (dir.isDirectory()) {
+                const credsPath = path.join(SESSIONS_DIR, dir.name, 'creds.json');
+                if (fs.existsSync(credsPath)) {
+                    try {
+                        const creds = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
+                        if (creds && creds.me && creds.me.id) {
+                            console.log(`[Baileys] Auto-restoring authenticated session: ${dir.name}`);
+                            initBaileysSession(dir.name).catch(e => console.error(`Error restoring session ${dir.name}:`, e));
+                        }
+                    } catch (e) {}
+                }
             }
         }
     } catch (e) {
@@ -892,4 +950,6 @@ async function restoreSavedSessions() {
 app.listen(PORT, '127.0.0.1', () => {
     console.log(`Baileys WhatsApp Service running on http://127.0.0.1:${PORT}`);
     restoreSavedSessions();
+    // Run background cleanup every 2 minutes for abandoned uncompleted scans
+    setInterval(() => cleanupUnauthenticatedSessions(), 120000);
 });

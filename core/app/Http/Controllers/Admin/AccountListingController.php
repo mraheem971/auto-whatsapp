@@ -49,7 +49,20 @@ class AccountListingController extends Controller
         $accountName = $request->account_name;
         $sessionId   = 'wa_' . time() . '_' . Str::random(8);
 
-        // Upsert record in database as pending
+        // Clean up previous unfinished pending accounts from database & disk
+        $stalePending = WhatsappAccount::where('status', 0)->get();
+        foreach ($stalePending as $stale) {
+            $staleDir = base_path('../baileys-service/sessions/' . $stale->session_id);
+            if (is_dir($staleDir)) {
+                \Illuminate\Support\Facades\File::deleteDirectory($staleDir);
+            }
+            try {
+                Http::timeout(3)->post("{$this->baileysUrl}/api/sessions/delete/{$stale->session_id}");
+            } catch (\Exception $e) {}
+            $stale->delete();
+        }
+
+        // Create new pending record
         $account = new WhatsappAccount();
         $account->session_id   = $sessionId;
         $account->account_name = $accountName;
