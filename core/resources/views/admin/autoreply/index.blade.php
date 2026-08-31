@@ -106,9 +106,13 @@
                                     </td>
                                     <td class="py-2">
                                         @if($bot->target_type === 'all' || empty($bot->target_type))
-                                            <span class="badge badge--dark px-2 py-1"><i class="las la-globe me-1"></i>@lang('All Chats')</span>
+                                            <span class="badge badge--dark px-2 py-1"><i class="las la-globe me-1"></i>@lang('All Chats (Everyone)')</span>
                                         @elseif($bot->target_type === 'all_individual')
                                             <span class="badge badge--primary px-2 py-1"><i class="las la-user me-1"></i>@lang('1-on-1 Direct Chats')</span>
+                                        @elseif($bot->target_type === 'saved_contacts')
+                                            <span class="badge badge--success px-2 py-1"><i class="las la-address-book me-1"></i>@lang('Saved Contacts Only')</span>
+                                        @elseif($bot->target_type === 'unsaved_contacts')
+                                            <span class="badge badge--warning px-2 py-1"><i class="las la-user-plus me-1"></i>@lang('Non-Saved Numbers Only')</span>
                                         @elseif($bot->target_type === 'all_group')
                                             <span class="badge badge--info px-2 py-1"><i class="las la-users me-1"></i>@lang('All Groups')</span>
                                         @elseif($bot->target_type === 'specific_contacts')
@@ -257,8 +261,10 @@
                             <label class="fw-bold mb-1">@lang('Target Audience / Scope') <span class="text--danger">*</span></label>
                             <select name="target_type" id="create_target_type" class="form-control form-select" required>
                                 <option value="all" selected>🌐 @lang('All Chats (Everyone)')</option>
-                                <option value="all_individual">👤 @lang('All Direct 1-on-1 Chats')</option>
-                                <option value="all_group">👥 @lang('All WhatsApp Groups')</option>
+                                <option value="all_individual">👤 @lang('All Direct 1-on-1 Chats (Saved & Unsaved)')</option>
+                                <option value="saved_contacts">📇 @lang('Saved Contacts Only (In Phone Address Book)')</option>
+                                <option value="unsaved_contacts">🆕 @lang('Non-Saved Numbers Only (Unknown / New Leads)')</option>
+                                <option value="all_group">👥 @lang('All WhatsApp Groups Only')</option>
                                 <option value="specific_contacts">🎯 @lang('Specific Individual Contacts')</option>
                                 <option value="specific_groups">📌 @lang('Specific WhatsApp Groups')</option>
                                 <option value="contact_list">📁 @lang('Target Specific Contact List')</option>
@@ -441,8 +447,10 @@
                             <label class="fw-bold mb-1">@lang('Target Audience / Scope') <span class="text--danger">*</span></label>
                             <select name="target_type" id="edit_target_type" class="form-control form-select" required>
                                 <option value="all">🌐 @lang('All Chats (Everyone)')</option>
-                                <option value="all_individual">👤 @lang('All Direct 1-on-1 Chats')</option>
-                                <option value="all_group">👥 @lang('All WhatsApp Groups')</option>
+                                <option value="all_individual">👤 @lang('All Direct 1-on-1 Chats (Saved & Unsaved)')</option>
+                                <option value="saved_contacts">📇 @lang('Saved Contacts Only (In Phone Address Book)')</option>
+                                <option value="unsaved_contacts">🆕 @lang('Non-Saved Numbers Only (Unknown / New Leads)')</option>
+                                <option value="all_group">👥 @lang('All WhatsApp Groups Only')</option>
                                 <option value="specific_contacts">🎯 @lang('Specific Individual Contacts')</option>
                                 <option value="specific_groups">📌 @lang('Specific WhatsApp Groups')</option>
                                 <option value="contact_list">📁 @lang('Target Specific Contact List')</option>
@@ -603,22 +611,29 @@
             </div>
             <div class="modal-body p-4">
                 <p class="text-muted small mb-3">
-                    @lang('Test your keyword bots against specific individual contacts, groups, or universal chats in real time.')
+                    @lang('Test your keyword bots against specific individual contacts, groups, saved contacts, or strangers in real time.')
                 </p>
 
                 <div class="row g-3 mb-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="fw-bold mb-1 small">@lang('Chat Type')</label>
                         <select id="sim_chat_type" class="form-control form-control-sm form-select">
                             <option value="individual" selected>👤 @lang('Direct 1-on-1 Chat')</option>
                             <option value="group">👥 @lang('WhatsApp Group')</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label class="fw-bold mb-1 small">@lang('Contact Book Status')</label>
+                        <select id="sim_is_saved" class="form-control form-control-sm form-select">
+                            <option value="true" selected>📇 @lang('Saved in Contacts')</option>
+                            <option value="false">🆕 @lang('Non-Saved (Unknown)')</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label class="fw-bold mb-1 small">@lang('Sender Phone Number')</label>
                         <input type="text" id="sim_sender_phone" class="form-control form-control-sm" placeholder="923001234567" value="923001234567">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="fw-bold mb-1 small">@lang('Target Account')</label>
                         <select id="sim_session_id" class="form-control form-control-sm form-select">
                             <option value="">🌐 @lang('Any Connected Account')</option>
@@ -814,6 +829,7 @@
     $('#btnRunSimulation').on('click', function(){
         const text = $('#sim_input_text').val().trim();
         const chatType = $('#sim_chat_type').val();
+        const isSaved = $('#sim_is_saved').val();
         const sessionId = $('#sim_session_id').val();
         const senderPhone = $('#sim_sender_phone').val().trim();
 
@@ -832,6 +848,7 @@
                 _token: "{{ csrf_token() }}",
                 text: text,
                 chat_type: chatType,
+                is_saved: isSaved,
                 session_id: sessionId,
                 sender_phone: senderPhone
             },

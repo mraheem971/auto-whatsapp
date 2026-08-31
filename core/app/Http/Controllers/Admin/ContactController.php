@@ -516,7 +516,7 @@ class ContactController extends Controller
     {
         try {
             $mode = request('mode', 'all');
-            $response = Http::timeout(25)->get("{$this->baileysUrl}/api/contacts/{$sessionId}?mode={$mode}");
+            $response = \App\Services\BaileysClient::get("api/contacts/{$sessionId}?mode={$mode}", [], 25);
 
             if ($response->successful()) {
                 return response()->json($response->json());

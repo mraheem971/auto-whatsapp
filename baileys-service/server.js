@@ -126,6 +126,19 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         if (targetType === 'all_individual' && chatType !== 'individual') continue;
         if (targetType === 'all_group' && chatType !== 'group') continue;
 
+        const session = sessions.get(sessionId);
+        const isSavedContact = Boolean(session?.savedContacts?.has(senderPhone) || session?.contacts?.get(senderPhone)?.isSaved);
+
+        if (targetType === 'saved_contacts') {
+            if (chatType !== 'individual') continue;
+            if (!isSavedContact) continue;
+        }
+
+        if (targetType === 'unsaved_contacts') {
+            if (chatType !== 'individual') continue;
+            if (isSavedContact) continue;
+        }
+
         if (targetType === 'specific_contacts') {
             if (chatType !== 'individual') continue;
             const allowed = Array.isArray(rule.target_contacts) ? rule.target_contacts : [];
@@ -313,8 +326,13 @@ async function initBaileysSession(sessionId, accountName) {
         presenceTimer: null,
         isReconnecting: false,
         contacts: new Map(),
+        savedContacts: new Set(),
         lastUpdated: new Date()
     };
+
+    if (!sessionData.savedContacts) {
+        sessionData.savedContacts = new Set();
+    }
 
     sessionData.status = 'initializing';
     sessionData.isReconnecting = false;
@@ -360,12 +378,17 @@ async function initBaileysSession(sessionId, accountName) {
     sock.ev.on('contacts.upsert', (contacts) => {
         for (const contact of contacts) {
             if (contact.id && !contact.id.endsWith('@g.us') && !contact.id.endsWith('@broadcast')) {
-                const phone = contact.id.split('@')[0].split(':')[0];
+                const phone = contact.id.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+                const isSaved = Boolean(contact.name);
+                if (isSaved) {
+                    sessionData.savedContacts.add(phone);
+                }
                 const name = contact.name || contact.notify || contact.verifiedName || `+${phone}`;
                 sessionData.contacts.set(phone, {
                     id: contact.id,
                     phone: phone,
-                    name: name
+                    name: name,
+                    isSaved: isSaved
                 });
             }
         }
@@ -374,10 +397,14 @@ async function initBaileysSession(sessionId, accountName) {
     sock.ev.on('contacts.update', (updates) => {
         for (const update of updates) {
             if (update.id && !update.id.endsWith('@g.us') && !update.id.endsWith('@broadcast')) {
-                const phone = update.id.split('@')[0].split(':')[0];
-                const existing = sessionData.contacts.get(phone) || { id: update.id, phone: phone, name: `+${phone}` };
-                if (update.name) existing.name = update.name;
-                if (update.notify) existing.name = update.notify;
+                const phone = update.id.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+                const existing = sessionData.contacts.get(phone) || { id: update.id, phone: phone, name: `+${phone}`, isSaved: false };
+                if (update.name) {
+                    existing.name = update.name;
+                    existing.isSaved = true;
+                    sessionData.savedContacts.add(phone);
+                }
+                if (update.notify && !existing.isSaved) existing.name = update.notify;
                 sessionData.contacts.set(phone, existing);
             }
         }

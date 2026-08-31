@@ -328,12 +328,12 @@ class CampaignController extends Controller
         $isGroup = ($request->type === 'group' || str_ends_with($request->target_jid, '@g.us')) ? 1 : 0;
 
         try {
-            $response = Http::timeout(25)->post("{$this->baileysUrl}/api/messages/send", [
+            $response = \App\Services\BaileysClient::post('api/messages/send', [
                 'sessionId' => $campaign->session_id,
                 'receiver'  => $request->target_jid,
                 'message'   => $personalizedMessage,
                 'isGroup'   => $isGroup,
-            ]);
+            ], 25);
 
             $resData = $response->json();
 

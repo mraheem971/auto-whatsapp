@@ -4,14 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\WhatsappAccount;
+use App\Services\BaileysClient;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class AccountListingController extends Controller
 {
-    protected $baileysUrl = 'http://127.0.0.1:3000';
-
     public function index(Request $request)
     {
         $pageTitle = 'All WhatsApp Accounts';
@@ -57,7 +55,7 @@ class AccountListingController extends Controller
                 \Illuminate\Support\Facades\File::deleteDirectory($staleDir);
             }
             try {
-                Http::timeout(3)->post("{$this->baileysUrl}/api/sessions/delete/{$stale->session_id}");
+                BaileysClient::post("api/sessions/delete/{$stale->session_id}", [], 3);
             } catch (\Exception $e) {}
             $stale->delete();
         }
@@ -71,11 +69,11 @@ class AccountListingController extends Controller
         $account->save();
 
         try {
-            $response = Http::timeout(15)->post("{$this->baileysUrl}/api/sessions/start", [
+            $response = BaileysClient::post('api/sessions/start', [
                 'sessionId'   => $sessionId,
                 'accountName' => $accountName,
                 'fresh'       => true,
-            ]);
+            ], 15);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -94,7 +92,7 @@ class AccountListingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'error'  => 'Could not connect to Baileys service at ' . $this->baileysUrl . '. Please ensure the background service is running.',
+                'error'  => 'Could not connect to Baileys service. Auto-spawn initiated: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -102,7 +100,7 @@ class AccountListingController extends Controller
     public function sessionStatus($sessionId)
     {
         try {
-            $response = Http::timeout(8)->get("{$this->baileysUrl}/api/sessions/status/{$sessionId}");
+            $response = BaileysClient::get("api/sessions/status/{$sessionId}", [], 8);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -144,11 +142,11 @@ class AccountListingController extends Controller
         ]);
 
         try {
-            $response = Http::timeout(15)->post("{$this->baileysUrl}/api/messages/send", [
+            $response = BaileysClient::post('api/messages/send', [
                 'sessionId' => $request->session_id,
                 'receiver'  => $request->receiver,
                 'message'   => $request->message,
-            ]);
+            ], 20);
 
             if ($response->successful()) {
                 return response()->json([
@@ -176,47 +174,24 @@ class AccountListingController extends Controller
         // 1. Notify Baileys service to kill active socket & delete credentials from disk
         if ($sessionId) {
             try {
-                Http::timeout(5)->post("{$this->baileysUrl}/api/sessions/delete/{$sessionId}");
+                BaileysClient::post("api/sessions/delete/{$sessionId}", [], 5);
             } catch (\Exception $e) {
-                // Service may be offline, proceed with local deletion
+                // Log and continue to delete from DB
             }
 
-            // 2. Direct filesystem deletion fallback
+            // 2. Double-check filesystem cleanup directly from PHP
             $sessionDir = base_path('../baileys-service/sessions/' . $sessionId);
             if (is_dir($sessionDir)) {
-                \Illuminate\Support\Facades\File::deleteDirectory($sessionDir);
+                try {
+                    \Illuminate\Support\Facades\File::deleteDirectory($sessionDir);
+                } catch (\Exception $e) {}
             }
-
-            // 3. Convert any auto-reply rules targeting this account to Universal (null)
-            \App\Models\AutoReply::where('session_id', $sessionId)->update(['session_id' => null]);
         }
 
+        // 3. Delete database record
         $account->delete();
 
-        $notify[] = ['success', 'WhatsApp account and session files completely removed'];
+        $notify[] = ['success', 'WhatsApp account and all session files deleted successfully!'];
         return back()->withNotify($notify);
-    }
-
-    public function extractGroups($sessionId)
-    {
-        try {
-            $response = Http::timeout(20)->get("{$this->baileysUrl}/api/groups/{$sessionId}");
-
-            if ($response->successful()) {
-                return response()->json($response->json());
-            }
-
-            $err = $response->json()['error'] ?? 'Failed to extract groups.';
-            return response()->json(['success' => false, 'error' => $err], 400);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'error' => 'Baileys service error: ' . $e->getMessage()], 500);
-        }
-    }
-
-    public function details($id)
-    {
-        $pageTitle = 'WhatsApp Account Details';
-        $account = WhatsappAccount::findOrFail($id);
-        return view('admin.account_listing.details', compact('pageTitle', 'account'));
     }
 }

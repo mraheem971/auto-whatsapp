@@ -74,7 +74,7 @@ class AutoReplyController extends Controller
         $request->validate([
             'name'                    => 'required|string|max:150',
             'session_id'              => 'nullable|string|max:100',
-            'target_type'             => 'required|string|in:all,all_individual,all_group,specific_contacts,specific_groups,contact_list',
+            'target_type'             => 'required|string|in:all,all_individual,all_group,saved_contacts,unsaved_contacts,specific_contacts,specific_groups,contact_list',
             'target_contacts'         => 'nullable|string',
             'target_group_ids'        => 'nullable|array',
             'contact_list_id'         => 'nullable|integer',
@@ -111,7 +111,7 @@ class AutoReplyController extends Controller
         $bot->admin_id                = auth('admin')->id() ?? 1;
         $bot->session_id              = !empty($request->session_id) ? $request->session_id : null;
         $bot->name                    = $request->name;
-        $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : (in_array($request->target_type, ['all_individual', 'specific_contacts']) ? 'individual' : 'all');
+        $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : 'individual';
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;
         $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
@@ -136,7 +136,7 @@ class AutoReplyController extends Controller
         $request->validate([
             'name'                    => 'required|string|max:150',
             'session_id'              => 'nullable|string|max:100',
-            'target_type'             => 'required|string|in:all,all_individual,all_group,specific_contacts,specific_groups,contact_list',
+            'target_type'             => 'required|string|in:all,all_individual,all_group,saved_contacts,unsaved_contacts,specific_contacts,specific_groups,contact_list',
             'target_contacts'         => 'nullable|string',
             'target_group_ids'        => 'nullable|array',
             'contact_list_id'         => 'nullable|integer',
@@ -170,7 +170,7 @@ class AutoReplyController extends Controller
 
         $bot->session_id              = !empty($request->session_id) ? $request->session_id : null;
         $bot->name                    = $request->name;
-        $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : (in_array($request->target_type, ['all_individual', 'specific_contacts']) ? 'individual' : 'all');
+        $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : 'individual';
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;
         $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
@@ -284,6 +284,7 @@ class AutoReplyController extends Controller
         $sessionId = $request->input('session_id', null);
         $senderPhone = preg_replace('/[^0-9]/', '', $request->input('sender_phone', '923001234567'));
         $targetGroupId = $request->input('group_id', '120363@g.us');
+        $isContactSaved = filter_var($request->input('is_saved', true), FILTER_VALIDATE_BOOLEAN);
 
         if (empty($text)) {
             return response()->json(['matched' => false, 'message' => 'Please provide message text to test.']);
@@ -300,7 +301,17 @@ class AutoReplyController extends Controller
             $targetType = $r->target_type ?: 'all';
 
             if ($targetType === 'all_individual' && $chatType !== 'individual') continue;
-            if ($targetType === 'all_group' && chatType !== 'group') continue;
+            if ($targetType === 'all_group' && $chatType !== 'group') continue;
+
+            if ($targetType === 'saved_contacts') {
+                if ($chatType !== 'individual') continue;
+                if (!$isContactSaved) continue;
+            }
+
+            if ($targetType === 'unsaved_contacts') {
+                if ($chatType !== 'individual') continue;
+                if ($isContactSaved) continue;
+            }
 
             if ($targetType === 'specific_contacts') {
                 if ($chatType !== 'individual') continue;
