@@ -113,8 +113,6 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
 
     const rules = await getActiveAutoReplies(sessionId);
     if (!rules || rules.length === 0) {
-        // Default mark read if no rules
-        sock.readMessages([msg.key]).catch(() => {});
         return;
     }
 
@@ -197,8 +195,7 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
 
     const targetRule = matchedRule || fallbackRule;
     if (!targetRule) {
-        // No match -> standard read
-        sock.readMessages([msg.key]).catch(() => {});
+        // No match -> leave unseen (no blue tick)
         return;
     }
 
@@ -412,11 +409,6 @@ async function initBaileysSession(sessionId, accountName) {
                     const firstKey = messageStore.keys().next().value;
                     messageStore.delete(firstKey);
                 }
-            }
-
-            // Acknowledge read receipt to sender (gives double ticks immediately)
-            if (msg.key && !msg.key.fromMe) {
-                sock.readMessages([msg.key]).catch(() => {});
             }
             
             // Store pushName contact
