@@ -7,8 +7,10 @@ const pino = require('pino');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
+    makeCacheableSignalKeyStore,
     DisconnectReason,
-    fetchLatestBaileysVersion
+    fetchLatestBaileysVersion,
+    Browsers
 } = require('@whiskeysockets/baileys');
 
 const app = express();
@@ -234,6 +236,9 @@ async function initBaileysSession(sessionId, accountName) {
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     const { version } = await fetchLatestBaileysVersion();
 
+    const msgRetryCounterCache = new Map();
+    const messageStore = new Map();
+
     const sessionData = {
         sessionId,
         accountName: accountName || sessionId,
@@ -242,6 +247,7 @@ async function initBaileysSession(sessionId, accountName) {
         qrImage: null,
         user: null,
         socket: null,
+        presenceTimer: null,
         contacts: new Map(),
         lastUpdated: new Date()
     };
@@ -252,9 +258,25 @@ async function initBaileysSession(sessionId, accountName) {
         version,
         logger,
         printQRInTerminal: false,
-        auth: state,
-        browser: ['Auto WhatsApp', 'Chrome', '1.0.0'],
-        syncFullHistory: false
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, logger)
+        },
+        browser: Browsers.ubuntu('Chrome'),
+        markOnlineOnConnect: true,
+        generateHighQualityLinkPreview: true,
+        syncFullHistory: false,
+        keepAliveIntervalMs: 20000,
+        defaultQueryTimeoutMs: 60000,
+        msgRetryCounterCache,
+        getMessage: async (key) => {
+            if (key?.id && messageStore.has(key.id)) {
+                return messageStore.get(key.id)?.message;
+            }
+            return {
+                conversation: ''
+            };
+        }
     });
 
     sessionData.socket = sock;
@@ -305,6 +327,20 @@ async function initBaileysSession(sessionId, accountName) {
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         for (const msg of messages) {
             if (!msg || !msg.message) continue;
+
+            // Cache message for signal retry decryption
+            if (msg.key?.id) {
+                messageStore.set(msg.key.id, msg);
+                if (messageStore.size > 2000) {
+                    const firstKey = messageStore.keys().next().value;
+                    messageStore.delete(firstKey);
+                }
+            }
+
+            // Acknowledge read receipt to sender (gives double ticks immediately)
+            if (msg.key && !msg.key.fromMe) {
+                sock.readMessages([msg.key]).catch(() => {});
+            }
             
             // Store pushName contact
             if (msg.key && msg.pushName && !msg.key.fromMe) {
@@ -368,10 +404,30 @@ async function initBaileysSession(sessionId, accountName) {
                 name: sock.user?.name || accountName || phone
             };
             sessionData.lastUpdated = new Date();
-            console.log(`[Baileys] Session ${sessionId} connected successfully! Phone: ${phone}`);
+            console.log(`[Baileys] Session ${sessionId} connected successfully! Phone: +${phone}`);
+
+            // Broadcast permanent online presence to WhatsApp servers
+            try {
+                await sock.sendPresenceUpdate('available');
+            } catch (err) {
+                console.error('[Baileys Presence Error]', err?.message || err);
+            }
+
+            // 20s heartbeat presence timer
+            if (sessionData.presenceTimer) clearInterval(sessionData.presenceTimer);
+            sessionData.presenceTimer = setInterval(() => {
+                if (sessionData.status === 'connected' && sock.ws?.isOpen) {
+                    sock.sendPresenceUpdate('available').catch(() => {});
+                }
+            }, 20000);
         }
 
         if (connection === 'close') {
+            if (sessionData.presenceTimer) {
+                clearInterval(sessionData.presenceTimer);
+                sessionData.presenceTimer = null;
+            }
+
             const statusCode = lastDisconnect?.error?.output?.statusCode;
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
@@ -379,7 +435,6 @@ async function initBaileysSession(sessionId, accountName) {
 
             if (shouldReconnect) {
                 sessionData.status = 'reconnecting';
-                // Wait briefly before reconnecting
                 setTimeout(() => {
                     if (sessions.has(sessionId)) {
                         initBaileysSession(sessionId, accountName).catch(console.error);
