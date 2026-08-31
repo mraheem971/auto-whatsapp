@@ -876,16 +876,21 @@ app.get('/api/contacts/:sessionId', async (req, res) => {
     }
 });
 
-// Purge unauthenticated or abandoned session directories from disk
-function cleanupUnauthenticatedSessions(exceptSessionId = null) {
+// Purge only truly abandoned orphaned session directories from disk (older than 15 minutes, not active in memory)
+function cleanupUnauthenticatedSessions(forceAllOrphaned = false) {
     try {
         if (!fs.existsSync(SESSIONS_DIR)) return;
         const dirs = fs.readdirSync(SESSIONS_DIR, { withFileTypes: true });
+        const now = Date.now();
+
         for (const dir of dirs) {
             if (!dir.isDirectory()) continue;
-            if (exceptSessionId && dir.name === exceptSessionId) continue;
 
-            const credsPath = path.join(SESSIONS_DIR, dir.name, 'creds.json');
+            // Never delete an active session in memory
+            if (sessions.has(dir.name)) continue;
+
+            const sessionPath = path.join(SESSIONS_DIR, dir.name);
+            const credsPath = path.join(sessionPath, 'creds.json');
             let isCompleted = false;
 
             if (fs.existsSync(credsPath)) {
@@ -897,24 +902,17 @@ function cleanupUnauthenticatedSessions(exceptSessionId = null) {
                 } catch (e) {}
             }
 
-            // If creds.me is missing, it's an abandoned pairing attempt -> delete cleanly
             if (!isCompleted) {
-                const sessionPath = path.join(SESSIONS_DIR, dir.name);
-                console.log(`[Baileys] 🧹 Purging unauthenticated session folder: ${dir.name}`);
                 try {
-                    const session = sessions.get(dir.name);
-                    if (session) {
-                        if (session.presenceTimer) clearInterval(session.presenceTimer);
-                        if (session.socket) {
-                            session.socket.ev.removeAllListeners();
-                            session.socket.end(undefined);
-                        }
+                    const stat = fs.statSync(sessionPath);
+                    const ageMinutes = (now - stat.mtimeMs) / (1000 * 60);
+
+                    // Only delete if forced (on boot) or if older than 15 minutes
+                    if (forceAllOrphaned || ageMinutes > 15) {
+                        console.log(`[Baileys] 🧹 Purging abandoned session directory: ${dir.name} (Age: ${Math.round(ageMinutes)} min)`);
+                        fs.rmSync(sessionPath, { recursive: true, force: true });
                     }
-                    sessions.delete(dir.name);
-                    fs.rmSync(sessionPath, { recursive: true, force: true });
-                } catch (e) {
-                    console.error(`Error deleting abandoned session folder ${dir.name}:`, e);
-                }
+                } catch (e) {}
             }
         }
     } catch (e) {
@@ -925,7 +923,7 @@ function cleanupUnauthenticatedSessions(exceptSessionId = null) {
 // Auto-restore ONLY fully authenticated saved sessions from disk on server launch
 async function restoreSavedSessions() {
     try {
-        cleanupUnauthenticatedSessions();
+        cleanupUnauthenticatedSessions(true);
         if (!fs.existsSync(SESSIONS_DIR)) return;
         const dirs = fs.readdirSync(SESSIONS_DIR, { withFileTypes: true });
         for (const dir of dirs) {
@@ -950,6 +948,4 @@ async function restoreSavedSessions() {
 app.listen(PORT, '127.0.0.1', () => {
     console.log(`Baileys WhatsApp Service running on http://127.0.0.1:${PORT}`);
     restoreSavedSessions();
-    // Run background cleanup every 2 minutes for abandoned uncompleted scans
-    setInterval(() => cleanupUnauthenticatedSessions(), 120000);
 });
