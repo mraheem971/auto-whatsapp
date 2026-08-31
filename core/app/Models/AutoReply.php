@@ -23,15 +23,19 @@ class AutoReply extends Model
         'match_type',
         'keywords',
         'reply_message',
+        'read_delay_seconds',
+        'typing_duration_seconds',
+        'reply_delay_seconds',
         'status',
         'hit_count',
-        'cooldown_seconds',
     ];
 
     protected $casts = [
-        'status'           => 'boolean',
-        'hit_count'        => 'integer',
-        'cooldown_seconds' => 'integer',
+        'status'                  => 'boolean',
+        'hit_count'               => 'integer',
+        'read_delay_seconds'      => 'integer',
+        'typing_duration_seconds' => 'integer',
+        'reply_delay_seconds'     => 'integer',
     ];
 
     public function account()

@@ -113,7 +113,8 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
 
     const rules = await getActiveAutoReplies(sessionId);
     if (!rules || rules.length === 0) {
-        console.log(`[Baileys AutoReply] No active rules found for session ${sessionId}`);
+        // Default mark read if no rules
+        sock.readMessages([msg.key]).catch(() => {});
         return;
     }
 
@@ -196,21 +197,10 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
 
     const targetRule = matchedRule || fallbackRule;
     if (!targetRule) {
-        console.log(`[Baileys AutoReply] No keyword or fallback matched for text: "${incomingText}"`);
+        // No match -> standard read
+        sock.readMessages([msg.key]).catch(() => {});
         return;
     }
-
-    // Check anti-spam cooldown
-    const cooldownKey = `${targetRule.id}_${remoteJid}_${senderPhone}`;
-    const now = Date.now();
-    if (targetRule.cooldown_seconds && targetRule.cooldown_seconds > 0) {
-        const lastHit = userCooldowns.get(cooldownKey) || 0;
-        if (now - lastHit < targetRule.cooldown_seconds * 1000) {
-            console.log(`[Baileys AutoReply Cooldown] Skipped rule "${targetRule.name}" for ${senderPhone} (Cooldown active)`);
-            return;
-        }
-    }
-    userCooldowns.set(cooldownKey, now);
 
     // Variable substitutions
     const processedText = targetRule.reply_message
@@ -219,13 +209,52 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         .replace(/\{time\}/g, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
         .replace(/\{date\}/g, new Date().toLocaleDateString());
 
-    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" -> Replying to ${remoteJid}: "${processedText}"`);
+    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" -> Starting human-like response flow for ${remoteJid}`);
 
+    // Execute flow sequence asynchronously
+    executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText);
+}
+
+async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText) {
     try {
+        const readDelayMs = (targetRule.read_delay_seconds || 0) * 1000;
+        const typingDurationMs = (targetRule.typing_duration_seconds || 0) * 1000;
+        const replyDelayMs = (targetRule.reply_delay_seconds || 0) * 1000;
+
+        console.log(`[AutoReply Flow] ⚡ Sequence: [Seen Delay: ${targetRule.read_delay_seconds || 0}s] -> [Typing: ${targetRule.typing_duration_seconds || 0}s] -> [Pause: ${targetRule.reply_delay_seconds || 0}s]`);
+
+        // Step 1: Delay before marking as seen (Read Receipts)
+        if (readDelayMs > 0) {
+            console.log(`[AutoReply Flow] ⏳ Waiting ${targetRule.read_delay_seconds}s before marking as seen...`);
+            await new Promise(r => setTimeout(r, readDelayMs));
+        }
+        if (msg.key) {
+            await sock.readMessages([msg.key]).catch(() => {});
+            console.log(`[AutoReply Flow] 👁️ Step 1: Marked message as SEEN (blue double ticks) for ${remoteJid}`);
+        }
+
+        // Step 2: Show "typing..." presence indicator
+        if (typingDurationMs > 0) {
+            await sock.sendPresenceUpdate('composing', remoteJid).catch(() => {});
+            console.log(`[AutoReply Flow] ⌨️ Step 2: Displaying "typing..." for ${targetRule.typing_duration_seconds}s to ${remoteJid}`);
+            await new Promise(r => setTimeout(r, typingDurationMs));
+            await sock.sendPresenceUpdate('paused', remoteJid).catch(() => {});
+        }
+
+        // Step 3: Pause before final message dispatch
+        if (replyDelayMs > 0) {
+            console.log(`[AutoReply Flow] ⏳ Step 3: Pausing ${targetRule.reply_delay_seconds}s before dispatching message...`);
+            await new Promise(r => setTimeout(r, replyDelayMs));
+        }
+
+        // Step 4: Dispatch the automated reply message
         await sock.sendMessage(remoteJid, { text: processedText });
+        console.log(`[AutoReply Flow] 🚀 Step 4: Automated reply sent to ${remoteJid}: "${processedText}"`);
+
+        // Step 5: Log hit count to backend
         fetch(`http://127.0.0.1:8000/api/autoreply/log-hit/${targetRule.id}`, { method: 'POST' }).catch(() => {});
     } catch (err) {
-        console.error(`[Baileys AutoReply Send Error]:`, err?.message || err);
+        console.error('[AutoReply Flow Error]:', err?.message || err);
     }
 }
 

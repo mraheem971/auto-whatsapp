@@ -1,151 +1,142 @@
 @extends('admin.layouts.app')
-
 @section('panel')
-<div class="row gy-4">
-
-    <!-- Top Stats Cards -->
-    <div class="col-12">
-        <div class="row g-3">
-            <div class="col-xl-4 col-sm-6">
-                <div class="card bg--primary text-white b-radius--10 shadow-sm p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <h6 class="text-white-50 small mb-1">@lang('Total Keyword Bots')</h6>
-                            <h3 class="text-white mb-0 fw-bold">{{ $totalBots }}</h3>
-                        </div>
-                        <div class="rounded-circle bg-white bg-opacity-25 p-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                            <i class="las la-robot fs-3 text-white"></i>
-                        </div>
+<div class="row">
+    <!-- Stat Counters -->
+    <div class="col-12 mb-3">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <div class="card p-3 border shadow-sm d-flex flex-row align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small fw-bold">@lang('Total Auto-Reply Bots')</span>
+                        <h4 class="mb-0 fw-bold text--primary">{{ $totalBots }}</h4>
+                    </div>
+                    <div class="rounded-circle bg-light p-3 text--primary fs-3">
+                        <i class="las la-robot"></i>
                     </div>
                 </div>
             </div>
-
-            <div class="col-xl-4 col-sm-6">
-                <div class="card bg--success text-white b-radius--10 shadow-sm p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <h6 class="text-white-50 small mb-1">@lang('Active Bots')</h6>
-                            <h3 class="text-white mb-0 fw-bold">{{ $activeBots }}</h3>
-                        </div>
-                        <div class="rounded-circle bg-white bg-opacity-25 p-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                            <i class="las la-check-circle fs-3 text-white"></i>
-                        </div>
+            <div class="col-md-4">
+                <div class="card p-3 border shadow-sm d-flex flex-row align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small fw-bold">@lang('Active Bots')</span>
+                        <h4 class="mb-0 fw-bold text--success">{{ $activeBots }}</h4>
+                    </div>
+                    <div class="rounded-circle bg-light p-3 text--success fs-3">
+                        <i class="las la-check-circle"></i>
                     </div>
                 </div>
             </div>
-
-            <div class="col-xl-4 col-sm-6">
-                <div class="card bg--dark text-white b-radius--10 shadow-sm p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <h6 class="text-white-50 small mb-1">@lang('Total Auto-Replies Sent')</h6>
-                            <h3 class="text-white mb-0 fw-bold">{{ number_format($totalHits) }}</h3>
-                        </div>
-                        <div class="rounded-circle bg-white bg-opacity-25 p-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                            <i class="las la-paper-plane fs-3 text--primary"></i>
-                        </div>
+            <div class="col-md-4">
+                <div class="card p-3 border shadow-sm d-flex flex-row align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small fw-bold">@lang('Total Triggered Hits')</span>
+                        <h4 class="mb-0 fw-bold text--info">{{ number_format($totalHits) }}</h4>
+                    </div>
+                    <div class="rounded-circle bg-light p-3 text--info fs-3">
+                        <i class="las la-paper-plane"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Main Bot Rules Card -->
-    <div class="col-12">
-        <div class="card b-radius--10 shadow-sm">
-            <div class="card-header bg-white py-3 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom">
-                <div class="d-flex align-items-center gap-2">
-                    <h5 class="card-title mb-0 d-flex align-items-center">
-                        <i class="las la-robot text--primary me-2 fs-4"></i> @lang('Auto-Reply & Keyword Bot Rules')
-                    </h5>
-                </div>
+    <!-- Main List Card -->
+    <div class="col-lg-12">
+        <div class="card b-radius--10">
+            <!-- Filter Header -->
+            <div class="card-header bg-white py-3">
+                <form action="" method="GET">
+                    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <!-- Account Filter -->
+                            <select name="session_id" class="form-control form-control-sm form-select" onchange="this.form.submit()" style="max-width: 220px;">
+                                <option value="">🌐 @lang('All Accounts')</option>
+                                <option value="all" {{ request('session_id') == 'all' ? 'selected' : '' }}>🌐 @lang('Universal (All Accounts)')</option>
+                                @foreach($connectedAccounts as $acc)
+                                    <option value="{{ $acc->session_id }}" {{ request('session_id') == $acc->session_id ? 'selected' : '' }}>
+                                        {{ $acc->account_name }} ({{ $acc->phone_number ? '+' . $acc->phone_number : 'Active' }})
+                                    </option>
+                                @endforeach
+                            </select>
 
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <form action="{{ route('admin.autoreply.index') }}" method="GET" class="d-flex gap-2">
-                        <select name="session_id" class="form-control form-control-sm form-select" onchange="this.form.submit()">
-                            <option value="">@lang('All WhatsApp Accounts')</option>
-                            <option value="all" {{ request('session_id') === 'all' ? 'selected' : '' }}>🌐 @lang('Universal Rules (All)')</option>
-                            @foreach($connectedAccounts as $acc)
-                                <option value="{{ $acc->session_id }}" {{ request('session_id') === $acc->session_id ? 'selected' : '' }}>
-                                    {{ $acc->account_name }} ({{ $acc->phone_number ? '+' . $acc->phone_number : 'Connected' }})
-                                </option>
-                            @endforeach
-                        </select>
-
-                        <div class="input-group input-group-sm" style="max-width: 220px;">
-                            <input type="text" name="search" class="form-control form-control-sm" placeholder="@lang('Search keywords...')" value="{{ request('search') }}">
-                            <button class="btn btn-sm btn--primary" type="submit"><i class="la la-search"></i></button>
+                            <!-- Status Filter -->
+                            <select name="status" class="form-control form-control-sm form-select" onchange="this.form.submit()" style="max-width: 140px;">
+                                <option value="">@lang('All Status')</option>
+                                <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>@lang('Active')</option>
+                                <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>@lang('Inactive')</option>
+                            </select>
                         </div>
-                    </form>
 
-                    <button type="button" class="btn btn-sm btn--info text-white" data-bs-toggle="modal" data-bs-target="#simulatorModal">
-                        <i class="las la-vial me-1"></i> @lang('Test Bot Simulator')
-                    </button>
-
-                    <button type="button" class="btn btn-sm btn--primary" data-bs-toggle="modal" data-bs-target="#createBotModal">
-                        <i class="las la-plus me-1"></i> @lang('Add Bot Rule')
-                    </button>
-                </div>
+                        <!-- Search -->
+                        <div class="input-group input-group-sm" style="max-width: 280px;">
+                            <input type="text" name="search" class="form-control bg-white" placeholder="@lang('Search keyword or rule...')" value="{{ request('search') }}">
+                            <button class="btn btn--primary" type="submit"><i class="la la-search"></i></button>
+                        </div>
+                    </div>
+                </form>
             </div>
 
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped align-middle mb-0" style="font-size: 13px;">
-                        <thead class="table-light">
+                <div class="table-responsive--md table-responsive">
+                    <table class="table table--light style--two">
+                        <thead>
                             <tr>
-                                <th style="width: 40px;" class="py-2">#</th>
-                                <th class="py-2">@lang('Bot Name & Account')</th>
+                                <th class="ps-3 py-2">@lang('Bot Name & Account')</th>
                                 <th class="py-2">@lang('Target Audience')</th>
-                                <th class="py-2">@lang('Match Type & Keywords')</th>
-                                <th class="py-2">@lang('Reply Message')</th>
-                                <th class="py-2 text-center" style="width: 90px;">@lang('Hits')</th>
-                                <th class="py-2 text-center" style="width: 90px;">@lang('Status')</th>
-                                <th style="width: 110px;" class="text-end pe-3 py-2 text-nowrap">@lang('Action')</th>
+                                <th class="py-2">@lang('Match Type & Trigger Keywords')</th>
+                                <th class="py-2">@lang('Human-Like Flow Sequence')</th>
+                                <th class="py-2">@lang('Reply Message Preview')</th>
+                                <th class="py-2 text-center">@lang('Hits')</th>
+                                <th class="py-2 text-center">@lang('Status')</th>
+                                <th class="text-end pe-3 py-2">@lang('Action')</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($botRules as $bot)
                                 <tr>
-                                    <td class="py-2 text-muted small">{{ $loop->iteration }}</td>
-                                    <td class="py-2">
-                                        <strong class="text-dark d-block fs-6">{{ __($bot->name) }}</strong>
-                                        @if($bot->session_id && $bot->account)
-                                            <span class="badge bg-light text-dark border text-xs">
-                                                <i class="lab la-whatsapp text--success me-1"></i>{{ $bot->account->account_name }}
-                                            </span>
-                                        @else
-                                            <span class="badge bg-light text-muted border text-xs">
-                                                <i class="las la-globe me-1"></i>@lang('All Accounts')
-                                            </span>
-                                        @endif
+                                    <td class="ps-3 py-2">
+                                        <div class="fw-bold text-dark">{{ $bot->name }}</div>
+                                        <div class="text-muted small">
+                                            @if($bot->account)
+                                                <i class="lab la-whatsapp text--success me-1"></i>{{ $bot->account->account_name }} ({{ $bot->account->phone_number ? '+' . $bot->account->phone_number : 'Active' }})
+                                            @else
+                                                <i class="las la-globe text--primary me-1"></i>@lang('Universal (All Accounts)')
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="py-2">
-                                        @if($bot->target_type === 'specific_contacts')
-                                            <span class="badge badge--info text-xs"><i class="las la-user-check me-1"></i>@lang('Specific Contacts') ({{ count($bot->target_contacts_array) }})</span>
+                                        @if($bot->target_type === 'all' || empty($bot->target_type))
+                                            <span class="badge badge--dark px-2 py-1"><i class="las la-globe me-1"></i>@lang('All Chats')</span>
+                                        @elseif($bot->target_type === 'all_individual')
+                                            <span class="badge badge--primary px-2 py-1"><i class="las la-user me-1"></i>@lang('1-on-1 Direct Chats')</span>
+                                        @elseif($bot->target_type === 'all_group')
+                                            <span class="badge badge--info px-2 py-1"><i class="las la-users me-1"></i>@lang('All Groups')</span>
+                                        @elseif($bot->target_type === 'specific_contacts')
+                                            <span class="badge badge--success px-2 py-1" title="{{ is_array($bot->target_contacts_array) ? implode(', ', $bot->target_contacts_array) : '' }}">
+                                                <i class="las la-phone-volume me-1"></i>{{ count($bot->target_contacts_array) }} @lang('Specific Contacts')
+                                            </span>
                                         @elseif($bot->target_type === 'specific_groups')
-                                            <span class="badge badge--warning text-xs"><i class="las la-users-cog me-1"></i>@lang('Specific Groups') ({{ count($bot->target_group_ids_array) }})</span>
-                                        @elseif($bot->target_type === 'contact_list' && $bot->contactList)
-                                            <span class="badge badge--dark text-xs"><i class="las la-folder me-1"></i>{{ $bot->contactList->name }}</span>
-                                        @elseif($bot->target_type === 'all_individual' || $bot->chat_scope === 'individual')
-                                            <span class="badge badge--primary text-xs"><i class="las la-user me-1"></i>@lang('All Direct Chats')</span>
-                                        @elseif($bot->target_type === 'all_group' || $bot->chat_scope === 'group')
-                                            <span class="badge badge--warning text-xs"><i class="las la-users me-1"></i>@lang('All Groups')</span>
-                                        @else
-                                            <span class="badge badge--secondary text-xs"><i class="las la-globe me-1"></i>@lang('All Chats')</span>
+                                            <span class="badge badge--warning px-2 py-1">
+                                                <i class="las la-layer-group me-1"></i>{{ count($bot->target_group_ids_array) }} @lang('Specific Groups')
+                                            </span>
+                                        @elseif($bot->target_type === 'contact_list')
+                                            <span class="badge badge--secondary px-2 py-1">
+                                                <i class="las la-folder me-1"></i>{{ $bot->contactList ? $bot->contactList->name : 'Contact List' }}
+                                            </span>
                                         @endif
                                     </td>
                                     <td class="py-2">
                                         <div class="mb-1">
                                             @if($bot->match_type === 'exact')
-                                                <span class="badge badge--info text-xs">@lang('Exact Match')</span>
+                                                <span class="badge badge--danger px-2 py-1">@lang('Exact Match')</span>
                                             @elseif($bot->match_type === 'contains')
-                                                <span class="badge badge--success text-xs">@lang('Contains Keyword')</span>
+                                                <span class="badge badge--primary px-2 py-1">@lang('Contains Keyword')</span>
                                             @elseif($bot->match_type === 'starts_with')
-                                                <span class="badge badge--secondary text-xs">@lang('Starts With')</span>
+                                                <span class="badge badge--info px-2 py-1">@lang('Starts With')</span>
                                             @elseif($bot->match_type === 'ends_with')
-                                                <span class="badge badge--dark text-xs">@lang('Ends With')</span>
+                                                <span class="badge badge--warning px-2 py-1">@lang('Ends With')</span>
                                             @elseif($bot->match_type === 'fallback')
-                                                <span class="badge badge--warning text-xs">@lang('Default / Fallback')</span>
+                                                <span class="badge badge--dark px-2 py-1">@lang('Fallback / Default')</span>
                                             @endif
                                         </div>
 
@@ -161,7 +152,14 @@
                                             <span class="text-muted small">@lang('No keywords set')</span>
                                         @endif
                                     </td>
-                                    <td class="py-2" style="max-width: 280px;">
+                                    <td class="py-2">
+                                        <div class="d-flex flex-column gap-1 small">
+                                            <div class="text-nowrap"><i class="las la-eye text--info me-1"></i><strong>Seen:</strong> {{ $bot->read_delay_seconds ? $bot->read_delay_seconds . 's' : 'Instant' }}</div>
+                                            <div class="text-nowrap"><i class="las la-keyboard text--success me-1"></i><strong>Typing:</strong> {{ $bot->typing_duration_seconds ? $bot->typing_duration_seconds . 's' : 'None' }}</div>
+                                            <div class="text-nowrap"><i class="las la-hourglass-half text--warning me-1"></i><strong>Send Delay:</strong> {{ $bot->reply_delay_seconds ? $bot->reply_delay_seconds . 's' : 'Instant' }}</div>
+                                        </div>
+                                    </td>
+                                    <td class="py-2" style="max-width: 250px;">
                                         <div class="text-truncate text-dark font-monospace small bg-light p-1 rounded border" title="{{ $bot->reply_message }}">
                                             {{ $bot->reply_message }}
                                         </div>
@@ -298,7 +296,7 @@
                                         </label>
                                     </div>
                                 @empty
-                                    <div class="text-muted small">@lang('No WhatsApp groups found in contacts. You can sync groups first.')</div>
+                                    <div class="text-muted small">@lang('No WhatsApp groups found in contacts.')</div>
                                 @endforelse
                             </div>
                         </div>
@@ -323,6 +321,57 @@
                             </small>
                         </div>
 
+                        <!-- Human-Like Response Flow Sequence -->
+                        <div class="col-12">
+                            <div class="card border border-primary border-opacity-25 bg-light p-3 rounded">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="las la-magic text--primary fs-4 me-2"></i>
+                                    <h6 class="mb-0 fw-bold text-dark">@lang('Human-Like Response Flow Sequence')</h6>
+                                </div>
+                                <p class="text-muted small mb-3">
+                                    @lang('Simulate natural human behavior before sending automated replies. Set delays for read receipts, typing animations, and message dispatch.')
+                                </p>
+
+                                <div class="row g-3">
+                                    <!-- Mark as Seen Delay -->
+                                    <div class="col-md-4">
+                                        <label class="fw-bold mb-1 small text-dark d-flex align-items-center">
+                                            <i class="las la-eye text--info me-1"></i> @lang('Mark as Seen Delay')
+                                        </label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="read_delay_seconds" class="form-control" value="0" min="0" max="3600" placeholder="0">
+                                            <span class="input-group-text">@lang('sec')</span>
+                                        </div>
+                                        <small class="text-muted text-xs d-block mt-1">@lang('Wait X sec before blue ticks (0 = instant)')</small>
+                                    </div>
+
+                                    <!-- Typing Presence Duration -->
+                                    <div class="col-md-4">
+                                        <label class="fw-bold mb-1 small text-dark d-flex align-items-center">
+                                            <i class="las la-keyboard text--success me-1"></i> @lang('Typing Animation')
+                                        </label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="typing_duration_seconds" class="form-control" value="0" min="0" max="300" placeholder="0">
+                                            <span class="input-group-text">@lang('sec')</span>
+                                        </div>
+                                        <small class="text-muted text-xs d-block mt-1">@lang('Shows "typing..." presence to contact')</small>
+                                    </div>
+
+                                    <!-- Reply Dispatch Delay -->
+                                    <div class="col-md-4">
+                                        <label class="fw-bold mb-1 small text-dark d-flex align-items-center">
+                                            <i class="las la-hourglass-half text--warning me-1"></i> @lang('Send Message Delay')
+                                        </label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="reply_delay_seconds" class="form-control" value="0" min="0" max="3600" placeholder="0">
+                                            <span class="input-group-text">@lang('sec')</span>
+                                        </div>
+                                        <small class="text-muted text-xs d-block mt-1">@lang('Pause before sending reply message')</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Reply Message -->
                         <div class="col-12">
                             <div class="d-flex align-items-center justify-content-between mb-1">
@@ -336,13 +385,6 @@
                                 </div>
                             </div>
                             <textarea name="reply_message" id="create_reply_msg" rows="4" class="form-control" placeholder="@lang('Hi {name}! Thanks for reaching out. Here is our pricing list...')" required></textarea>
-                        </div>
-
-                        <!-- Anti-Spam Cooldown Seconds -->
-                        <div class="col-md-6">
-                            <label class="fw-bold mb-1">@lang('Anti-Spam Cooldown (Seconds)')</label>
-                            <input type="number" name="cooldown_seconds" class="form-control" value="0" min="0" max="86400" placeholder="0">
-                            <small class="text-muted"><i class="las la-shield-alt text--success me-1"></i>@lang('Minimum seconds before bot replies to the same sender again (0 = disabled)')</small>
                         </div>
 
                     </div>
@@ -460,6 +502,57 @@
                             <small class="text-muted d-block mt-1">@lang('Separate multiple keywords with commas.')</small>
                         </div>
 
+                        <!-- Human-Like Response Flow Sequence (Edit) -->
+                        <div class="col-12">
+                            <div class="card border border-primary border-opacity-25 bg-light p-3 rounded">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="las la-magic text--primary fs-4 me-2"></i>
+                                    <h6 class="mb-0 fw-bold text-dark">@lang('Human-Like Response Flow Sequence')</h6>
+                                </div>
+                                <p class="text-muted small mb-3">
+                                    @lang('Simulate natural human behavior before sending automated replies. Set delays for read receipts, typing animations, and message dispatch.')
+                                </p>
+
+                                <div class="row g-3">
+                                    <!-- Mark as Seen Delay -->
+                                    <div class="col-md-4">
+                                        <label class="fw-bold mb-1 small text-dark d-flex align-items-center">
+                                            <i class="las la-eye text--info me-1"></i> @lang('Mark as Seen Delay')
+                                        </label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="read_delay_seconds" id="edit_read_delay_seconds" class="form-control" min="0" max="3600" placeholder="0">
+                                            <span class="input-group-text">@lang('sec')</span>
+                                        </div>
+                                        <small class="text-muted text-xs d-block mt-1">@lang('Wait X sec before blue ticks')</small>
+                                    </div>
+
+                                    <!-- Typing Presence Duration -->
+                                    <div class="col-md-4">
+                                        <label class="fw-bold mb-1 small text-dark d-flex align-items-center">
+                                            <i class="las la-keyboard text--success me-1"></i> @lang('Typing Animation')
+                                        </label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="typing_duration_seconds" id="edit_typing_duration_seconds" class="form-control" min="0" max="300" placeholder="0">
+                                            <span class="input-group-text">@lang('sec')</span>
+                                        </div>
+                                        <small class="text-muted text-xs d-block mt-1">@lang('Shows "typing..." presence')</small>
+                                    </div>
+
+                                    <!-- Reply Dispatch Delay -->
+                                    <div class="col-md-4">
+                                        <label class="fw-bold mb-1 small text-dark d-flex align-items-center">
+                                            <i class="las la-hourglass-half text--warning me-1"></i> @lang('Send Message Delay')
+                                        </label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="reply_delay_seconds" id="edit_reply_delay_seconds" class="form-control" min="0" max="3600" placeholder="0">
+                                            <span class="input-group-text">@lang('sec')</span>
+                                        </div>
+                                        <small class="text-muted text-xs d-block mt-1">@lang('Pause before sending reply')</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Reply Message -->
                         <div class="col-12">
                             <div class="d-flex align-items-center justify-content-between mb-1">
@@ -475,14 +568,8 @@
                             <textarea name="reply_message" id="edit_reply_msg" rows="4" class="form-control" required></textarea>
                         </div>
 
-                        <!-- Anti-Spam Cooldown -->
-                        <div class="col-md-6">
-                            <label class="fw-bold mb-1">@lang('Anti-Spam Cooldown (Seconds)')</label>
-                            <input type="number" name="cooldown_seconds" id="edit_cooldown_seconds" class="form-control" min="0" max="86400">
-                        </div>
-
                         <!-- Status Checkbox -->
-                        <div class="col-md-6 d-flex align-items-center pt-3">
+                        <div class="col-12 d-flex align-items-center pt-2">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" name="status" id="edit_status" value="1">
                                 <label class="form-check-label fw-bold ms-2" for="edit_status">@lang('Bot Rule Active')</label>
@@ -562,6 +649,21 @@
                         <strong class="text-muted small d-block">@lang('Triggered Bot Rule'):</strong>
                         <span id="simRuleName" class="fw-bold text-dark fs-6"></span>
                     </div>
+
+                    <!-- Flow sequence preview -->
+                    <div class="p-2 mb-2 bg-white rounded border">
+                        <strong class="text-muted small d-block mb-1">@lang('Executed Response Flow Sequence'):</strong>
+                        <div class="d-flex flex-wrap gap-2 align-items-center small">
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1" id="simFlowSeen"></span>
+                            <i class="las la-arrow-right text-muted"></i>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1" id="simFlowTyping"></span>
+                            <i class="las la-arrow-right text-muted"></i>
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1" id="simFlowDelay"></span>
+                            <i class="las la-arrow-right text-muted"></i>
+                            <span class="badge bg-primary text-white px-2 py-1">🚀 @lang('Dispatch Reply')</span>
+                        </div>
+                    </div>
+
                     <div>
                         <strong class="text-muted small d-block mb-1">@lang('Processed WhatsApp Reply Message'):</strong>
                         <div id="simReplyOutput" class="p-3 bg-white rounded border font-monospace text-dark small" style="white-space: pre-wrap;"></div>
@@ -699,8 +801,10 @@
 
         $('#edit_match_type').val(bot.match_type).trigger('change');
         $('#edit_keywords').val(keywords || '');
+        $('#edit_read_delay_seconds').val(bot.read_delay_seconds || 0);
+        $('#edit_typing_duration_seconds').val(bot.typing_duration_seconds || 0);
+        $('#edit_reply_delay_seconds').val(bot.reply_delay_seconds || 0);
         $('#edit_reply_msg').val(bot.reply_message);
-        $('#edit_cooldown_seconds').val(bot.cooldown_seconds || 0);
         $('#edit_status').prop('checked', bot.status == 1);
 
         $('#editBotModal').modal('show');
@@ -735,6 +839,11 @@
                 if(res.matched){
                     $('#simRuleName').text(res.rule_name);
                     $('#simRuleBadge').text(res.is_fallback ? 'Fallback Trigger' : (res.match_type.toUpperCase() + ' MATCH'));
+                    
+                    $('#simFlowSeen').html(`<i class="las la-eye me-1"></i> Seen: <strong>${res.read_delay_seconds || 0}s</strong>`);
+                    $('#simFlowTyping').html(`<i class="las la-keyboard me-1"></i> Typing: <strong>${res.typing_duration_seconds || 0}s</strong>`);
+                    $('#simFlowDelay').html(`<i class="las la-hourglass-half me-1"></i> Delay: <strong>${res.reply_delay_seconds || 0}s</strong>`);
+                    
                     $('#simReplyOutput').text(res.reply_output);
                     $('#simResultBox').removeClass('d-none');
                 } else {

@@ -72,17 +72,18 @@ class AutoReplyController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'             => 'required|string|max:150',
-            'session_id'       => 'nullable|string|max:100',
-            'target_type'      => 'required|string|in:all,all_individual,all_group,specific_contacts,specific_groups,contact_list',
-            'target_contacts'  => 'nullable|string',
-            'target_group_ids' => 'nullable|array',
-            'contact_list_id'  => 'nullable|integer',
-            'match_type'       => 'required|in:contains,exact,starts_with,ends_with,fallback',
-            'keywords'         => 'nullable|string',
-            'reply_message'    => 'required|string',
-            'status'           => 'nullable|boolean',
-            'cooldown_seconds' => 'nullable|integer|min:0|max:86400',
+            'name'                    => 'required|string|max:150',
+            'session_id'              => 'nullable|string|max:100',
+            'target_type'             => 'required|string|in:all,all_individual,all_group,specific_contacts,specific_groups,contact_list',
+            'target_contacts'         => 'nullable|string',
+            'target_group_ids'        => 'nullable|array',
+            'contact_list_id'         => 'nullable|integer',
+            'match_type'              => 'required|in:contains,exact,starts_with,ends_with,fallback',
+            'keywords'                => 'nullable|string',
+            'reply_message'           => 'required|string',
+            'read_delay_seconds'      => 'nullable|integer|min:0|max:3600',
+            'typing_duration_seconds' => 'nullable|integer|min:0|max:300',
+            'reply_delay_seconds'     => 'nullable|integer|min:0|max:3600',
         ]);
 
         if ($request->match_type !== 'fallback' && empty(trim($request->keywords))) {
@@ -107,19 +108,21 @@ class AutoReplyController extends Controller
         }
 
         $bot = new AutoReply();
-        $bot->admin_id         = auth('admin')->id() ?? 1;
-        $bot->session_id       = !empty($request->session_id) ? $request->session_id : null;
-        $bot->name             = $request->name;
-        $bot->chat_scope       = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : (in_array($request->target_type, ['all_individual', 'specific_contacts']) ? 'individual' : 'all');
-        $bot->target_type      = $request->target_type;
-        $bot->target_contacts  = $contactsFormatted;
-        $bot->target_group_ids = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
-        $bot->contact_list_id  = $request->contact_list_id ?: null;
-        $bot->match_type       = $request->match_type;
-        $bot->keywords         = $keywordsFormatted;
-        $bot->reply_message    = $request->reply_message;
-        $bot->status           = 1;
-        $bot->cooldown_seconds = (int) ($request->cooldown_seconds ?? 0);
+        $bot->admin_id                = auth('admin')->id() ?? 1;
+        $bot->session_id              = !empty($request->session_id) ? $request->session_id : null;
+        $bot->name                    = $request->name;
+        $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : (in_array($request->target_type, ['all_individual', 'specific_contacts']) ? 'individual' : 'all');
+        $bot->target_type             = $request->target_type;
+        $bot->target_contacts         = $contactsFormatted;
+        $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
+        $bot->contact_list_id         = $request->contact_list_id ?: null;
+        $bot->match_type              = $request->match_type;
+        $bot->keywords                = $keywordsFormatted;
+        $bot->reply_message           = $request->reply_message;
+        $bot->read_delay_seconds      = (int) ($request->read_delay_seconds ?? 0);
+        $bot->typing_duration_seconds = (int) ($request->typing_duration_seconds ?? 0);
+        $bot->reply_delay_seconds     = (int) ($request->reply_delay_seconds ?? 0);
+        $bot->status                  = 1;
         $bot->save();
 
         $notify[] = ['success', 'Auto-reply bot rule created successfully!'];
@@ -131,17 +134,19 @@ class AutoReplyController extends Controller
         $bot = AutoReply::findOrFail($id);
 
         $request->validate([
-            'name'             => 'required|string|max:150',
-            'session_id'       => 'nullable|string|max:100',
-            'target_type'      => 'required|string|in:all,all_individual,all_group,specific_contacts,specific_groups,contact_list',
-            'target_contacts'  => 'nullable|string',
-            'target_group_ids' => 'nullable|array',
-            'contact_list_id'  => 'nullable|integer',
-            'match_type'       => 'required|in:contains,exact,starts_with,ends_with,fallback',
-            'keywords'         => 'nullable|string',
-            'reply_message'    => 'required|string',
-            'status'           => 'nullable|boolean',
-            'cooldown_seconds' => 'nullable|integer|min:0|max:86400',
+            'name'                    => 'required|string|max:150',
+            'session_id'              => 'nullable|string|max:100',
+            'target_type'             => 'required|string|in:all,all_individual,all_group,specific_contacts,specific_groups,contact_list',
+            'target_contacts'         => 'nullable|string',
+            'target_group_ids'        => 'nullable|array',
+            'contact_list_id'         => 'nullable|integer',
+            'match_type'              => 'required|in:contains,exact,starts_with,ends_with,fallback',
+            'keywords'                => 'nullable|string',
+            'reply_message'           => 'required|string',
+            'read_delay_seconds'      => 'nullable|integer|min:0|max:3600',
+            'typing_duration_seconds' => 'nullable|integer|min:0|max:300',
+            'reply_delay_seconds'     => 'nullable|integer|min:0|max:3600',
+            'status'                  => 'nullable|boolean',
         ]);
 
         if ($request->match_type !== 'fallback' && empty(trim($request->keywords))) {
@@ -163,18 +168,20 @@ class AutoReplyController extends Controller
             $contactsFormatted = json_encode($cArray);
         }
 
-        $bot->session_id       = !empty($request->session_id) ? $request->session_id : null;
-        $bot->name             = $request->name;
-        $bot->chat_scope       = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : (in_array($request->target_type, ['all_individual', 'specific_contacts']) ? 'individual' : 'all');
-        $bot->target_type      = $request->target_type;
-        $bot->target_contacts  = $contactsFormatted;
-        $bot->target_group_ids = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
-        $bot->contact_list_id  = $request->contact_list_id ?: null;
-        $bot->match_type       = $request->match_type;
-        $bot->keywords         = $keywordsFormatted;
-        $bot->reply_message    = $request->reply_message;
-        $bot->status           = $request->status ? 1 : 0;
-        $bot->cooldown_seconds = (int) ($request->cooldown_seconds ?? 0);
+        $bot->session_id              = !empty($request->session_id) ? $request->session_id : null;
+        $bot->name                    = $request->name;
+        $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : (in_array($request->target_type, ['all_individual', 'specific_contacts']) ? 'individual' : 'all');
+        $bot->target_type             = $request->target_type;
+        $bot->target_contacts         = $contactsFormatted;
+        $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
+        $bot->contact_list_id         = $request->contact_list_id ?: null;
+        $bot->match_type              = $request->match_type;
+        $bot->keywords                = $keywordsFormatted;
+        $bot->reply_message           = $request->reply_message;
+        $bot->read_delay_seconds      = (int) ($request->read_delay_seconds ?? 0);
+        $bot->typing_duration_seconds = (int) ($request->typing_duration_seconds ?? 0);
+        $bot->reply_delay_seconds     = (int) ($request->reply_delay_seconds ?? 0);
+        $bot->status                  = $request->status ? 1 : 0;
         $bot->save();
 
         $notify[] = ['success', 'Auto-reply bot rule updated successfully!'];
@@ -204,7 +211,7 @@ class AutoReplyController extends Controller
     }
 
     /**
-     * API: Get Active Rules for Baileys Engine with contact list members
+     * API: Get Active Rules for Baileys Engine with full response flow configs
      */
     public function apiFetchRules($sessionId)
     {
@@ -229,20 +236,22 @@ class AutoReplyController extends Controller
             }
 
             return [
-                'id'                  => $r->id,
-                'session_id'          => $r->session_id,
-                'name'                => $r->name,
-                'chat_scope'          => $r->chat_scope,
-                'target_type'         => $r->target_type ?: 'all',
-                'target_contacts'     => $r->target_contacts_array,
-                'target_group_ids'    => $r->target_group_ids_array,
-                'contact_list_id'     => $r->contact_list_id,
-                'list_member_phones'  => array_unique($listMemberPhones),
-                'list_group_ids'      => array_unique($listGroupIds),
-                'match_type'          => $r->match_type,
-                'keywords'            => $r->keywords_array,
-                'reply_message'       => $r->reply_message,
-                'cooldown_seconds'    => $r->cooldown_seconds,
+                'id'                      => $r->id,
+                'session_id'              => $r->session_id,
+                'name'                    => $r->name,
+                'chat_scope'              => $r->chat_scope,
+                'target_type'             => $r->target_type ?: 'all',
+                'target_contacts'         => $r->target_contacts_array,
+                'target_group_ids'        => $r->target_group_ids_array,
+                'contact_list_id'         => $r->contact_list_id,
+                'list_member_phones'      => array_unique($listMemberPhones),
+                'list_group_ids'          => array_unique($listGroupIds),
+                'match_type'              => $r->match_type,
+                'keywords'                => $r->keywords_array,
+                'reply_message'           => $r->reply_message,
+                'read_delay_seconds'      => (int) ($r->read_delay_seconds ?? 0),
+                'typing_duration_seconds' => (int) ($r->typing_duration_seconds ?? 0),
+                'reply_delay_seconds'     => (int) ($r->reply_delay_seconds ?? 0),
             ];
         });
 
@@ -271,7 +280,7 @@ class AutoReplyController extends Controller
     public function simulate(Request $request)
     {
         $text = trim($request->input('text', ''));
-        $chatType = $request->input('chat_type', 'individual'); // individual or group
+        $chatType = $request->input('chat_type', 'individual');
         $sessionId = $request->input('session_id', null);
         $senderPhone = preg_replace('/[^0-9]/', '', $request->input('sender_phone', '923001234567'));
         $targetGroupId = $request->input('group_id', '120363@g.us');
@@ -288,11 +297,10 @@ class AutoReplyController extends Controller
         $lowerText = mb_strtolower($text);
 
         foreach ($rules as $r) {
-            // Target type validation
             $targetType = $r->target_type ?: 'all';
 
             if ($targetType === 'all_individual' && $chatType !== 'individual') continue;
-            if ($targetType === 'all_group' && $chatType !== 'group') continue;
+            if ($targetType === 'all_group' && chatType !== 'group') continue;
 
             if ($targetType === 'specific_contacts') {
                 if ($chatType !== 'individual') continue;
@@ -363,13 +371,16 @@ class AutoReplyController extends Controller
             );
 
             return response()->json([
-                'matched'      => true,
-                'rule_id'      => $targetRule->id,
-                'rule_name'    => $targetRule->name,
-                'match_type'   => $targetRule->match_type,
-                'target_type'  => $targetRule->target_type,
-                'is_fallback'  => ($targetRule->match_type === 'fallback' && !$matchedRule),
-                'reply_output' => $reply
+                'matched'                 => true,
+                'rule_id'                 => $targetRule->id,
+                'rule_name'               => $targetRule->name,
+                'match_type'              => $targetRule->match_type,
+                'target_type'             => $targetRule->target_type,
+                'read_delay_seconds'      => (int) ($targetRule->read_delay_seconds ?? 0),
+                'typing_duration_seconds' => (int) ($targetRule->typing_duration_seconds ?? 0),
+                'reply_delay_seconds'     => (int) ($targetRule->reply_delay_seconds ?? 0),
+                'is_fallback'             => ($targetRule->match_type === 'fallback' && !$matchedRule),
+                'reply_output'            => $reply
             ]);
         }
 
