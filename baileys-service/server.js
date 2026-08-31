@@ -273,10 +273,12 @@ async function initBaileysSession(sessionId, accountName) {
     sessionData.isReconnecting = false;
     sessions.set(sessionId, sessionData);
 
+    console.log(`[Baileys][${new Date().toLocaleTimeString()}] 🚀 Initializing session: "${sessionId}" (${accountName || sessionId})`);
+
     const sock = makeWASocket({
         version,
         logger,
-        printQRInTerminal: false,
+        printQRInTerminal: true, // Also print ASCII QR in terminal for direct scanning
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, logger)
@@ -389,6 +391,7 @@ async function initBaileysSession(sessionId, accountName) {
         if (qr) {
             sessionData.qr = qr;
             sessionData.status = 'qr_ready';
+            console.log(`[Baileys][${new Date().toLocaleTimeString()}] 📲 New QR code generated for session: "${sessionId}". Ready to scan!`);
             try {
                 sessionData.qrImage = await QRCode.toDataURL(qr, {
                     width: 300,
@@ -407,6 +410,7 @@ async function initBaileysSession(sessionId, accountName) {
         if (connection === 'connecting') {
             sessionData.status = 'connecting';
             sessionData.lastUpdated = new Date();
+            console.log(`[Baileys][${new Date().toLocaleTimeString()}] 🔄 Connecting session "${sessionId}" to WhatsApp servers...`);
         }
 
         if (connection === 'open') {
@@ -416,14 +420,19 @@ async function initBaileysSession(sessionId, accountName) {
 
             const userJid = sock.user?.id || '';
             const phone = userJid ? userJid.split(':')[0].split('@')[0] : '';
+            const accName = sock.user?.name || accountName || phone;
 
             sessionData.user = {
                 id: userJid,
                 phone: phone,
-                name: sock.user?.name || accountName || phone
+                name: accName
             };
             sessionData.lastUpdated = new Date();
-            console.log(`[Baileys] Session ${sessionId} connected successfully! Phone: +${phone}`);
+            console.log(`\n========================================================`);
+            console.log(`[Baileys][${new Date().toLocaleTimeString()}] ✅ Session "${sessionId}" connected successfully!`);
+            console.log(`[Baileys] WhatsApp User: +${phone} (${accName})`);
+            console.log(`[Baileys] Permanent 24/7 online presence activated!`);
+            console.log(`========================================================\n`);
 
             // Broadcast permanent online presence to WhatsApp servers
             try {
@@ -450,7 +459,7 @@ async function initBaileysSession(sessionId, accountName) {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-            console.log(`[Baileys] Session ${sessionId} closed. StatusCode: ${statusCode || 'unknown'}. Reconnecting: ${shouldReconnect}`);
+            console.log(`[Baileys][${new Date().toLocaleTimeString()}] ⚠️ Session "${sessionId}" closed. StatusCode: ${statusCode || 'unknown'}. Reconnecting: ${shouldReconnect}`);
 
             if (shouldReconnect && !sessionData.isReconnecting) {
                 sessionData.isReconnecting = true;
@@ -468,7 +477,7 @@ async function initBaileysSession(sessionId, accountName) {
 
                 // If logged out (401), automatically wipe session folder so it never attempts to restore
                 if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
-                    console.log(`[Baileys] Session ${sessionId} logged out / unlinked. Automatically deleting session directory.`);
+                    console.log(`[Baileys] Session "${sessionId}" was unlinked. Deleting session directory.`);
                     const sPath = path.join(SESSIONS_DIR, sessionId);
                     if (fs.existsSync(sPath)) {
                         try { fs.rmSync(sPath, { recursive: true, force: true }); } catch (e) {}

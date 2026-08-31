@@ -266,8 +266,11 @@
         });
     });
 
+    let lastQrSrc = '';
+
     function startPolling(sessionId, accountName){
         if(pollInterval) clearInterval(pollInterval);
+        lastQrSrc = '';
 
         pollInterval = setInterval(function(){
             $.ajax({
@@ -275,7 +278,10 @@
                 type: "GET",
                 success: function(res){
                     if(res.status === 'qr_ready' && res.qrImage){
-                        $('#qrImageElement').attr('src', res.qrImage);
+                        if(lastQrSrc !== res.qrImage){
+                            lastQrSrc = res.qrImage;
+                            $('#qrImageElement').attr('src', res.qrImage);
+                        }
                         $('#qrOverlay').addClass('d-none');
                         $('#connectionBadge').text('Scan QR Code');
                         $('#statusMessage').html('<i class="fas fa-spinner fa-spin me-1"></i> Waiting for scan...');
