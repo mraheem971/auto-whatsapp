@@ -283,12 +283,12 @@ async function initBaileysSession(sessionId, accountName) {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
-        browser: Browsers.ubuntu('Chrome'),
-        markOnlineOnConnect: true,
+        browser: Browsers.windows('Desktop'),
         generateHighQualityLinkPreview: true,
         syncFullHistory: false,
-        keepAliveIntervalMs: 20000,
+        connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 25000,
         msgRetryCounterCache,
         getMessage: async (key) => {
             if (key?.id && messageStore.has(key.id)) {
@@ -302,7 +302,13 @@ async function initBaileysSession(sessionId, accountName) {
 
     sessionData.socket = sock;
 
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', async () => {
+        try {
+            await saveCreds();
+        } catch (e) {
+            console.error('[Baileys] Error saving creds:', e);
+        }
+    });
 
     sock.ev.on('contacts.upsert', (contacts) => {
         for (const contact of contacts) {
@@ -415,6 +421,7 @@ async function initBaileysSession(sessionId, accountName) {
 
         if (connection === 'open') {
             sessionData.status = 'connected';
+            sessionData.connectedAt = Date.now();
             sessionData.qr = null;
             sessionData.qrImage = null;
 
@@ -431,23 +438,25 @@ async function initBaileysSession(sessionId, accountName) {
             console.log(`\n========================================================`);
             console.log(`[Baileys][${new Date().toLocaleTimeString()}] ✅ Session "${sessionId}" connected successfully!`);
             console.log(`[Baileys] WhatsApp User: +${phone} (${accName})`);
-            console.log(`[Baileys] Permanent 24/7 online presence activated!`);
             console.log(`========================================================\n`);
 
-            // Broadcast permanent online presence to WhatsApp servers
-            try {
-                await sock.sendPresenceUpdate('available');
-            } catch (err) {
-                console.error('[Baileys Presence Error]', err?.message || err);
-            }
+            // Start presence updates after connection has settled (5 seconds delay)
+            setTimeout(async () => {
+                if (sessionData.status === 'connected' && sock.ws?.isOpen) {
+                    try {
+                        await sock.sendPresenceUpdate('available');
+                        console.log(`[Baileys] Permanent online presence broadcast active for +${phone}`);
+                    } catch (err) {}
+                }
+            }, 5000);
 
-            // 20s heartbeat presence timer
+            // 30s heartbeat presence timer
             if (sessionData.presenceTimer) clearInterval(sessionData.presenceTimer);
             sessionData.presenceTimer = setInterval(() => {
                 if (sessionData.status === 'connected' && sock.ws?.isOpen) {
                     sock.sendPresenceUpdate('available').catch(() => {});
                 }
-            }, 20000);
+            }, 30000);
         }
 
         if (connection === 'close') {
@@ -457,26 +466,31 @@ async function initBaileysSession(sessionId, accountName) {
             }
 
             const statusCode = lastDisconnect?.error?.output?.statusCode;
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+            const shouldReconnect = !isLoggedOut && statusCode !== 401;
 
-            console.log(`[Baileys][${new Date().toLocaleTimeString()}] ⚠️ Session "${sessionId}" closed. StatusCode: ${statusCode || 'unknown'}. Reconnecting: ${shouldReconnect}`);
+            console.log(`[Baileys][${new Date().toLocaleTimeString()}] ⚠️ Session "${sessionId}" closed. StatusCode: ${statusCode || 'unknown'}. Reconnecting: ${shouldReconnect || (statusCode === 515 || statusCode === 408)}`);
 
-            if (shouldReconnect && !sessionData.isReconnecting) {
-                sessionData.isReconnecting = true;
-                sessionData.status = 'reconnecting';
-                setTimeout(() => {
-                    if (sessions.has(sessionId)) {
-                        initBaileysSession(sessionId, accountName).catch(console.error);
-                    }
-                }, 3000);
-            } else if (!shouldReconnect) {
+            // 515 (Restart Required) or 408 (Timeout) or transient errors -> reconnect cleanly
+            if (shouldReconnect || statusCode === 515 || statusCode === 408 || !statusCode) {
+                if (!sessionData.isReconnecting) {
+                    sessionData.isReconnecting = true;
+                    sessionData.status = 'reconnecting';
+                    setTimeout(() => {
+                        if (sessions.has(sessionId)) {
+                            initBaileysSession(sessionId, accountName).catch(console.error);
+                        }
+                    }, 2500);
+                }
+            } else {
                 sessionData.status = 'disconnected';
                 sessionData.qr = null;
                 sessionData.qrImage = null;
                 sessionData.isReconnecting = false;
 
-                // If logged out (401), automatically wipe session folder so it never attempts to restore
-                if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
+                // Only wipe folder if truly logged out and was not just connected in the last 2 minutes
+                const timeSinceConnected = Date.now() - (sessionData.connectedAt || 0);
+                if (isLoggedOut && timeSinceConnected > 120000) {
                     console.log(`[Baileys] Session "${sessionId}" was unlinked. Deleting session directory.`);
                     const sPath = path.join(SESSIONS_DIR, sessionId);
                     if (fs.existsSync(sPath)) {
