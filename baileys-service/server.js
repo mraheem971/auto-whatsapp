@@ -60,35 +60,66 @@ async function getActiveAutoReplies(sessionId) {
     return [];
 }
 
+// Robust text extractor from all WhatsApp message formats
+function extractMessageText(msg) {
+    if (!msg || !msg.message) return '';
+    let m = msg.message;
+
+    // Unwrap wrappers (ephemeral, viewOnce, documentWithCaption, etc.)
+    if (m.ephemeralMessage) m = m.ephemeralMessage.message || m;
+    if (m.viewOnceMessage) m = m.viewOnceMessage.message || m;
+    if (m.viewOnceMessageV2) m = m.viewOnceMessageV2.message || m;
+    if (m.documentWithCaptionMessage) m = m.documentWithCaptionMessage.message || m;
+    if (m.editedMessage) m = m.editedMessage.message?.protocolMessage?.editedMessage || m.editedMessage.message || m;
+
+    return (
+        m.conversation ||
+        m.extendedTextMessage?.text ||
+        m.imageMessage?.caption ||
+        m.videoMessage?.caption ||
+        m.documentMessage?.caption ||
+        m.templateButtonReplyMessage?.selectedId ||
+        m.templateButtonReplyMessage?.selectedDisplayText ||
+        m.buttonsResponseMessage?.selectedButtonId ||
+        m.buttonsResponseMessage?.selectedDisplayText ||
+        m.listResponseMessage?.singleSelectReply?.selectedRowId ||
+        m.listResponseMessage?.title ||
+        m.listResponseMessage?.description ||
+        m.interactiveResponseMessage?.body?.text ||
+        m.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson ||
+        ''
+    ).toString().trim();
+}
+
 async function processIncomingAutoReply(sessionId, sock, msg) {
-    if (!msg || !msg.message || msg.key?.fromMe) return;
+    if (!msg || !msg.message) return;
+    if (msg.key?.fromMe) return; // Don't reply to our own messages
 
     const remoteJid = msg.key?.remoteJid;
     if (!remoteJid || remoteJid.endsWith('@broadcast')) return;
 
-    const msgContent = msg.message;
-    const incomingText = (msgContent.conversation || 
-                          msgContent.extendedTextMessage?.text || 
-                          msgContent.imageMessage?.caption || 
-                          msgContent.videoMessage?.caption || '').trim();
-
+    const incomingText = extractMessageText(msg);
     if (!incomingText) return;
 
     const isGroup = remoteJid.endsWith('@g.us');
     const chatType = isGroup ? 'group' : 'individual';
-    const participantJid = msg.key.participant || remoteJid;
-    const senderPhone = participantJid.split('@')[0].split(':')[0];
+    const participantJid = msg.key?.participant || remoteJid;
+    const senderPhone = participantJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
     const senderName = msg.pushName || `+${senderPhone}`;
 
+    console.log(`[Baileys Incoming] [${sessionId}] From: ${remoteJid} (${senderPhone}) | Text: "${incomingText}"`);
+
     const rules = await getActiveAutoReplies(sessionId);
-    if (!rules || rules.length === 0) return;
+    if (!rules || rules.length === 0) {
+        console.log(`[Baileys AutoReply] No active rules found for session ${sessionId}`);
+        return;
+    }
 
     const lowerText = incomingText.toLowerCase();
     let matchedRule = null;
     let fallbackRule = null;
 
     for (const rule of rules) {
-        // Target Type & Scope check
         const targetType = rule.target_type || 'all';
 
         if (targetType === 'all_individual' && chatType !== 'individual') continue;
@@ -97,7 +128,8 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         if (targetType === 'specific_contacts') {
             if (chatType !== 'individual') continue;
             const allowed = Array.isArray(rule.target_contacts) ? rule.target_contacts : [];
-            if (!allowed.includes(senderPhone)) continue;
+            const cleanAllowed = allowed.map(p => p.toString().replace(/[^0-9]/g, ''));
+            if (!cleanAllowed.includes(senderPhone)) continue;
         }
 
         if (targetType === 'specific_groups') {
@@ -109,7 +141,8 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         if (targetType === 'contact_list') {
             if (chatType === 'individual') {
                 const memberPhones = Array.isArray(rule.list_member_phones) ? rule.list_member_phones : [];
-                if (!memberPhones.includes(senderPhone)) continue;
+                const cleanMembers = memberPhones.map(p => p.toString().replace(/[^0-9]/g, ''));
+                if (!cleanMembers.includes(senderPhone)) continue;
             } else {
                 const groupIds = Array.isArray(rule.list_group_ids) ? rule.list_group_ids : [];
                 if (!groupIds.includes(remoteJid)) continue;
@@ -135,7 +168,7 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
 
         let isMatch = false;
         for (const kw of kwList) {
-            const lowerKw = kw.toLowerCase().trim();
+            const lowerKw = kw.toString().toLowerCase().trim();
             if (!lowerKw) continue;
 
             if (rule.match_type === 'exact' && lowerText === lowerKw) {
@@ -160,7 +193,10 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
     }
 
     const targetRule = matchedRule || fallbackRule;
-    if (!targetRule) return;
+    if (!targetRule) {
+        console.log(`[Baileys AutoReply] No keyword or fallback matched for text: "${incomingText}"`);
+        return;
+    }
 
     // Check anti-spam cooldown
     const cooldownKey = `${targetRule.id}_${remoteJid}_${senderPhone}`;
@@ -168,7 +204,7 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
     if (targetRule.cooldown_seconds && targetRule.cooldown_seconds > 0) {
         const lastHit = userCooldowns.get(cooldownKey) || 0;
         if (now - lastHit < targetRule.cooldown_seconds * 1000) {
-            console.log(`[AutoReply Cooldown] Skipped rule "${targetRule.name}" for ${senderPhone} (Cooldown active)`);
+            console.log(`[Baileys AutoReply Cooldown] Skipped rule "${targetRule.name}" for ${senderPhone} (Cooldown active)`);
             return;
         }
     }
@@ -181,13 +217,13 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         .replace(/\{time\}/g, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
         .replace(/\{date\}/g, new Date().toLocaleDateString());
 
-    console.log(`[AutoReply Triggered] Rule: "${targetRule.name}" -> Replying to ${remoteJid}`);
+    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" -> Replying to ${remoteJid}: "${processedText}"`);
 
     try {
-        await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
+        await sock.sendMessage(remoteJid, { text: processedText });
         fetch(`http://127.0.0.1:8000/api/autoreply/log-hit/${targetRule.id}`, { method: 'POST' }).catch(() => {});
     } catch (err) {
-        console.error(`[AutoReply Send Error]:`, err?.message || err);
+        console.error(`[Baileys AutoReply Send Error]:`, err?.message || err);
     }
 }
 
@@ -268,6 +304,9 @@ async function initBaileysSession(sessionId, accountName) {
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         for (const msg of messages) {
+            if (!msg || !msg.message) continue;
+            
+            // Store pushName contact
             if (msg.key && msg.pushName && !msg.key.fromMe) {
                 const jid = msg.key.participant || msg.key.remoteJid;
                 if (jid && !jid.endsWith('@g.us') && !jid.endsWith('@broadcast')) {
@@ -280,8 +319,8 @@ async function initBaileysSession(sessionId, accountName) {
                 }
             }
 
-            // Process Auto-Reply & Keyword Bot Rules
-            if (type === 'notify' || !type) {
+            // Immediately process Auto-Reply & Keyword Bot Rules for all incoming messages
+            if (!msg.key?.fromMe) {
                 processIncomingAutoReply(sessionId, sock, msg).catch(e => {
                     console.error('[AutoReply Trigger Error]', e?.message || e);
                 });
