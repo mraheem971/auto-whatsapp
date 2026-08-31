@@ -465,6 +465,17 @@ async function initBaileysSession(sessionId, accountName) {
                 sessionData.qr = null;
                 sessionData.qrImage = null;
                 sessionData.isReconnecting = false;
+
+                // If logged out (401), automatically wipe session folder so it never attempts to restore
+                if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
+                    console.log(`[Baileys] Session ${sessionId} logged out / unlinked. Automatically deleting session directory.`);
+                    const sPath = path.join(SESSIONS_DIR, sessionId);
+                    if (fs.existsSync(sPath)) {
+                        try { fs.rmSync(sPath, { recursive: true, force: true }); } catch (e) {}
+                    }
+                    sessions.delete(sessionId);
+                    autoReplyRuleCache.delete(sessionId);
+                }
             }
             sessionData.lastUpdated = new Date();
         }
@@ -576,30 +587,42 @@ app.post('/api/sessions/stop/:sessionId', async (req, res) => {
     res.json({ success: true, message: 'Session stopped' });
 });
 
-// Delete session and remove credentials
-app.post('/api/sessions/delete/:sessionId', async (req, res) => {
+// Delete session and remove all credentials from disk
+const handleDeleteSession = async (req, res) => {
     const { sessionId } = req.params;
     const session = sessions.get(sessionId);
 
-    if (session?.socket) {
-        try {
-            session.socket.end();
-        } catch (e) {}
+    if (session) {
+        if (session.presenceTimer) {
+            clearInterval(session.presenceTimer);
+            session.presenceTimer = null;
+        }
+        if (session.socket) {
+            try {
+                session.socket.ev.removeAllListeners();
+                session.socket.end(undefined);
+            } catch (e) {}
+        }
+        sessions.delete(sessionId);
     }
 
-    sessions.delete(sessionId);
+    autoReplyRuleCache.delete(sessionId);
 
     const sessionPath = path.join(SESSIONS_DIR, sessionId);
     if (fs.existsSync(sessionPath)) {
         try {
             fs.rmSync(sessionPath, { recursive: true, force: true });
+            console.log(`[Baileys] Session ${sessionId} files deleted from disk.`);
         } catch (e) {
-            console.error('Error deleting session path:', e);
+            console.error(`Error deleting session directory ${sessionId}:`, e);
         }
     }
 
-    res.json({ success: true, message: 'Session deleted' });
-});
+    res.json({ success: true, message: `Session ${sessionId} completely deleted` });
+};
+
+app.post('/api/sessions/delete/:sessionId', handleDeleteSession);
+app.delete('/api/sessions/delete/:sessionId', handleDeleteSession);
 
 // Send Message (Direct Contact or Group)
 app.post('/api/messages/send', async (req, res) => {

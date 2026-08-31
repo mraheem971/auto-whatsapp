@@ -158,16 +158,29 @@ class AccountListingController extends Controller
     public function deleteAccount(Request $request, $id)
     {
         $account = WhatsappAccount::findOrFail($id);
+        $sessionId = $account->session_id;
 
-        try {
-            Http::timeout(5)->post("{$this->baileysUrl}/api/sessions/delete/{$account->session_id}");
-        } catch (\Exception $e) {
-            // Ignore if service is temporarily unreachable
+        // 1. Notify Baileys service to kill active socket & delete credentials from disk
+        if ($sessionId) {
+            try {
+                Http::timeout(5)->post("{$this->baileysUrl}/api/sessions/delete/{$sessionId}");
+            } catch (\Exception $e) {
+                // Service may be offline, proceed with local deletion
+            }
+
+            // 2. Direct filesystem deletion fallback
+            $sessionDir = base_path('../baileys-service/sessions/' . $sessionId);
+            if (is_dir($sessionDir)) {
+                \Illuminate\Support\Facades\File::deleteDirectory($sessionDir);
+            }
+
+            // 3. Convert any auto-reply rules targeting this account to Universal (null)
+            \App\Models\AutoReply::where('session_id', $sessionId)->update(['session_id' => null]);
         }
 
         $account->delete();
 
-        $notify[] = ['success', 'WhatsApp account removed successfully'];
+        $notify[] = ['success', 'WhatsApp account and session files completely removed'];
         return back()->withNotify($notify);
     }
 
