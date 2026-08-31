@@ -78,7 +78,7 @@ class AutoReplyController extends Controller
             'target_contacts'         => 'nullable|string',
             'target_group_ids'        => 'nullable|array',
             'contact_list_id'         => 'nullable|integer',
-            'match_type'              => 'required|in:contains,exact,starts_with,ends_with,fallback',
+            'match_type'              => 'required|in:contains,exact,starts_with,ends_with,first_words_2,first_words_3,last_words_2,last_words_3,fallback',
             'keywords'                => 'nullable|string',
             'reply_message'           => 'required|string',
             'read_delay_seconds'      => 'nullable|integer|min:0|max:3600',
@@ -140,7 +140,7 @@ class AutoReplyController extends Controller
             'target_contacts'         => 'nullable|string',
             'target_group_ids'        => 'nullable|array',
             'contact_list_id'         => 'nullable|integer',
-            'match_type'              => 'required|in:contains,exact,starts_with,ends_with,fallback',
+            'match_type'              => 'required|in:contains,exact,starts_with,ends_with,first_words_2,first_words_3,last_words_2,last_words_3,fallback',
             'keywords'                => 'nullable|string',
             'reply_message'           => 'required|string',
             'read_delay_seconds'      => 'nullable|integer|min:0|max:3600',
@@ -297,11 +297,21 @@ class AutoReplyController extends Controller
 
         $lowerText = mb_strtolower($text);
 
+        // Clean words for word-based matching
+        $cleanText = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $lowerText);
+        $cleanText = preg_replace('/\s+/', ' ', trim($cleanText));
+        $words = array_values(array_filter(explode(' ', $cleanText)));
+
+        $first2Words = implode(' ', array_slice($words, 0, 2));
+        $first3Words = implode(' ', array_slice($words, 0, 3));
+        $last2Words  = implode(' ', array_slice($words, -2));
+        $last3Words  = implode(' ', array_slice($words, -3));
+
         foreach ($rules as $r) {
             $targetType = $r->target_type ?: 'all';
 
             if ($targetType === 'all_individual' && $chatType !== 'individual') continue;
-            if ($targetType === 'all_group' && $chatType !== 'group') continue;
+            if ($targetType === 'all_group' && chatType !== 'group') continue;
 
             if ($targetType === 'saved_contacts') {
                 if ($chatType !== 'individual') continue;
@@ -361,6 +371,18 @@ class AutoReplyController extends Controller
                     $matched = true;
                     break;
                 } elseif ($r->match_type === 'ends_with' && str_ends_with($lowerText, $lowerKw)) {
+                    $matched = true;
+                    break;
+                } elseif ($r->match_type === 'first_words_2' && (str_contains($first2Words, $lowerKw) || in_array($lowerKw, array_slice($words, 0, 2)))) {
+                    $matched = true;
+                    break;
+                } elseif ($r->match_type === 'first_words_3' && (str_contains($first3Words, $lowerKw) || in_array($lowerKw, array_slice($words, 0, 3)))) {
+                    $matched = true;
+                    break;
+                } elseif ($r->match_type === 'last_words_2' && (str_contains($last2Words, $lowerKw) || in_array($lowerKw, array_slice($words, -2)))) {
+                    $matched = true;
+                    break;
+                } elseif ($r->match_type === 'last_words_3' && (str_contains($last3Words, $lowerKw) || in_array($lowerKw, array_slice($words, -3)))) {
                     $matched = true;
                     break;
                 }

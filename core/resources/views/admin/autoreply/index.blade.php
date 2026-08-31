@@ -139,6 +139,14 @@
                                                 <span class="badge badge--info px-2 py-1">@lang('Starts With')</span>
                                             @elseif($bot->match_type === 'ends_with')
                                                 <span class="badge badge--warning px-2 py-1">@lang('Ends With')</span>
+                                            @elseif($bot->match_type === 'first_words_2')
+                                                <span class="badge badge--info px-2 py-1">⚡ @lang('First 2 Words')</span>
+                                            @elseif($bot->match_type === 'first_words_3')
+                                                <span class="badge badge--info px-2 py-1">⚡ @lang('First 3 Words')</span>
+                                            @elseif($bot->match_type === 'last_words_2')
+                                                <span class="badge badge--warning px-2 py-1">🏁 @lang('Last 2 Words')</span>
+                                            @elseif($bot->match_type === 'last_words_3')
+                                                <span class="badge badge--warning px-2 py-1">🏁 @lang('Last 3 Words')</span>
                                             @elseif($bot->match_type === 'fallback')
                                                 <span class="badge badge--dark px-2 py-1">@lang('Fallback / Default')</span>
                                             @endif
@@ -275,10 +283,14 @@
                         <div class="col-md-6">
                             <label class="fw-bold mb-1">@lang('Keyword Match Type') <span class="text--danger">*</span></label>
                             <select name="match_type" id="create_match_type" class="form-control form-select" required>
-                                <option value="contains" selected>🔍 @lang('Contains Keyword (Recommended)')</option>
+                                <option value="contains" selected>🔍 @lang('Contains Keyword (Anywhere in Message)')</option>
                                 <option value="exact">🎯 @lang('Exact Match (Entire Message)')</option>
-                                <option value="starts_with">⏩ @lang('Starts With')</option>
-                                <option value="ends_with">⏪ @lang('Ends With')</option>
+                                <option value="starts_with">⏩ @lang('Starts With (Begins with Phrase)')</option>
+                                <option value="ends_with">⏪ @lang('Ends With (Ends with Phrase)')</option>
+                                <option value="first_words_2">⚡ @lang('First 2 Words of Message')</option>
+                                <option value="first_words_3">⚡ @lang('First 3 Words of Message')</option>
+                                <option value="last_words_2">🏁 @lang('Last 2 Words of Message')</option>
+                                <option value="last_words_3">🏁 @lang('Last 3 Words of Message')</option>
                                 <option value="fallback">🛡️ @lang('Default / Fallback Reply (If no other matches)')</option>
                             </select>
                         </div>
@@ -461,11 +473,15 @@
                         <div class="col-md-6">
                             <label class="fw-bold mb-1">@lang('Keyword Match Type') <span class="text--danger">*</span></label>
                             <select name="match_type" id="edit_match_type" class="form-control form-select" required>
-                                <option value="contains">🔍 @lang('Contains Keyword')</option>
-                                <option value="exact">🎯 @lang('Exact Match')</option>
-                                <option value="starts_with">⏩ @lang('Starts With')</option>
-                                <option value="ends_with">⏪ @lang('Ends With')</option>
-                                <option value="fallback">🛡️ @lang('Default / Fallback Reply')</option>
+                                <option value="contains">🔍 @lang('Contains Keyword (Anywhere in Message)')</option>
+                                <option value="exact">🎯 @lang('Exact Match (Entire Message)')</option>
+                                <option value="starts_with">⏩ @lang('Starts With (Begins with Phrase)')</option>
+                                <option value="ends_with">⏪ @lang('Ends With (Ends with Phrase)')</option>
+                                <option value="first_words_2">⚡ @lang('First 2 Words of Message')</option>
+                                <option value="first_words_3">⚡ @lang('First 3 Words of Message')</option>
+                                <option value="last_words_2">🏁 @lang('Last 2 Words of Message')</option>
+                                <option value="last_words_3">🏁 @lang('Last 3 Words of Message')</option>
+                                <option value="fallback">🛡️ @lang('Default / Fallback Reply (If no other matches)')</option>
                             </select>
                         </div>
 
@@ -611,7 +627,7 @@
             </div>
             <div class="modal-body p-4">
                 <p class="text-muted small mb-3">
-                    @lang('Test your keyword bots against specific individual contacts, groups, saved contacts, or strangers in real time.')
+                    @lang('Test your keyword bots against specific word position rules, contacts, groups, saved contacts, or strangers in real time.')
                 </p>
 
                 <div class="row g-3 mb-3">
@@ -855,7 +871,7 @@
             success: function(res){
                 if(res.matched){
                     $('#simRuleName').text(res.rule_name);
-                    $('#simRuleBadge').text(res.is_fallback ? 'Fallback Trigger' : (res.match_type.toUpperCase() + ' MATCH'));
+                    $('#simRuleBadge').text(res.is_fallback ? 'Fallback Trigger' : (res.match_type.toUpperCase().replace(/_/g, ' ') + ' MATCH'));
                     
                     $('#simFlowSeen').html(`<i class="las la-eye me-1"></i> Seen: <strong>${res.read_delay_seconds || 0}s</strong>`);
                     $('#simFlowTyping').html(`<i class="las la-keyboard me-1"></i> Typing: <strong>${res.typing_duration_seconds || 0}s</strong>`);

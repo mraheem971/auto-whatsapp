@@ -180,6 +180,14 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
             }
         }
 
+        // Clean words for word-position matching
+        const cleanText = lowerText.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+        const words = cleanText.split(' ').filter(Boolean);
+        const first2Words = words.slice(0, 2).join(' ');
+        const first3Words = words.slice(0, 3).join(' ');
+        const last2Words = words.slice(-2).join(' ');
+        const last3Words = words.slice(-3).join(' ');
+
         let isMatch = false;
         for (const kw of kwList) {
             const lowerKw = kw.toString().toLowerCase().trim();
@@ -195,6 +203,18 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
                 isMatch = true;
                 break;
             } else if (rule.match_type === 'ends_with' && lowerText.endsWith(lowerKw)) {
+                isMatch = true;
+                break;
+            } else if (rule.match_type === 'first_words_2' && (first2Words.includes(lowerKw) || words.slice(0, 2).some(w => w === lowerKw))) {
+                isMatch = true;
+                break;
+            } else if (rule.match_type === 'first_words_3' && (first3Words.includes(lowerKw) || words.slice(0, 3).some(w => w === lowerKw))) {
+                isMatch = true;
+                break;
+            } else if (rule.match_type === 'last_words_2' && (last2Words.includes(lowerKw) || words.slice(-2).some(w => w === lowerKw))) {
+                isMatch = true;
+                break;
+            } else if (rule.match_type === 'last_words_3' && (last3Words.includes(lowerKw) || words.slice(-3).some(w => w === lowerKw))) {
                 isMatch = true;
                 break;
             }
