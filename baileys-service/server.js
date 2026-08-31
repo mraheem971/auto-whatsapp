@@ -221,16 +221,37 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
         const typingDurationMs = (targetRule.typing_duration_seconds || 0) * 1000;
         const replyDelayMs = (targetRule.reply_delay_seconds || 0) * 1000;
 
-        console.log(`[AutoReply Flow] ⚡ Sequence: [Seen Delay: ${targetRule.read_delay_seconds || 0}s] -> [Typing: ${targetRule.typing_duration_seconds || 0}s] -> [Pause: ${targetRule.reply_delay_seconds || 0}s]`);
+        console.log(`[AutoReply Flow] ⚡ Starting sequence for ${remoteJid} -> [Seen Delay: ${targetRule.read_delay_seconds || 0}s] -> [Typing: ${targetRule.typing_duration_seconds || 0}s] -> [Pause: ${targetRule.reply_delay_seconds || 0}s]`);
 
-        // Step 1: Delay before marking as seen (Read Receipts)
+        // Step 1: Delay before marking as seen (Read Receipts / Blue Ticks)
         if (readDelayMs > 0) {
-            console.log(`[AutoReply Flow] ⏳ Waiting ${targetRule.read_delay_seconds}s before marking as seen...`);
+            console.log(`[AutoReply Flow] ⏳ Step 1: Waiting ${targetRule.read_delay_seconds}s before marking as seen (blue ticks)...`);
             await new Promise(r => setTimeout(r, readDelayMs));
         }
-        if (msg.key) {
-            await sock.readMessages([msg.key]).catch(() => {});
-            console.log(`[AutoReply Flow] 👁️ Step 1: Marked message as SEEN (blue double ticks) for ${remoteJid}`);
+
+        if (msg.key && msg.key.id && msg.key.remoteJid) {
+            try {
+                // Send explicit 'read' receipt to WhatsApp server to turn ticks blue for sender
+                await sock.sendReceipt(
+                    msg.key.remoteJid,
+                    msg.key.participant || undefined,
+                    [msg.key.id],
+                    'read'
+                );
+                // Also send read-self to sync status across our own linked devices
+                await sock.sendReceipt(
+                    msg.key.remoteJid,
+                    msg.key.participant || undefined,
+                    [msg.key.id],
+                    'read-self'
+                ).catch(() => {});
+                await sock.readMessages([msg.key]).catch(() => {});
+                console.log(`[AutoReply Flow] 👁️ Step 1: ✅ BLUE TICK (seen) receipt delivered for ${remoteJid}`);
+            } catch (readErr) {
+                console.error('[AutoReply Flow Read Receipt Error]:', readErr?.message || readErr);
+                // Fallback to standard readMessages
+                await sock.readMessages([msg.key]).catch(() => {});
+            }
         }
 
         // Step 2: Show "typing..." presence indicator
