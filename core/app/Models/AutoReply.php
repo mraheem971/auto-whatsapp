@@ -23,6 +23,7 @@ class AutoReply extends Model
         'match_type',
         'keywords',
         'reply_message',
+        'reply_destination',
         'read_delay_seconds',
         'typing_duration_seconds',
         'reply_delay_seconds',

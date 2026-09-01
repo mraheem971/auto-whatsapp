@@ -81,6 +81,7 @@ class AutoReplyController extends Controller
             'match_type'              => 'required|in:contains,exact,starts_with,ends_with,first_words_2,first_words_3,last_words_2,last_words_3,fallback',
             'keywords'                => 'nullable|string',
             'reply_message'           => 'required|string',
+            'reply_destination'       => 'nullable|string|in:same_chat,sender_dm,both',
             'read_delay_seconds'      => 'nullable|integer|min:0|max:3600',
             'typing_duration_seconds' => 'nullable|integer|min:0|max:300',
             'reply_delay_seconds'     => 'nullable|integer|min:0|max:3600',
@@ -91,10 +92,12 @@ class AutoReplyController extends Controller
             return back()->withInput()->withNotify($notify);
         }
 
-        // Format keywords into array
+        // Format keywords into clean array, collapsing multiple spaces
         $keywordsFormatted = null;
         if (!empty($request->keywords)) {
-            $kwArray = array_values(array_filter(array_map('trim', explode(',', $request->keywords))));
+            $kwArray = array_values(array_filter(array_map(function($kw) {
+                return preg_replace('/\s+/', ' ', trim($kw));
+            }, explode(',', $request->keywords))));
             $keywordsFormatted = json_encode($kwArray);
         }
 
@@ -119,6 +122,7 @@ class AutoReplyController extends Controller
         $bot->match_type              = $request->match_type;
         $bot->keywords                = $keywordsFormatted;
         $bot->reply_message           = $request->reply_message;
+        $bot->reply_destination       = $request->reply_destination ?: 'same_chat';
         $bot->read_delay_seconds      = (int) ($request->read_delay_seconds ?? 0);
         $bot->typing_duration_seconds = (int) ($request->typing_duration_seconds ?? 0);
         $bot->reply_delay_seconds     = (int) ($request->reply_delay_seconds ?? 0);
@@ -143,6 +147,7 @@ class AutoReplyController extends Controller
             'match_type'              => 'required|in:contains,exact,starts_with,ends_with,first_words_2,first_words_3,last_words_2,last_words_3,fallback',
             'keywords'                => 'nullable|string',
             'reply_message'           => 'required|string',
+            'reply_destination'       => 'nullable|string|in:same_chat,sender_dm,both',
             'read_delay_seconds'      => 'nullable|integer|min:0|max:3600',
             'typing_duration_seconds' => 'nullable|integer|min:0|max:300',
             'reply_delay_seconds'     => 'nullable|integer|min:0|max:3600',
@@ -156,7 +161,9 @@ class AutoReplyController extends Controller
 
         $keywordsFormatted = null;
         if (!empty($request->keywords)) {
-            $kwArray = array_values(array_filter(array_map('trim', explode(',', $request->keywords))));
+            $kwArray = array_values(array_filter(array_map(function($kw) {
+                return preg_replace('/\s+/', ' ', trim($kw));
+            }, explode(',', $request->keywords))));
             $keywordsFormatted = json_encode($kwArray);
         }
 
@@ -178,6 +185,7 @@ class AutoReplyController extends Controller
         $bot->match_type              = $request->match_type;
         $bot->keywords                = $keywordsFormatted;
         $bot->reply_message           = $request->reply_message;
+        $bot->reply_destination       = $request->reply_destination ?: 'same_chat';
         $bot->read_delay_seconds      = (int) ($request->read_delay_seconds ?? 0);
         $bot->typing_duration_seconds = (int) ($request->typing_duration_seconds ?? 0);
         $bot->reply_delay_seconds     = (int) ($request->reply_delay_seconds ?? 0);
@@ -249,6 +257,7 @@ class AutoReplyController extends Controller
                 'match_type'              => $r->match_type,
                 'keywords'                => $r->keywords_array,
                 'reply_message'           => $r->reply_message,
+                'reply_destination'       => $r->reply_destination ?: 'same_chat',
                 'read_delay_seconds'      => (int) ($r->read_delay_seconds ?? 0),
                 'typing_duration_seconds' => (int) ($r->typing_duration_seconds ?? 0),
                 'reply_delay_seconds'     => (int) ($r->reply_delay_seconds ?? 0),
@@ -359,32 +368,49 @@ class AutoReplyController extends Controller
 
             foreach ($keywords as $kw) {
                 $lowerKw = mb_strtolower(trim($kw));
-                if (empty($lowerKw)) continue;
+                $normalizedKw = preg_replace('/\s+/', ' ', preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $lowerKw));
+                if (empty($lowerKw) && empty($normalizedKw)) continue;
 
-                if ($r->match_type === 'exact' && $lowerText === $lowerKw) {
-                    $matched = true;
-                    break;
-                } elseif ($r->match_type === 'contains' && str_contains($lowerText, $lowerKw)) {
-                    $matched = true;
-                    break;
-                } elseif ($r->match_type === 'starts_with' && str_starts_with($lowerText, $lowerKw)) {
-                    $matched = true;
-                    break;
-                } elseif ($r->match_type === 'ends_with' && str_ends_with($lowerText, $lowerKw)) {
-                    $matched = true;
-                    break;
-                } elseif ($r->match_type === 'first_words_2' && (str_contains($first2Words, $lowerKw) || in_array($lowerKw, array_slice($words, 0, 2)))) {
-                    $matched = true;
-                    break;
-                } elseif ($r->match_type === 'first_words_3' && (str_contains($first3Words, $lowerKw) || in_array($lowerKw, array_slice($words, 0, 3)))) {
-                    $matched = true;
-                    break;
-                } elseif ($r->match_type === 'last_words_2' && (str_contains($last2Words, $lowerKw) || in_array($lowerKw, array_slice($words, -2)))) {
-                    $matched = true;
-                    break;
-                } elseif ($r->match_type === 'last_words_3' && (str_contains($last3Words, $lowerKw) || in_array($lowerKw, array_slice($words, -3)))) {
-                    $matched = true;
-                    break;
+                if ($r->match_type === 'exact') {
+                    if ($lowerText === $lowerKw || $cleanText === $normalizedKw) {
+                        $matched = true;
+                        break;
+                    }
+                } elseif ($r->match_type === 'contains') {
+                    if (str_contains($lowerText, $lowerKw) || (!empty($normalizedKw) && str_contains($cleanText, $normalizedKw))) {
+                        $matched = true;
+                        break;
+                    }
+                } elseif ($r->match_type === 'starts_with') {
+                    if (str_starts_with($lowerText, $lowerKw) || (!empty($normalizedKw) && str_starts_with($cleanText, $normalizedKw))) {
+                        $matched = true;
+                        break;
+                    }
+                } elseif ($r->match_type === 'ends_with') {
+                    if (str_ends_with($lowerText, $lowerKw) || (!empty($normalizedKw) && str_ends_with($cleanText, $normalizedKw))) {
+                        $matched = true;
+                        break;
+                    }
+                } elseif ($r->match_type === 'first_words_2') {
+                    if (str_contains($first2Words, $lowerKw) || in_array($lowerKw, array_slice($words, 0, 2)) || (!empty($normalizedKw) && (str_contains($first2Words, $normalizedKw) || in_array($normalizedKw, array_slice($words, 0, 2))))) {
+                        $matched = true;
+                        break;
+                    }
+                } elseif ($r->match_type === 'first_words_3') {
+                    if (str_contains($first3Words, $lowerKw) || in_array($lowerKw, array_slice($words, 0, 3)) || (!empty($normalizedKw) && (str_contains($first3Words, $normalizedKw) || in_array($normalizedKw, array_slice($words, 0, 3))))) {
+                        $matched = true;
+                        break;
+                    }
+                } elseif ($r->match_type === 'last_words_2') {
+                    if (str_contains($last2Words, $lowerKw) || in_array($lowerKw, array_slice($words, -2)) || (!empty($normalizedKw) && (str_contains($last2Words, $normalizedKw) || in_array($normalizedKw, array_slice($words, -2))))) {
+                        $matched = true;
+                        break;
+                    }
+                } elseif ($r->match_type === 'last_words_3') {
+                    if (str_contains($last3Words, $lowerKw) || in_array($lowerKw, array_slice($words, -3)) || (!empty($normalizedKw) && (str_contains($last3Words, $normalizedKw) || in_array($normalizedKw, array_slice($words, -3))))) {
+                        $matched = true;
+                        break;
+                    }
                 }
             }
 
@@ -409,6 +435,7 @@ class AutoReplyController extends Controller
                 'rule_name'               => $targetRule->name,
                 'match_type'              => $targetRule->match_type,
                 'target_type'             => $targetRule->target_type,
+                'reply_destination'       => $targetRule->reply_destination ?: 'same_chat',
                 'read_delay_seconds'      => (int) ($targetRule->read_delay_seconds ?? 0),
                 'typing_duration_seconds' => (int) ($targetRule->typing_duration_seconds ?? 0),
                 'reply_delay_seconds'     => (int) ($targetRule->reply_delay_seconds ?? 0),

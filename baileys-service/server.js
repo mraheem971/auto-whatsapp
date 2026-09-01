@@ -346,18 +346,38 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
             await new Promise(r => setTimeout(r, replyDelayMs));
         }
 
-        // Step 4: Dispatch the automated reply message
+        // Step 4: Dispatch the automated reply message according to reply_destination
+        const replyDest = targetRule.reply_destination || 'same_chat';
+        const senderJid = msg.key?.participant || remoteJid;
+        const isGroup = remoteJid.endsWith('@g.us');
+
         try {
-            // Send quoted reply if in a group, or direct reply
-            const isGroup = remoteJid.endsWith('@g.us');
-            if (isGroup && msg.key) {
-                await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
+            if (replyDest === 'sender_dm') {
+                // Send Direct Private Message to the individual sender's personal inbox
+                await sock.sendMessage(senderJid, { text: processedText });
+                console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Private DM delivered directly to sender ${senderJid}: "${processedText}"`);
+            } else if (replyDest === 'both') {
+                // Send to Group/Chat AND Private DM
+                if (isGroup && msg.key) {
+                    await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg }).catch(() => {});
+                } else {
+                    await sock.sendMessage(remoteJid, { text: processedText }).catch(() => {});
+                }
+                if (isGroup && senderJid && senderJid !== remoteJid) {
+                    await sock.sendMessage(senderJid, { text: processedText }).catch(() => {});
+                }
+                console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Both Chat & Private DM delivered for ${remoteJid} & ${senderJid}`);
             } else {
-                await sock.sendMessage(remoteJid, { text: processedText });
+                // Default 'same_chat': reply in the same chat
+                if (isGroup && msg.key) {
+                    await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
+                } else {
+                    await sock.sendMessage(remoteJid, { text: processedText });
+                }
+                console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Automated reply delivered to ${remoteJid}: "${processedText}"`);
             }
-            console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Automated reply delivered to ${remoteJid}: "${processedText}"`);
         } catch (sendErr) {
-            console.error('[AutoReply Flow Send Error, retrying direct]:', sendErr?.message || sendErr);
+            console.error('[AutoReply Flow Send Error, retrying]:', sendErr?.message || sendErr);
             await sock.sendMessage(remoteJid, { text: processedText }).catch(e => {
                 console.error('[AutoReply Flow Final Send Failure]:', e?.message || e);
             });
