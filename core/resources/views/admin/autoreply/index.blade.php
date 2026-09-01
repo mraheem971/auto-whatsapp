@@ -84,7 +84,6 @@
                                 <th class="ps-3 py-2">@lang('Bot Name & Account')</th>
                                 <th class="py-2">@lang('Target Audience')</th>
                                 <th class="py-2">@lang('Match Type & Trigger Keywords')</th>
-                                <th class="py-2">@lang('Reply Destination')</th>
                                 <th class="py-2">@lang('Human-Like Flow Sequence')</th>
                                 <th class="py-2">@lang('Reply Message Preview')</th>
                                 <th class="py-2 text-center">@lang('Hits')</th>
@@ -163,21 +162,6 @@
                                             <small class="text-muted fst-italic">@lang('Triggered when no other keyword matches')</small>
                                         @else
                                             <span class="text-muted small">@lang('No keywords set')</span>
-                                        @endif
-                                    </td>
-                                    <td class="py-2">
-                                        @if($bot->reply_destination === 'sender_dm')
-                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-envelope-open-text me-1"></i>@lang('Private DM to Sender')
-                                            </span>
-                                        @elseif($bot->reply_destination === 'both')
-                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-share-alt me-1"></i>@lang('Chat + Private DM')
-                                            </span>
-                                        @else
-                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-comment me-1"></i>@lang('Same Chat')
-                                            </span>
                                         @endif
                                     </td>
                                     <td class="py-2">
@@ -352,19 +336,6 @@
                             <input type="text" name="keywords" class="form-control" placeholder="@lang('e.g. price, cost, rates, package, how much')">
                             <small class="text-muted d-block mt-1">
                                 <i class="las la-info-circle me-1"></i>@lang('Separate multiple keywords with commas. Matching is case-insensitive.')
-                            </small>
-                        </div>
-
-                        <!-- Reply Destination Option -->
-                        <div class="col-md-12">
-                            <label class="fw-bold mb-1">@lang('Reply Destination / Delivery Target') <span class="text--danger">*</span></label>
-                            <select name="reply_destination" id="create_reply_destination" class="form-control form-select">
-                                <option value="same_chat" selected>💬 @lang('Reply in Same Chat (Quoted in Group / Direct in 1-on-1)')</option>
-                                <option value="sender_dm">📩 @lang('Direct Private DM to Sender (Auto-messages Sender\'s Personal Inbox)')</option>
-                                <option value="both">🚀 @lang('Both (Reply in Group/Chat + Send Private DM to Sender)')</option>
-                            </select>
-                            <small class="text-muted d-block mt-1">
-                                <i class="las la-info-circle me-1"></i>@lang('When triggered in a group, "Private DM to Sender" automatically opens a direct personal chat with the person who posted the keyword.')
                             </small>
                         </div>
 
@@ -555,16 +526,6 @@
                             <small class="text-muted d-block mt-1">@lang('Separate multiple keywords with commas.')</small>
                         </div>
 
-                        <!-- Reply Destination Option (Edit) -->
-                        <div class="col-md-12">
-                            <label class="fw-bold mb-1">@lang('Reply Destination / Delivery Target') <span class="text--danger">*</span></label>
-                            <select name="reply_destination" id="edit_reply_destination" class="form-control form-select">
-                                <option value="same_chat">💬 @lang('Reply in Same Chat (Quoted in Group / Direct in 1-on-1)')</option>
-                                <option value="sender_dm">📩 @lang('Direct Private DM to Sender (Auto-messages Sender\'s Personal Inbox)')</option>
-                                <option value="both">🚀 @lang('Both (Reply in Group/Chat + Send Private DM to Sender)')</option>
-                            </select>
-                        </div>
-
                         <!-- Human-Like Response Flow Sequence (Edit) -->
                         <div class="col-12">
                             <div class="card border border-primary border-opacity-25 bg-light p-3 rounded">
@@ -713,10 +674,7 @@
                 <div id="simResultBox" class="p-3 bg-light rounded border d-none">
                     <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
                         <span class="fw-bold text-dark"><i class="las la-check-circle text--success me-1 fs-5"></i> @lang('Match Result'):</span>
-                        <div class="d-flex gap-1">
-                            <span id="simRuleBadge" class="badge badge--success"></span>
-                            <span id="simDestBadge" class="badge bg-primary"></span>
-                        </div>
+                        <span id="simRuleBadge" class="badge badge--success"></span>
                     </div>
                     <div class="mb-2">
                         <strong class="text-muted small d-block">@lang('Triggered Bot Rule'):</strong>
@@ -860,7 +818,6 @@
         
         $('#edit_target_contacts').val(contacts || '');
         $('#edit_contact_list_id').val(bot.contact_list_id || '');
-        $('#edit_reply_destination').val(bot.reply_destination || 'same_chat');
 
         // Uncheck all group checkboxes and check selected
         $('.edit-grp-chk').prop('checked', false);
@@ -915,13 +872,6 @@
                 if(res.matched){
                     $('#simRuleName').text(res.rule_name);
                     $('#simRuleBadge').text(res.is_fallback ? 'Fallback Trigger' : (res.match_type.toUpperCase().replace(/_/g, ' ') + ' MATCH'));
-                    
-                    const destMap = {
-                        'same_chat': 'Same Chat',
-                        'sender_dm': 'Private DM to Sender',
-                        'both': 'Chat + Private DM'
-                    };
-                    $('#simDestBadge').text(destMap[res.reply_destination] || 'Same Chat');
 
                     $('#simFlowSeen').html(`<i class="las la-eye me-1"></i> Seen: <strong>${res.read_delay_seconds || 0}s</strong>`);
                     $('#simFlowTyping').html(`<i class="las la-keyboard me-1"></i> Typing: <strong>${res.typing_duration_seconds || 0}s</strong>`);
