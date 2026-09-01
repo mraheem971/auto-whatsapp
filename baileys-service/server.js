@@ -93,9 +93,30 @@ function extractMessageText(msg) {
     ).toString().trim();
 }
 
+// Set to prevent duplicate processing of the same incoming message ID
+const processedMessageIds = new Set();
+
 async function processIncomingAutoReply(sessionId, sock, msg) {
     if (!msg || !msg.message) return;
     if (msg.key?.fromMe) return; // Don't reply to our own messages
+
+    const msgId = msg.key?.id;
+    if (msgId) {
+        if (processedMessageIds.has(msgId)) return;
+        processedMessageIds.add(msgId);
+        if (processedMessageIds.size > 5000) {
+            const first = processedMessageIds.keys().next().value;
+            processedMessageIds.delete(first);
+        }
+    }
+
+    // Skip stale messages older than 2 minutes during initial reconnection sync
+    if (msg.messageTimestamp) {
+        const msgAgeSec = Math.floor(Date.now() / 1000) - msg.messageTimestamp;
+        if (msgAgeSec > 120) {
+            return;
+        }
+    }
 
     const remoteJid = msg.key?.remoteJid;
     if (!remoteJid || remoteJid.endsWith('@broadcast')) return;
@@ -106,17 +127,36 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
     const isGroup = remoteJid.endsWith('@g.us');
     const chatType = isGroup ? 'group' : 'individual';
     const participantJid = msg.key?.participant || remoteJid;
-    const senderPhone = participantJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+    const rawSenderId = participantJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+
+    const session = sessions.get(sessionId);
+    // Resolve WhatsApp LID to actual phone number if mapped
+    const senderPhone = (session?.lidToPhoneMap?.get(rawSenderId)) || rawSenderId;
     const senderName = msg.pushName || `+${senderPhone}`;
 
-    console.log(`[Baileys Incoming] [${sessionId}] From: ${remoteJid} (${senderPhone}) | Text: "${incomingText}"`);
+    console.log(`[Baileys Incoming] [${sessionId}] [${chatType.toUpperCase()}] From: ${remoteJid} (${senderPhone}) | Text: "${incomingText}"`);
 
     const rules = await getActiveAutoReplies(sessionId);
     if (!rules || rules.length === 0) {
         return;
     }
 
-    const lowerText = incomingText.toLowerCase();
+    const lowerText = incomingText.toLowerCase().trim();
+    // Normalized text with unified spaces and removed symbols for robust matching
+    const normalizedText = lowerText.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+    const words = normalizedText.split(' ').filter(Boolean);
+    const first2Words = words.slice(0, 2).join(' ');
+    const first3Words = words.slice(0, 3).join(' ');
+    const last2Words = words.slice(-2).join(' ');
+    const last3Words = words.slice(-3).join(' ');
+
+    const isSavedContact = Boolean(
+        session?.savedContacts?.has(senderPhone) ||
+        session?.savedContacts?.has(rawSenderId) ||
+        session?.contacts?.get(senderPhone)?.isSaved ||
+        session?.contacts?.get(rawSenderId)?.isSaved
+    );
+
     let matchedRule = null;
     let fallbackRule = null;
 
@@ -125,9 +165,6 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
 
         if (targetType === 'all_individual' && chatType !== 'individual') continue;
         if (targetType === 'all_group' && chatType !== 'group') continue;
-
-        const session = sessions.get(sessionId);
-        const isSavedContact = Boolean(session?.savedContacts?.has(senderPhone) || session?.contacts?.get(senderPhone)?.isSaved);
 
         if (targetType === 'saved_contacts') {
             if (chatType !== 'individual') continue;
@@ -143,7 +180,7 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
             if (chatType !== 'individual') continue;
             const allowed = Array.isArray(rule.target_contacts) ? rule.target_contacts : [];
             const cleanAllowed = allowed.map(p => p.toString().replace(/[^0-9]/g, ''));
-            if (!cleanAllowed.includes(senderPhone)) continue;
+            if (!cleanAllowed.includes(senderPhone) && !cleanAllowed.includes(rawSenderId)) continue;
         }
 
         if (targetType === 'specific_groups') {
@@ -156,7 +193,7 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
             if (chatType === 'individual') {
                 const memberPhones = Array.isArray(rule.list_member_phones) ? rule.list_member_phones : [];
                 const cleanMembers = memberPhones.map(p => p.toString().replace(/[^0-9]/g, ''));
-                if (!cleanMembers.includes(senderPhone)) continue;
+                if (!cleanMembers.includes(senderPhone) && !cleanMembers.includes(rawSenderId)) continue;
             } else {
                 const groupIds = Array.isArray(rule.list_group_ids) ? rule.list_group_ids : [];
                 if (!groupIds.includes(remoteJid)) continue;
@@ -180,43 +217,52 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
             }
         }
 
-        // Clean words for word-position matching
-        const cleanText = lowerText.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
-        const words = cleanText.split(' ').filter(Boolean);
-        const first2Words = words.slice(0, 2).join(' ');
-        const first3Words = words.slice(0, 3).join(' ');
-        const last2Words = words.slice(-2).join(' ');
-        const last3Words = words.slice(-3).join(' ');
-
         let isMatch = false;
         for (const kw of kwList) {
             const lowerKw = kw.toString().toLowerCase().trim();
-            if (!lowerKw) continue;
+            const normalizedKw = lowerKw.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+            if (!lowerKw && !normalizedKw) continue;
 
-            if (rule.match_type === 'exact' && lowerText === lowerKw) {
-                isMatch = true;
-                break;
-            } else if (rule.match_type === 'contains' && lowerText.includes(lowerKw)) {
-                isMatch = true;
-                break;
-            } else if (rule.match_type === 'starts_with' && lowerText.startsWith(lowerKw)) {
-                isMatch = true;
-                break;
-            } else if (rule.match_type === 'ends_with' && lowerText.endsWith(lowerKw)) {
-                isMatch = true;
-                break;
-            } else if (rule.match_type === 'first_words_2' && (first2Words.includes(lowerKw) || words.slice(0, 2).some(w => w === lowerKw))) {
-                isMatch = true;
-                break;
-            } else if (rule.match_type === 'first_words_3' && (first3Words.includes(lowerKw) || words.slice(0, 3).some(w => w === lowerKw))) {
-                isMatch = true;
-                break;
-            } else if (rule.match_type === 'last_words_2' && (last2Words.includes(lowerKw) || words.slice(-2).some(w => w === lowerKw))) {
-                isMatch = true;
-                break;
-            } else if (rule.match_type === 'last_words_3' && (last3Words.includes(lowerKw) || words.slice(-3).some(w => w === lowerKw))) {
-                isMatch = true;
-                break;
+            if (rule.match_type === 'exact') {
+                if (lowerText === lowerKw || normalizedText === normalizedKw) {
+                    isMatch = true;
+                    break;
+                }
+            } else if (rule.match_type === 'contains') {
+                if (lowerText.includes(lowerKw) || (normalizedKw && normalizedText.includes(normalizedKw))) {
+                    isMatch = true;
+                    break;
+                }
+            } else if (rule.match_type === 'starts_with') {
+                if (lowerText.startsWith(lowerKw) || (normalizedKw && normalizedText.startsWith(normalizedKw))) {
+                    isMatch = true;
+                    break;
+                }
+            } else if (rule.match_type === 'ends_with') {
+                if (lowerText.endsWith(lowerKw) || (normalizedKw && normalizedText.endsWith(normalizedKw))) {
+                    isMatch = true;
+                    break;
+                }
+            } else if (rule.match_type === 'first_words_2') {
+                if (first2Words.includes(lowerKw) || (normalizedKw && (first2Words.includes(normalizedKw) || words.slice(0, 2).includes(normalizedKw)))) {
+                    isMatch = true;
+                    break;
+                }
+            } else if (rule.match_type === 'first_words_3') {
+                if (first3Words.includes(lowerKw) || (normalizedKw && (first3Words.includes(normalizedKw) || words.slice(0, 3).includes(normalizedKw)))) {
+                    isMatch = true;
+                    break;
+                }
+            } else if (rule.match_type === 'last_words_2') {
+                if (last2Words.includes(lowerKw) || (normalizedKw && (last2Words.includes(normalizedKw) || words.slice(-2).includes(normalizedKw)))) {
+                    isMatch = true;
+                    break;
+                }
+            } else if (rule.match_type === 'last_words_3') {
+                if (last3Words.includes(lowerKw) || (normalizedKw && (last3Words.includes(normalizedKw) || words.slice(-3).includes(normalizedKw)))) {
+                    isMatch = true;
+                    break;
+                }
             }
         }
 
@@ -251,7 +297,7 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
         const typingDurationMs = (targetRule.typing_duration_seconds || 0) * 1000;
         const replyDelayMs = (targetRule.reply_delay_seconds || 0) * 1000;
 
-        console.log(`[AutoReply Flow] ⚡ Starting sequence for ${remoteJid} -> [Seen Delay: ${targetRule.read_delay_seconds || 0}s] -> [Typing: ${targetRule.typing_duration_seconds || 0}s] -> [Pause: ${targetRule.reply_delay_seconds || 0}s]`);
+        console.log(`[AutoReply Flow] ⚡ Sequence: [Seen: ${targetRule.read_delay_seconds || 0}s] -> [Typing: ${targetRule.typing_duration_seconds || 0}s] -> [Pause: ${targetRule.reply_delay_seconds || 0}s] -> [Recipient: ${remoteJid}]`);
 
         // Step 1: Delay before marking as seen (Read Receipts / Blue Ticks)
         if (readDelayMs > 0) {
@@ -267,7 +313,7 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
                     msg.key.participant || undefined,
                     [msg.key.id],
                     'read'
-                );
+                ).catch(() => {});
                 // Also send read-self to sync status across our own linked devices
                 await sock.sendReceipt(
                     msg.key.remoteJid,
@@ -279,17 +325,19 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
                 console.log(`[AutoReply Flow] 👁️ Step 1: ✅ BLUE TICK (seen) receipt delivered for ${remoteJid}`);
             } catch (readErr) {
                 console.error('[AutoReply Flow Read Receipt Error]:', readErr?.message || readErr);
-                // Fallback to standard readMessages
-                await sock.readMessages([msg.key]).catch(() => {});
             }
         }
 
         // Step 2: Show "typing..." presence indicator
         if (typingDurationMs > 0) {
-            await sock.sendPresenceUpdate('composing', remoteJid).catch(() => {});
-            console.log(`[AutoReply Flow] ⌨️ Step 2: Displaying "typing..." for ${targetRule.typing_duration_seconds}s to ${remoteJid}`);
-            await new Promise(r => setTimeout(r, typingDurationMs));
-            await sock.sendPresenceUpdate('paused', remoteJid).catch(() => {});
+            try {
+                await sock.sendPresenceUpdate('composing', remoteJid).catch(() => {});
+                console.log(`[AutoReply Flow] ⌨️ Step 2: Displaying "typing..." for ${targetRule.typing_duration_seconds}s to ${remoteJid}`);
+                await new Promise(r => setTimeout(r, typingDurationMs));
+                await sock.sendPresenceUpdate('paused', remoteJid).catch(() => {});
+            } catch (typErr) {
+                console.error('[AutoReply Flow Typing Indicator Error]:', typErr?.message || typErr);
+            }
         }
 
         // Step 3: Pause before final message dispatch
@@ -299,13 +347,26 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
         }
 
         // Step 4: Dispatch the automated reply message
-        await sock.sendMessage(remoteJid, { text: processedText });
-        console.log(`[AutoReply Flow] 🚀 Step 4: Automated reply sent to ${remoteJid}: "${processedText}"`);
+        try {
+            // Send quoted reply if in a group, or direct reply
+            const isGroup = remoteJid.endsWith('@g.us');
+            if (isGroup && msg.key) {
+                await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
+            } else {
+                await sock.sendMessage(remoteJid, { text: processedText });
+            }
+            console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Automated reply delivered to ${remoteJid}: "${processedText}"`);
+        } catch (sendErr) {
+            console.error('[AutoReply Flow Send Error, retrying direct]:', sendErr?.message || sendErr);
+            await sock.sendMessage(remoteJid, { text: processedText }).catch(e => {
+                console.error('[AutoReply Flow Final Send Failure]:', e?.message || e);
+            });
+        }
 
         // Step 5: Log hit count to backend
         fetch(`http://127.0.0.1:8000/api/autoreply/log-hit/${targetRule.id}`, { method: 'POST' }).catch(() => {});
     } catch (err) {
-        console.error('[AutoReply Flow Error]:', err?.message || err);
+        console.error('[AutoReply Flow Global Error]:', err?.message || err);
     }
 }
 
