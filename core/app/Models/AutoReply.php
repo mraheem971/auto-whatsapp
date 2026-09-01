@@ -60,6 +60,19 @@ class AutoReply extends Model
             $q->whereNull('session_id')
               ->orWhere('session_id', '')
               ->orWhere('session_id', $sessionId);
+
+            if (!empty($sessionId)) {
+                $account = WhatsappAccount::where('session_id', $sessionId)->first();
+                if ($account && $account->phone_number) {
+                    $otherSessionIds = WhatsappAccount::where('phone_number', $account->phone_number)
+                        ->pluck('session_id')
+                        ->filter()
+                        ->toArray();
+                    if (!empty($otherSessionIds)) {
+                        $q->orWhereIn('session_id', $otherSessionIds);
+                    }
+                }
+            }
         });
     }
 

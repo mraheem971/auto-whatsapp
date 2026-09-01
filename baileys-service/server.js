@@ -43,12 +43,12 @@ const userCooldowns = new Map(); // `${ruleId}_${remoteJid}_${senderPhone}` -> t
 async function getActiveAutoReplies(sessionId) {
     const cached = autoReplyRuleCache.get(sessionId);
     const now = Date.now();
-    if (cached && (now - cached.lastFetched < 10000)) { // 10s memory cache
+    if (cached && (now - cached.lastFetched < 15000)) { // 15s memory cache for ultra-fast 0ms matching
         return cached.rules;
     }
 
     try {
-        const res = await fetch(`http://127.0.0.1:8000/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(3000) });
+        const res = await fetch(`http://127.0.0.1:8000/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2000) });
         if (res.ok) {
             const data = await res.json();
             if (data.success && Array.isArray(data.rules)) {
@@ -59,7 +59,7 @@ async function getActiveAutoReplies(sessionId) {
     } catch (e) {
         if (cached) return cached.rules;
     }
-    return [];
+    return cached ? cached.rules : [];
 }
 
 // Robust text extractor from all WhatsApp message formats
@@ -100,6 +100,12 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
     if (!msg || !msg.message) return;
     if (msg.key?.fromMe) return; // Don't reply to our own messages
 
+    const remoteJid = msg.key?.remoteJid;
+    if (!remoteJid || remoteJid.endsWith('@broadcast')) return;
+
+    const incomingText = extractMessageText(msg);
+    if (!incomingText) return; // Wait for message body if not decrypted yet
+
     const msgId = msg.key?.id;
     if (msgId) {
         if (processedMessageIds.has(msgId)) return;
@@ -109,20 +115,6 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
             processedMessageIds.delete(first);
         }
     }
-
-    // Skip stale messages older than 2 minutes during initial reconnection sync
-    if (msg.messageTimestamp) {
-        const msgAgeSec = Math.floor(Date.now() / 1000) - msg.messageTimestamp;
-        if (msgAgeSec > 120) {
-            return;
-        }
-    }
-
-    const remoteJid = msg.key?.remoteJid;
-    if (!remoteJid || remoteJid.endsWith('@broadcast')) return;
-
-    const incomingText = extractMessageText(msg);
-    if (!incomingText) return;
 
     const isGroup = remoteJid.endsWith('@g.us');
     const chatType = isGroup ? 'group' : 'individual';
