@@ -791,13 +791,34 @@ const handleDeleteSession = async (req, res) => {
 app.post('/api/sessions/delete/:sessionId', handleDeleteSession);
 app.delete('/api/sessions/delete/:sessionId', handleDeleteSession);
 
-// Send Message (Direct Contact or Group)
+// Send Message (Direct Contact, Group, Text, or Media)
 app.post('/api/messages/send', async (req, res) => {
     try {
-        const { sessionId, receiver, message, isGroup } = req.body;
+        let { sessionId, receiver, to, phone, number, message, text, caption, isGroup, mediaUrl, mediaType, filename } = req.body;
 
-        if (!sessionId || !receiver || !message) {
-            return res.status(400).json({ error: 'sessionId, receiver, and message are required' });
+        receiver = receiver || to || phone || number;
+        message = message || text || caption || '';
+
+        if (!receiver) {
+            return res.status(400).json({ error: 'Receiver (phone number or group JID) is required' });
+        }
+
+        if (!message && !mediaUrl) {
+            return res.status(400).json({ error: 'Either message text or mediaUrl must be provided' });
+        }
+
+        // Auto-resolve session if not explicitly provided
+        if (!sessionId) {
+            for (const [sId, sData] of sessions.entries()) {
+                if (sData.status === 'connected' && sData.socket) {
+                    sessionId = sId;
+                    break;
+                }
+            }
+        }
+
+        if (!sessionId) {
+            return res.status(400).json({ error: 'No active WhatsApp session found. Please connect an account first.' });
         }
 
         let session = sessions.get(sessionId);
@@ -837,8 +858,47 @@ app.post('/api/messages/send', async (req, res) => {
             jid = `${cleaned}@s.whatsapp.net`;
         }
 
-        console.log(`[Baileys] Sending message via session ${sessionId} to JID: ${jid}`);
-        const result = await session.socket.sendMessage(jid, { text: message });
+        let result;
+        if (mediaUrl) {
+            const lowerUrl = mediaUrl.toLowerCase();
+            const inferredType = mediaType || (
+                lowerUrl.match(/\.(jpg|jpeg|png|webp|gif)$/) ? 'image' :
+                lowerUrl.match(/\.(mp4|mkv|mov|avi|webm)$/) ? 'video' :
+                lowerUrl.match(/\.(mp3|ogg|wav|m4a|aac)$/) ? 'audio' : 'document'
+            );
+
+            console.log(`[Baileys] Sending ${inferredType.toUpperCase()} via session ${sessionId} to ${jid}`);
+
+            if (inferredType === 'image') {
+                result = await session.socket.sendMessage(jid, {
+                    image: { url: mediaUrl },
+                    caption: message || undefined
+                });
+            } else if (inferredType === 'video') {
+                result = await session.socket.sendMessage(jid, {
+                    video: { url: mediaUrl },
+                    caption: message || undefined
+                });
+            } else if (inferredType === 'audio') {
+                result = await session.socket.sendMessage(jid, {
+                    audio: { url: mediaUrl },
+                    mimetype: 'audio/mp4',
+                    ptt: Boolean(req.body.isVoiceNote)
+                });
+            } else {
+                // Document / File
+                const docName = filename || path.basename(mediaUrl) || 'document.pdf';
+                result = await session.socket.sendMessage(jid, {
+                    document: { url: mediaUrl },
+                    mimetype: req.body.mimetype || 'application/octet-stream',
+                    fileName: docName,
+                    caption: message || undefined
+                });
+            }
+        } else {
+            console.log(`[Baileys] Sending text message via session ${sessionId} to JID: ${jid}`);
+            result = await session.socket.sendMessage(jid, { text: message });
+        }
 
         res.json({
             success: true,
@@ -855,7 +915,7 @@ app.post('/api/messages/send', async (req, res) => {
         if (errMsg.toLowerCase().includes('forbidden') || statusCode === 403) {
             errMsg = 'Forbidden: This WhatsApp number cannot send to this group. (Either it is not a member of this group, was removed, or the group is set to "Only Admins Can Send Messages"). Try selecting your other connected WhatsApp account.';
         } else if (errMsg.toLowerCase().includes('item-not-found') || statusCode === 404) {
-            errMsg = 'WhatsApp recipient or group not found. Please verify the Group JID.';
+            errMsg = 'WhatsApp recipient or group not found. Please verify the Group JID or phone number.';
         } else if (errMsg.toLowerCase().includes('rate-overlimit') || statusCode === 429) {
             errMsg = 'Rate limit reached on WhatsApp. Please wait a moment.';
         }

@@ -13,6 +13,11 @@ Route::get('cron', 'CronController@cron')->name('cron');
 Route::get('api/autoreply/rules/{sessionId}', 'Admin\AutoReplyController@apiFetchRules')->name('api.autoreply.rules');
 Route::post('api/autoreply/log-hit/{id}', 'Admin\AutoReplyController@apiLogHit')->name('api.autoreply.log_hit');
 
+// WhatsApp Message Sending REST API Endpoints
+Route::match(['GET', 'POST'], 'api/send-message', 'Api\MessageApiController@sendMessage')->name('api.send_message');
+Route::match(['GET', 'POST'], 'api/v1/send-message', 'Api\MessageApiController@sendMessage')->name('api.v1.send_message');
+Route::get('api/accounts', 'Api\MessageApiController@accounts')->name('api.accounts');
+
 // User Support Ticket
 Route::controller('TicketController')->prefix('ticket')->name('ticket.')->group(function () {
     Route::get('/', 'supportTicket')->name('index');
