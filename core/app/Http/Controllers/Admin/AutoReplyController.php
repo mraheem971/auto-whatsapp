@@ -449,4 +449,17 @@ class AutoReplyController extends Controller
             'message' => 'No active bot rule matched this message or sender.'
         ]);
     }
+
+    /**
+     * Display comprehensive API Documentation & Interactive Tester
+     */
+    public function docs()
+    {
+        $pageTitle = 'WhatsApp REST API Documentation';
+        $connectedAccounts = WhatsappAccount::latest()->get();
+        $primaryAccount = WhatsappAccount::active()->latest()->first();
+        $baseUrl = url('/');
+
+        return view('admin.autoreply.docs', compact('pageTitle', 'connectedAccounts', 'primaryAccount', 'baseUrl'));
+    }
 }

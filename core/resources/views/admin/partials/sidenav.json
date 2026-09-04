@@ -133,6 +133,12 @@
                 "title": "Keyword Bots",
                 "route_name": "admin.autoreply.index",
                 "menu_active": "admin.autoreply.index"
+            },
+            {
+                "keyword": ["API Documentation", "Developer API", "REST API", "Send Message API", "Endpoints", "WhatsApp API", "Webhook"],
+                "title": "API Documentation",
+                "route_name": "admin.autoreply.docs",
+                "menu_active": "admin.autoreply.docs"
             }
         ]
     },

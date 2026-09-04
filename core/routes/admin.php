@@ -250,6 +250,7 @@ Route::middleware('admin')->group(function () {
     // Auto-Reply & Keyword Bots
     Route::controller('AutoReplyController')->prefix('autoreply')->name('autoreply.')->group(function () {
         Route::get('/', 'index')->name('index');
+        Route::get('docs', 'docs')->name('docs');
         Route::post('store', 'store')->name('store');
         Route::post('update/{id}', 'update')->name('update');
         Route::post('delete/{id}', 'delete')->name('delete');
