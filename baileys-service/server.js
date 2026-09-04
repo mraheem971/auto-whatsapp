@@ -40,6 +40,8 @@ const sessions = new Map();
 const autoReplyRuleCache = new Map(); // sessionId -> { rules, lastFetched }
 const userCooldowns = new Map(); // `${ruleId}_${remoteJid}_${senderPhone}` -> timestamp
 
+const LARAVEL_BASE_URL = process.env.LARAVEL_URL || 'http://127.0.0.1:8001';
+
 async function getActiveAutoReplies(sessionId) {
     const cached = autoReplyRuleCache.get(sessionId);
     const now = Date.now();
@@ -48,7 +50,7 @@ async function getActiveAutoReplies(sessionId) {
     }
 
     try {
-        const res = await fetch(`http://127.0.0.1:8000/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2000) });
+        const res = await fetch(`${LARAVEL_BASE_URL}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2000) });
         if (res.ok) {
             const data = await res.json();
             if (data.success && Array.isArray(data.rules)) {
@@ -355,7 +357,7 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
         }
 
         // Step 5: Log hit count to backend
-        fetch(`http://127.0.0.1:8000/api/autoreply/log-hit/${targetRule.id}`, { method: 'POST' }).catch(() => {});
+        fetch(`${LARAVEL_BASE_URL}/api/autoreply/log-hit/${targetRule.id}`, { method: 'POST' }).catch(() => {});
     } catch (err) {
         console.error('[AutoReply Flow Global Error]:', err?.message || err);
     }
