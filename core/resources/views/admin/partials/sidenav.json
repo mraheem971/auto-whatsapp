@@ -58,6 +58,30 @@
             }
         ]
     },
+    "device_messenger": {
+        "title": "Device Messenger",
+        "icon": "lab la-android",
+        "menu_active": "admin.device.sender*",
+        "submenu": [{
+                "keyword": ["Send message", "Device sender", "Send from phone", "Send from Android", "Quick dispatch", "Direct message"],
+                "title": "Send Message",
+                "route_name": "admin.device.sender.index",
+                "menu_active": "admin.device.sender.index"
+            },
+            {
+                "keyword": ["Message logs", "Sent history", "Outgoing messages", "Device history", "Delivery logs"],
+                "title": "Message Logs",
+                "route_name": "admin.device.sender.logs",
+                "menu_active": "admin.device.sender.logs"
+            },
+            {
+                "keyword": ["Android gateway", "Mobile hub", "Gateway API", "Phone gateway", "Mobile sync"],
+                "title": "Android Gateway",
+                "route_name": "admin.device.sender.gateway",
+                "menu_active": "admin.device.sender.gateway"
+            }
+        ]
+    },
     "manage_contacts": {
         "title": "Manage Contacts",
         "icon": "las la-address-book",

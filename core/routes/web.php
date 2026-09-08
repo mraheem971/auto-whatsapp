@@ -18,6 +18,12 @@ Route::match(['GET', 'POST'], 'api/send-message', 'Api\MessageApiController@send
 Route::match(['GET', 'POST'], 'api/v1/send-message', 'Api\MessageApiController@sendMessage')->name('api.v1.send_message');
 Route::get('api/accounts', 'Api\MessageApiController@accounts')->name('api.accounts');
 
+// Android Device Mobile Gateway REST API Endpoints
+Route::get('api/device/info', 'Api\DeviceApiController@info')->name('api.device.info');
+Route::post('api/device/send', 'Api\DeviceApiController@send')->name('api.device.send');
+Route::get('api/device/messages/pending', 'Api\DeviceApiController@pendingMessages')->name('api.device.messages.pending');
+Route::post('api/device/messages/status', 'Api\DeviceApiController@updateStatus')->name('api.device.messages.status');
+
 // User Support Ticket
 Route::controller('TicketController')->prefix('ticket')->name('ticket.')->group(function () {
     Route::get('/', 'supportTicket')->name('index');

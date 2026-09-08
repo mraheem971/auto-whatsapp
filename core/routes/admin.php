@@ -258,6 +258,17 @@ Route::middleware('admin')->group(function () {
         Route::post('simulate', 'simulate')->name('simulate');
     });
 
+    // Device Messenger (Send from Android Device)
+    Route::controller('DeviceSenderController')->prefix('device-sender')->name('device.sender.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('send', 'send')->name('send');
+        Route::get('logs', 'logs')->name('logs');
+        Route::get('resend/{id}', 'resend')->name('resend');
+        Route::post('delete/{id}', 'deleteLog')->name('delete');
+        Route::post('clear-logs', 'clearLogs')->name('clear');
+        Route::get('gateway', 'gateway')->name('gateway');
+    });
+
 
     // Admin Support
     Route::controller('SupportTicketController')->prefix('ticket')->name('ticket.')->group(function(){
