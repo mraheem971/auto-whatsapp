@@ -362,21 +362,17 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
         console.error('[AutoReply Flow Global Error]:', err?.message || err);
     }
 }
-
 const logger = pino({ level: 'silent' });
 
-async function initBaileysSession(sessionId, accountName) {
+async function initBaileysSession(sessionId, accountName, phoneNumber = null, usePairingCode = false) {
     // If session already exists, cleanly tear down previous socket and listeners
     const existing = sessions.get(sessionId);
-    if (existing) {
-        if (existing.presenceTimer) {
-            clearInterval(existing.presenceTimer);
-            existing.presenceTimer = null;
-        }
-        if (existing.socket) {
+    if (existing?.socket) {
+        if (existing.status === 'connected') {
+            return existing;
+        } else {
             try {
-                existing.socket.ev.removeAllListeners();
-                existing.socket.end(undefined);
+                existing.socket.end();
             } catch (e) {}
             existing.socket = null;
         }
@@ -393,6 +389,10 @@ async function initBaileysSession(sessionId, accountName) {
         sessionId,
         accountName: accountName || sessionId,
         status: 'initializing',
+        pairingMethod: usePairingCode ? 'code' : 'qr',
+        targetPhone: phoneNumber ? phoneNumber.toString().replace(/[^0-9]/g, '') : null,
+        pairingCode: null,
+        pairingError: null,
         qr: null,
         qrImage: null,
         user: null,
@@ -408,11 +408,15 @@ async function initBaileysSession(sessionId, accountName) {
         sessionData.savedContacts = new Set();
     }
 
+    sessionData.pairingMethod = usePairingCode ? 'code' : 'qr';
+    if (phoneNumber) {
+        sessionData.targetPhone = phoneNumber.toString().replace(/[^0-9]/g, '');
+    }
     sessionData.status = 'initializing';
     sessionData.isReconnecting = false;
     sessions.set(sessionId, sessionData);
 
-    console.log(`[Baileys][${new Date().toLocaleTimeString()}] 🚀 Initializing session: "${sessionId}" (${accountName || sessionId})`);
+    console.log(`[Baileys][${new Date().toLocaleTimeString()}] 🚀 Initializing session: "${sessionId}" (${accountName || sessionId}) [Method: ${usePairingCode ? 'Phone Code: +' + sessionData.targetPhone : 'QR Scan'}]`);
 
     const sock = makeWASocket({
         version,
@@ -440,6 +444,32 @@ async function initBaileysSession(sessionId, accountName) {
     });
 
     sessionData.socket = sock;
+
+    // Handle Direct Phone Number Pairing Code if requested
+    if (usePairingCode && sessionData.targetPhone && !sock.authState.creds.registered) {
+        sessionData.status = 'requesting_pairing_code';
+        setTimeout(async () => {
+            try {
+                if (sessionData.status !== 'connected' && sock && !sock.authState.creds.registered) {
+                    console.log(`[Baileys] 📲 Requesting 8-digit Pairing Code for phone: +${sessionData.targetPhone}...`);
+                    const code = await sock.requestPairingCode(sessionData.targetPhone);
+                    // Format code into 4-4 format (e.g. ABCD-1234)
+                    const formatted = code ? (code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code) : code;
+                    sessionData.pairingCode = formatted;
+                    sessionData.status = 'pairing_code_ready';
+                    sessionData.lastUpdated = new Date();
+                    console.log(`\n========================================================`);
+                    console.log(`[Baileys] 🔑 WHATSAPP PAIRING CODE: ${formatted}`);
+                    console.log(`========================================================\n`);
+                }
+            } catch (err) {
+                console.error('[Baileys] Error requesting pairing code:', err);
+                sessionData.pairingError = err.message || 'Failed to request pairing code. Verify phone number.';
+                sessionData.status = 'pairing_error';
+                sessionData.lastUpdated = new Date();
+            }
+        }, 2000);
+    }
 
     sock.ev.on('creds.update', async () => {
         try {
@@ -655,14 +685,16 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', activeSessions: sessions.size, timestamp: new Date() });
 });
 
-// Start or retrieve a session and generate QR
+// Start or retrieve a session and generate QR or 8-digit Pairing Code
 app.post('/api/sessions/start', async (req, res) => {
     try {
-        const { sessionId, accountName } = req.body;
+        const { sessionId, accountName, pairingMethod, phoneNumber } = req.body;
 
         if (!sessionId) {
             return res.status(400).json({ error: 'sessionId is required' });
         }
+
+        const usePairingCode = (pairingMethod === 'code' || Boolean(phoneNumber));
 
         // Clean any uncompleted/abandoned previous sessions before starting new one
         cleanupUnauthenticatedSessions(sessionId);
@@ -691,18 +723,28 @@ app.post('/api/sessions/start', async (req, res) => {
             }
         }
 
-        session = await initBaileysSession(sessionId, accountName);
+        session = await initBaileysSession(sessionId, accountName, phoneNumber, usePairingCode);
 
-        // Wait up to 5 seconds for initial QR if not already ready
+        // Wait up to 6 seconds for initial QR or Pairing Code if not already ready
         let attempts = 0;
-        while (!session.qrImage && attempts < 25 && session.status !== 'connected') {
-            await new Promise(resolve => setTimeout(resolve, 200));
-            attempts++;
+        if (usePairingCode) {
+            while (!session.pairingCode && !session.pairingError && attempts < 30 && session.status !== 'connected') {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                attempts++;
+            }
+        } else {
+            while (!session.qrImage && attempts < 25 && session.status !== 'connected') {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                attempts++;
+            }
         }
 
         res.json({
             sessionId,
             status: session.status,
+            pairingMethod: session.pairingMethod,
+            pairingCode: session.pairingCode,
+            pairingError: session.pairingError,
             qrImage: session.qrImage,
             user: session.user
         });
@@ -733,6 +775,9 @@ app.get('/api/sessions/status/:sessionId', (req, res) => {
     res.json({
         sessionId: session.sessionId,
         status: session.status,
+        pairingMethod: session.pairingMethod,
+        pairingCode: session.pairingCode,
+        pairingError: session.pairingError,
         qrImage: session.qrImage,
         user: session.user,
         lastUpdated: session.lastUpdated

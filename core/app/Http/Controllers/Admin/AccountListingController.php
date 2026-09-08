@@ -41,11 +41,23 @@ class AccountListingController extends Controller
     public function initSession(Request $request)
     {
         $request->validate([
-            'account_name' => 'required|string|max:100',
+            'account_name'   => 'required|string|max:100',
+            'pairing_method' => 'nullable|in:qr,code',
+            'phone_number'   => 'nullable|string|max:50',
         ]);
 
-        $accountName = $request->account_name;
-        $sessionId   = 'wa_' . time() . '_' . Str::random(8);
+        $accountName   = $request->account_name;
+        $pairingMethod = $request->pairing_method ?: 'qr';
+        $phoneNumber   = $request->phone_number ? preg_replace('/[^0-9]/', '', $request->phone_number) : null;
+
+        if ($pairingMethod === 'code' && empty($phoneNumber)) {
+            return response()->json([
+                'status' => 'error',
+                'error'  => 'Please enter your full WhatsApp phone number (with country code) to generate a pairing code.',
+            ], 422);
+        }
+
+        $sessionId = 'wa_' . time() . '_' . Str::random(8);
 
         // Clean up previous unfinished pending accounts from database & disk
         $stalePending = WhatsappAccount::where('status', 0)->get();
@@ -64,24 +76,32 @@ class AccountListingController extends Controller
         $account = new WhatsappAccount();
         $account->session_id   = $sessionId;
         $account->account_name = $accountName;
+        if ($phoneNumber) {
+            $account->phone_number = $phoneNumber;
+        }
         $account->admin_id     = auth('admin')->id() ?? 1;
         $account->status       = 0;
         $account->save();
 
         try {
             $response = BaileysClient::post('api/sessions/start', [
-                'sessionId'   => $sessionId,
-                'accountName' => $accountName,
-                'fresh'       => true,
-            ], 15);
+                'sessionId'     => $sessionId,
+                'accountName'   => $accountName,
+                'pairingMethod' => $pairingMethod,
+                'phoneNumber'   => $phoneNumber,
+                'fresh'         => true,
+            ], 20);
 
             if ($response->successful()) {
                 $data = $response->json();
                 return response()->json([
-                    'status'    => $data['status'] ?? 'initializing',
-                    'sessionId' => $sessionId,
-                    'qrImage'   => $data['qrImage'] ?? null,
-                    'user'      => $data['user'] ?? null,
+                    'status'        => $data['status'] ?? 'initializing',
+                    'sessionId'     => $sessionId,
+                    'pairingMethod' => $pairingMethod,
+                    'pairingCode'   => $data['pairingCode'] ?? null,
+                    'pairingError'  => $data['pairingError'] ?? null,
+                    'qrImage'       => $data['qrImage'] ?? null,
+                    'user'          => $data['user'] ?? null,
                 ]);
             } else {
                 return response()->json([
@@ -119,15 +139,17 @@ class AccountListingController extends Controller
                 }
 
                 return response()->json([
-                    'status'    => $status,
-                    'sessionId' => $sessionId,
-                    'qrImage'   => $data['qrImage'] ?? null,
-                    'user'      => $data['user'] ?? null,
-                    'account'   => $account,
+                    'status'        => $status,
+                    'sessionId'     => $sessionId,
+                    'pairingMethod' => $data['pairingMethod'] ?? 'qr',
+                    'pairingCode'   => $data['pairingCode'] ?? null,
+                    'pairingError'  => $data['pairingError'] ?? null,
+                    'qrImage'       => $data['qrImage'] ?? null,
+                    'user'          => $data['user'] ?? null,
                 ]);
             }
 
-            return response()->json(['status' => 'not_found'], 404);
+            return response()->json(['status' => 'unknown'], 500);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'error' => $e->getMessage()], 500);
         }
