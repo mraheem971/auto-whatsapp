@@ -24,6 +24,10 @@ Route::post('api/device/send', 'Api\DeviceApiController@send')->name('api.device
 Route::get('api/device/messages/pending', 'Api\DeviceApiController@pendingMessages')->name('api.device.messages.pending');
 Route::post('api/device/messages/status', 'Api\DeviceApiController@updateStatus')->name('api.device.messages.status');
 
+// Bot Notification & Scheduling Webhooks
+Route::post('api/notifications/event', 'Api\NotificationApiController@handleEvent')->name('api.notifications.event');
+Route::get('api/notifications/cron/run', 'Api\NotificationApiController@runScheduledCron')->name('api.notifications.cron.run');
+
 // User Support Ticket
 Route::controller('TicketController')->prefix('ticket')->name('ticket.')->group(function () {
     Route::get('/', 'supportTicket')->name('index');

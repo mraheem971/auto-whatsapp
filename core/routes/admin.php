@@ -269,6 +269,22 @@ Route::middleware('admin')->group(function () {
         Route::get('gateway', 'gateway')->name('gateway');
     });
 
+    // Bot Notification System & Alert Escalations
+    Route::controller('BotNotificationController')->prefix('bot-notifications')->name('bot.notifications.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('settings', 'settings')->name('settings');
+        Route::post('settings/update', 'updateSettings')->name('update.settings');
+        Route::post('test-alert', 'testAdminAlert')->name('test.alert');
+        Route::get('schedules', 'schedules')->name('schedules');
+        Route::post('schedules/store', 'storeSchedule')->name('store.schedule');
+        Route::post('schedules/toggle/{id}', 'toggleScheduleStatus')->name('toggle.schedule');
+        Route::post('schedules/run/{id}', 'runScheduleNow')->name('run.schedule');
+        Route::post('schedules/delete/{id}', 'deleteSchedule')->name('delete.schedule');
+        Route::get('logs', 'logs')->name('logs');
+        Route::get('logs/resend/{id}', 'resendLog')->name('resend.log');
+        Route::post('logs/clear', 'clearLogs')->name('clear.logs');
+    });
+
 
     // Admin Support
     Route::controller('SupportTicketController')->prefix('ticket')->name('ticket.')->group(function(){

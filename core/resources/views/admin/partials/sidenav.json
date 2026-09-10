@@ -166,6 +166,36 @@
             }
         ]
     },
+    "bot_notifications": {
+        "title": "Bot Notifications",
+        "icon": "las la-bell",
+        "menu_active": "admin.bot.notifications*",
+        "submenu": [{
+                "keyword": ["Notification Dashboard", "Bot Notifications", "Alerts", "Notification overview", "Bot alerts"],
+                "title": "Dashboard",
+                "route_name": "admin.bot.notifications.index",
+                "menu_active": "admin.bot.notifications.index"
+            },
+            {
+                "keyword": ["Scheduled Notifications", "Reminders", "Scheduled tasks", "Broadcasts", "Cron jobs"],
+                "title": "Schedules & Reminders",
+                "route_name": "admin.bot.notifications.schedules",
+                "menu_active": "admin.bot.notifications.schedules"
+            },
+            {
+                "keyword": ["Notification Preferences", "Admin alert settings", "Error escalation", "Alert settings"],
+                "title": "Preferences & Alerts",
+                "route_name": "admin.bot.notifications.settings",
+                "menu_active": "admin.bot.notifications.settings"
+            },
+            {
+                "keyword": ["Notification logs", "Error audit", "Sent alerts", "Escalation history", "Audit log"],
+                "title": "Logs & Error Audit",
+                "route_name": "admin.bot.notifications.logs",
+                "menu_active": "admin.bot.notifications.logs"
+            }
+        ]
+    },
     "manage_users": {
         "title": "Manage Users",
         "icon": "las la-users",

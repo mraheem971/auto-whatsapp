@@ -64,6 +64,22 @@ async function getActiveAutoReplies(sessionId) {
     return cached ? cached.rules : [];
 }
 
+async function dispatchNotificationEvent(eventType, payload) {
+    try {
+        await fetch(`${LARAVEL_BASE_URL}/api/notifications/event`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event_type: eventType,
+                ...payload
+            }),
+            signal: AbortSignal.timeout(3000)
+        });
+    } catch (e) {
+        // Non-blocking background event dispatch
+    }
+}
+
 // Robust text extractor from all WhatsApp message formats
 function extractMessageText(msg) {
     if (!msg || !msg.message) return '';
@@ -129,6 +145,14 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
     const senderName = msg.pushName || `+${senderPhone}`;
 
     console.log(`[Baileys Incoming] [${sessionId}] [${chatType.toUpperCase()}] From: ${remoteJid} (${senderPhone}) | Text: "${incomingText}"`);
+
+    // Dispatch incoming message event to Laravel Notification & Error Escalation Engine
+    dispatchNotificationEvent('incoming_message', {
+        session_id: sessionId,
+        sender_phone: senderPhone,
+        message_text: incomingText,
+        push_name: senderName
+    });
 
     const rules = await getActiveAutoReplies(sessionId);
     if (!rules || rules.length === 0) {
@@ -660,6 +684,12 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
                 sessionData.qr = null;
                 sessionData.qrImage = null;
                 sessionData.isReconnecting = false;
+
+                dispatchNotificationEvent('session_disconnect', {
+                    session_id: sessionId,
+                    title: `WhatsApp Session "${sessionId}" Disconnected`,
+                    details: `Session disconnected. Status code: ${statusCode || 'unknown'}. Authentication unlinked or expired.`
+                });
 
                 // Only wipe folder if truly logged out and was not just connected in the last 2 minutes
                 const timeSinceConnected = Date.now() - (sessionData.connectedAt || 0);
