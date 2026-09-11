@@ -247,9 +247,19 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
                     break;
                 }
             } else if (rule.match_type === 'contains') {
+                // 1. Direct substring check
                 if (lowerText.includes(lowerKw) || (normalizedKw && normalizedText.includes(normalizedKw))) {
                     isMatch = true;
                     break;
+                }
+                // 2. Multi-word flexible check (e.g. "capcut need" matches "i need capcut" or "capcut account need")
+                const kwWords = normalizedKw.split(' ').filter(Boolean);
+                if (kwWords.length > 1) {
+                    const allWordsPresent = kwWords.every(w => normalizedText.includes(w) || words.includes(w));
+                    if (allWordsPresent) {
+                        isMatch = true;
+                        break;
+                    }
                 }
             } else if (rule.match_type === 'starts_with') {
                 if (lowerText.startsWith(lowerKw) || (normalizedKw && normalizedText.startsWith(normalizedKw))) {
@@ -303,23 +313,25 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         .replace(/\{time\}/g, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
         .replace(/\{date\}/g, new Date().toLocaleDateString());
 
-    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" -> Starting human-like response flow for ${remoteJid}`);
+    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" (Dest: ${targetRule.reply_destination || 'same_chat'}) -> Starting human-like response flow for ${remoteJid}`);
 
     // Execute flow sequence asynchronously
-    executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText);
+    executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText, senderPhone);
 }
 
-async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText) {
+async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText, senderPhone) {
     try {
-        const readDelayMs = (targetRule.read_delay_seconds || 0) * 1000;
-        const typingDurationMs = (targetRule.typing_duration_seconds || 0) * 1000;
-        const replyDelayMs = (targetRule.reply_delay_seconds || 0) * 1000;
+        const isGroup = remoteJid.endsWith('@g.us');
+        const senderDmJid = `${senderPhone}@s.whatsapp.net`;
 
-        console.log(`[AutoReply Flow] ⚡ Sequence: [Seen: ${targetRule.read_delay_seconds || 0}s] -> [Typing: ${targetRule.typing_duration_seconds || 0}s] -> [Pause: ${targetRule.reply_delay_seconds || 0}s] -> [Recipient: ${remoteJid}]`);
+        const readDelayMs = Math.min((targetRule.read_delay_seconds || 0) * 1000, 30000);
+        const typingDurationMs = Math.min((targetRule.typing_duration_seconds || 0) * 1000, 30000);
+        const replyDelayMs = Math.min((targetRule.reply_delay_seconds || 0) * 1000, 30000);
+
+        console.log(`[AutoReply Flow] ⚡ Sequence: [Seen: ${targetRule.read_delay_seconds || 0}s] -> [Typing: ${targetRule.typing_duration_seconds || 0}s] -> [Pause: ${targetRule.reply_delay_seconds || 0}s] -> [Destination: ${targetRule.reply_destination || 'same_chat'}]`);
 
         // Step 1: Delay before marking as seen (Read Receipts / Blue Ticks)
         if (readDelayMs > 0) {
-            console.log(`[AutoReply Flow] ⏳ Step 1: Waiting ${targetRule.read_delay_seconds}s before marking as seen (blue ticks)...`);
             await new Promise(r => setTimeout(r, readDelayMs));
         }
 
@@ -364,20 +376,32 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
             await new Promise(r => setTimeout(r, replyDelayMs));
         }
 
-        // Step 4: Dispatch the automated reply message
-        try {
-            const isGroup = remoteJid.endsWith('@g.us');
-            if (isGroup && msg.key) {
-                await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
-            } else {
-                await sock.sendMessage(remoteJid, { text: processedText });
+        // Step 4: Dispatch the automated reply message based on reply destination
+        const dest = targetRule.reply_destination || 'same_chat';
+
+        if (dest === 'same_chat' || dest === 'both') {
+            try {
+                if (isGroup && msg.key) {
+                    await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
+                } else {
+                    await sock.sendMessage(remoteJid, { text: processedText });
+                }
+                console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Automated reply delivered to ${remoteJid}: "${processedText}"`);
+            } catch (sendErr) {
+                console.error('[AutoReply Flow Send Error, retrying direct]:', sendErr?.message || sendErr);
+                await sock.sendMessage(remoteJid, { text: processedText }).catch(e => {
+                    console.error('[AutoReply Flow Final Send Failure]:', e?.message || e);
+                });
             }
-            console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Automated reply delivered to ${remoteJid}: "${processedText}"`);
-        } catch (sendErr) {
-            console.error('[AutoReply Flow Send Error, retrying direct]:', sendErr?.message || sendErr);
-            await sock.sendMessage(remoteJid, { text: processedText }).catch(e => {
-                console.error('[AutoReply Flow Final Send Failure]:', e?.message || e);
-            });
+        }
+
+        if ((dest === 'sender_dm' || dest === 'both') && isGroup && senderPhone) {
+            try {
+                await sock.sendMessage(senderDmJid, { text: processedText });
+                console.log(`[AutoReply Flow] 🚀 Step 4 (DM): ✅ Automated reply delivered in Private DM to ${senderDmJid}`);
+            } catch (dmErr) {
+                console.error('[AutoReply Flow DM Send Failure]:', dmErr?.message || dmErr);
+            }
         }
 
         // Step 5: Log hit count to backend

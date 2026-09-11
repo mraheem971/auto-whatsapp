@@ -381,6 +381,21 @@ class AutoReplyController extends Controller
                         $matched = true;
                         break;
                     }
+                    // Multi-word flexible check (e.g. "capcut need" matches "i need capcut")
+                    $kwWords = array_values(array_filter(explode(' ', $normalizedKw)));
+                    if (count($kwWords) > 1) {
+                        $allWordsFound = true;
+                        foreach ($kwWords as $kwWord) {
+                            if (!str_contains($cleanText, $kwWord) && !in_array($kwWord, $words)) {
+                                $allWordsFound = false;
+                                break;
+                            }
+                        }
+                        if ($allWordsFound) {
+                            $matched = true;
+                            break;
+                        }
+                    }
                 } elseif ($r->match_type === 'starts_with') {
                     if (str_starts_with($lowerText, $lowerKw) || (!empty($normalizedKw) && str_starts_with($cleanText, $normalizedKw))) {
                         $matched = true;
