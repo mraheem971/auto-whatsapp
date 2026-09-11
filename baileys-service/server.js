@@ -39,8 +39,32 @@ const sessions = new Map();
 // Auto-Reply Engine Cache & Cooldown Store
 const autoReplyRuleCache = new Map(); // sessionId -> { rules, lastFetched }
 const userCooldowns = new Map(); // `${ruleId}_${remoteJid}_${senderPhone}` -> timestamp
+const RULES_DISK_CACHE_FILE = path.join(__dirname, 'rules_cache.json');
 
 const LARAVEL_BASE_URL = process.env.LARAVEL_URL || 'http://127.0.0.1:8001';
+
+function loadRulesFromDiskCache() {
+    try {
+        if (fs.existsSync(RULES_DISK_CACHE_FILE)) {
+            const raw = fs.readFileSync(RULES_DISK_CACHE_FILE, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data) && data.length > 0) return data;
+        }
+    } catch (e) {
+        console.error('[Rules Disk Cache Read Error]:', e?.message || e);
+    }
+    return null;
+}
+
+function saveRulesToDiskCache(rules) {
+    try {
+        if (Array.isArray(rules) && rules.length > 0) {
+            fs.writeFileSync(RULES_DISK_CACHE_FILE, JSON.stringify(rules, null, 2), 'utf8');
+        }
+    } catch (e) {
+        console.error('[Rules Disk Cache Write Error]:', e?.message || e);
+    }
+}
 
 async function getActiveAutoReplies(sessionId) {
     const cached = autoReplyRuleCache.get(sessionId);
@@ -50,18 +74,31 @@ async function getActiveAutoReplies(sessionId) {
     }
 
     try {
-        const res = await fetch(`${LARAVEL_BASE_URL}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2000) });
+        const res = await fetch(`${LARAVEL_BASE_URL}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(4000) });
         if (res.ok) {
             const data = await res.json();
-            if (data.success && Array.isArray(data.rules)) {
+            if (data.success && Array.isArray(data.rules) && data.rules.length > 0) {
                 autoReplyRuleCache.set(sessionId, { rules: data.rules, lastFetched: now });
+                saveRulesToDiskCache(data.rules);
                 return data.rules;
             }
         }
     } catch (e) {
-        if (cached) return cached.rules;
+        // Fallback to memory or disk cache
     }
-    return cached ? cached.rules : [];
+
+    if (cached && cached.rules && cached.rules.length > 0) {
+        return cached.rules;
+    }
+
+    // Disk Cache Fallback (Ensures 24/7 continuous operation even if Laravel rebooted)
+    const diskRules = loadRulesFromDiskCache();
+    if (diskRules && Array.isArray(diskRules) && diskRules.length > 0) {
+        autoReplyRuleCache.set(sessionId, { rules: diskRules, lastFetched: now });
+        return diskRules;
+    }
+
+    return [];
 }
 
 async function dispatchNotificationEvent(eventType, payload) {
@@ -116,10 +153,19 @@ const processedMessageIds = new Set();
 
 async function processIncomingAutoReply(sessionId, sock, msg) {
     if (!msg || !msg.message) return;
-    if (msg.key?.fromMe) return; // Don't reply to our own messages
 
     const remoteJid = msg.key?.remoteJid;
     if (!remoteJid || remoteJid.endsWith('@broadcast')) return;
+
+    const myPhone = sock.user?.id ? sock.user.id.split(':')[0].split('@')[0].replace(/[^0-9]/g, '') : '';
+    const remotePhone = remoteJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+    const isSelfChat = Boolean(myPhone && remotePhone === myPhone);
+
+    // If message was sent by us to another person, don't reply to avoid loops.
+    // BUT if it's a self-chat message (testing the bot from own phone), allow processing!
+    if (msg.key?.fromMe && !isSelfChat) {
+        return;
+    }
 
     const incomingText = extractMessageText(msg);
     if (!incomingText) return; // Wait for message body if not decrypted yet
