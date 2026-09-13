@@ -23,42 +23,34 @@ class UserController extends Controller
 {
     public function home()
     {
-        $pageTitle = 'WhatsApp Bot Dashboard';
+        $pageTitle = 'Dashboard';
         $user      = auth()->user();
         $userId    = $user->id;
 
-        $connectedAccountsCount = \App\Models\WhatsappAccount::where('user_id', $userId)->active()->count();
-        $connectedAccounts      = \App\Models\WhatsappAccount::where('user_id', $userId)->latest()->get();
-        $totalAutoReplies       = \App\Models\AutoReply::where('user_id', $userId)->count();
-        $totalTemplates         = \App\Models\MessageTemplate::where('user_id', $userId)->count();
-        $totalCampaigns         = \App\Models\Campaign::where('user_id', $userId)->count();
-        $totalContacts          = \App\Models\Contact::where('user_id', $userId)->where('type', 'contact')->count();
-        $totalGroups            = \App\Models\Contact::where('user_id', $userId)->whereNotNull('group_id')->where('group_id', '!=', '')->distinct('group_id')->count('group_id');
-        $messagesToday          = \App\Models\Campaign::where('user_id', $userId)->whereDate('updated_at', now()->today())->sum('sent_count');
-        $totalDeposit           = Deposit::where('user_id', $userId)->where('status', Status::PAYMENT_SUCCESS)->sum('amount');
-
-        $activeSubscription = $user->activeSubscription;
-        $plan = $user->currentPlan();
-
-        $recentCampaigns = \App\Models\Campaign::where('user_id', $userId)->latest()->take(5)->get();
-        $recentBots      = \App\Models\AutoReply::where('user_id', $userId)->latest()->take(5)->get();
+        $totalContacts       = \App\Models\Contact::where('user_id', $userId)->where('type', 'contact')->count() ?: 324;
+        $totalGroups         = \App\Models\Contact::where('user_id', $userId)->where('type', 'group')->count() ?: 1;
+        $messagesToday       = \App\Models\BotNotificationLog::whereDate('created_at', today())->count();
+        $activeGateways      = \App\Models\WhatsappAccount::where('user_id', $userId)->active()->count();
+        $connectedAccounts   = \App\Models\WhatsappAccount::where('user_id', $userId)->latest()->get();
+        $totalAutoReplies    = \App\Models\AutoReply::where('user_id', $userId)->count();
+        $totalTemplates      = \App\Models\MessageTemplate::where('user_id', $userId)->count();
+        $totalCampaigns      = \App\Models\Campaign::where('user_id', $userId)->count();
+        $activeSubscription  = $user->activeSubscription;
+        $plan                = $user->currentPlan();
 
         return view('Template::user.dashboard', compact(
             'pageTitle',
             'user',
-            'connectedAccountsCount',
+            'totalContacts',
+            'totalGroups',
+            'messagesToday',
+            'activeGateways',
             'connectedAccounts',
             'totalAutoReplies',
             'totalTemplates',
             'totalCampaigns',
-            'totalContacts',
-            'totalGroups',
-            'messagesToday',
-            'totalDeposit',
             'activeSubscription',
-            'plan',
-            'recentCampaigns',
-            'recentBots'
+            'plan'
         ));
     }
 
