@@ -33,6 +33,8 @@ class UserController extends Controller
         $totalTemplates         = \App\Models\MessageTemplate::where('user_id', $userId)->count();
         $totalCampaigns         = \App\Models\Campaign::where('user_id', $userId)->count();
         $totalContacts          = \App\Models\Contact::where('user_id', $userId)->where('type', 'contact')->count();
+        $totalGroups            = \App\Models\Contact::where('user_id', $userId)->whereNotNull('group_id')->where('group_id', '!=', '')->distinct('group_id')->count('group_id');
+        $messagesToday          = \App\Models\Campaign::where('user_id', $userId)->whereDate('updated_at', now()->today())->sum('sent_count');
         $totalDeposit           = Deposit::where('user_id', $userId)->where('status', Status::PAYMENT_SUCCESS)->sum('amount');
 
         $activeSubscription = $user->activeSubscription;
@@ -50,6 +52,8 @@ class UserController extends Controller
             'totalTemplates',
             'totalCampaigns',
             'totalContacts',
+            'totalGroups',
+            'messagesToday',
             'totalDeposit',
             'activeSubscription',
             'plan',
