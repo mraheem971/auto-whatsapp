@@ -1,141 +1,218 @@
 @extends($activeTemplate . 'layouts.master')
 @section('content')
-    <div class="dashboard-section py-120">
-        <div class="container">
-            <div class="notice"></div>
-            <div class="row justify-content-center">
-                <div class="col-md-12">
-                    @php
-                        $kyc = getContent('kyc.content', true);
-                    @endphp
-                    @if (auth()->user()->kv == Status::KYC_UNVERIFIED && auth()->user()->kyc_rejection_reason)
-                        <div class="card custom--card mb-4">
-                            <div class="card-header">
-                                <div class="d-flex justify-content-between">
-                                    <h4 class="alert-heading">@lang('KYC Documents Rejected')</h4>
-                                    <button class="btn btn--base btn-sm" data-bs-toggle="modal" data-bs-target="#kycRejectionReason">@lang('Show Reason')</button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <p>{{ __(@$kyc->data_values->reject) }} <a href="{{ route('user.kyc.form') }}">@lang('Click Here to Re-submit Documents')</a>.</p>
-                                <br>
-                                <a href="{{ route('user.kyc.data') }}">@lang('See KYC Data')</a>
-                            </div>
-                        </div>
-                    @elseif(auth()->user()->kv == Status::KYC_UNVERIFIED)
-                        <div class="card custom--card mb-4">
-                            <div class="card-header">
-                                <h5 class="alert-heading m-0">@lang('KYC Verification required')</h5>
-                            </div>
-                            <div class="card-body">
-                                <p>{{ __(@$kyc->data_values->required) }} <a href="{{ route('user.kyc.form') }}">@lang('Click Here to Submit Documents')</a></p>
-                            </div>
-
-                        </div>
-                    @elseif(auth()->user()->kv == Status::KYC_PENDING)
-                        <div class="card custom--card mb-4">
-                            <div class="card-header">
-                                <h4 class="alert-heading">@lang('KYC Verification pending')</h4>
-                            </div>
-                            <div class="card-body">
-                                <p>{{ __(@$kyc->data_values->pending) }} <a href="{{ route('user.kyc.data') }}">@lang('See KYC Data')</a></p>
-                            </div>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            @if (auth()->user()->kv == Status::KYC_UNVERIFIED && auth()->user()->kyc_rejection_reason)
-                <div class="modal custom--modal fade" id="kycRejectionReason">
-                    <div class="modal-dialog" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">@lang('KYC Document Rejection Reason')</h5>
-                                <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <p>{{ auth()->user()->kyc_rejection_reason }}</p>
-                            </div>
-                        </div>
+<div class="dashboard-section py-60">
+    <div class="container">
+        
+        <!-- Welcome & Plan Banner -->
+        <div class="card custom--card border-0 shadow-sm rounded-3 mb-4 bg--dark text-white p-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-success text-white fw-bold px-3 py-1 text-uppercase">WhatsApp Bot Portal</span>
+                        @if($plan)
+                            <span class="badge bg-primary text-white px-2 py-1"><i class="las la-crown me-1"></i>{{ $plan->name }}</span>
+                        @endif
                     </div>
+                    <h3 class="text-white fw-bold mb-1">Welcome back, {{ $user->fullname }}!</h3>
+                    <p class="text-white text-opacity-75 mb-0">
+                        Manage your connected WhatsApp accounts, keyword bots, message templates, and marketing campaigns.
+                    </p>
                 </div>
-            @endif
-
-            <div class="row gy-4">
-                <div class="col-lg-4 col-sm-6">
-                    <div class="dashboard-item">
-                        <div class="dashboard-item__content">
-                            <a class="dashboard-item__title" href="{{ route('user.transactions') }}"> @lang('Current Balance') </a>
-                            <h3 class="dashboard-item__currency"> {{ showAmount($user->balance) }} </h3>
-                        </div>
-                        <span class="dashboard-item__icon"> <i class="fas fa-dollar-sign"></i> </span>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <div class="dashboard-item">
-                        <div class="dashboard-item__content">
-                            <a class="dashboard-item__title" href="{{ route('user.account.listing.index') }}">
-                                @lang('Total Listings') </a>
-                            <h3 class="dashboard-item__currency"> {{ $totalListingCount }} </h3>
-                        </div>
-                        <span class="dashboard-item__icon"> <i class="fas fa-file-alt"></i> </span>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <div class="dashboard-item">
-                        <div class="dashboard-item__content">
-                            <a class="dashboard-item__title" href="{{ route('user.account.listing.purchase') }}">
-                                @lang('Total Purchase Account') </a>
-                            <h3 class="dashboard-item__currency"> {{ $purchaseAccountsCount }} </h3>
-                        </div>
-                        <span class="dashboard-item__icon"> <i class="fas fa-list"></i></span>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <div class="dashboard-item">
-                        <div class="dashboard-item__content">
-                            <a class="dashboard-item__title" href="{{ route('user.account.listing.my.bid') }}">
-                                @lang('Total Bid')
-                            </a>
-                            <h3 class="dashboard-item__currency"> {{ $bidCount }} </h3>
-                        </div>
-                        <span class="dashboard-item__icon"> <i class="fab fa-buromobelexperte"></i> </span>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <div class="dashboard-item">
-                        <div class="dashboard-item__content">
-                            <a class="dashboard-item__title" href="{{ route('user.deposit.history') }}"> @lang('Total Deposit')
-                            </a>
-                            <h3 class="dashboard-item__currency"> {{ showAmount($totalDeposit) }} </h3>
-                        </div>
-                        <span class="dashboard-item__icon"> <i class="menu-icon las la-file-invoice-dollar"></i> </span>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <div class="dashboard-item">
-                        <div class="dashboard-item__content">
-                            <a class="dashboard-item__title" href="{{ route('user.withdraw') }}"> @lang('Total Withdrow') </a>
-                            <h3 class="dashboard-item__currency"> {{ showAmount($totalWithdrawals) }}
-                            </h3>
-                        </div>
-                        <span class="dashboard-item__icon"> <i class="menu-icon la la-bank"></i></span>
-                    </div>
-                </div>
-            </div>
-            <div class="dashboard-body">
-                <div class="row gy-4">
-                    <div class="col-xl-12">
-                        <h5 class="mb-2">@lang('Active Bids')</h5>
-                        <div class="card custom--card">
-                            <div class="card-body p-0">
-                                @include($activeTemplate . 'user.account_listings.listing_table', ['biddings' => $activeBids])
-                            </div>
-                        </div>
-                    </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('user.whatsapp.create') }}" class="btn btn--base btn-sm px-3">
+                        <i class="lab la-whatsapp me-1"></i> Connect WhatsApp
+                    </a>
+                    <a href="{{ route('user.plans.index') }}" class="btn btn-outline-light btn-sm px-3">
+                        <i class="las la-rocket me-1"></i> Upgrade Plan
+                    </a>
                 </div>
             </div>
         </div>
+
+        <!-- 4 Metric Cards -->
+        <div class="row gy-4 mb-4">
+            <div class="col-xl-3 col-sm-6">
+                <div class="card custom--card p-4 border shadow-sm h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted fw-bold small text-uppercase">Connected Accounts</span>
+                        <div class="avatar avatar--sm bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="lab la-whatsapp fs-4"></i>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">{{ $connectedAccountsCount }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->account_limit ?? 1 }}</span></h3>
+                    <small class="text-success"><i class="las la-check-circle me-1"></i>{{ $connectedAccountsCount > 0 ? 'Online & Ready' : 'No account linked' }}</small>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-sm-6">
+                <div class="card custom--card p-4 border shadow-sm h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted fw-bold small text-uppercase">Keyword Auto-Replies</span>
+                        <div class="avatar avatar--sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="las la-robot fs-4"></i>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">{{ $totalAutoReplies }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->autoreply_limit ?? 5 }}</span></h3>
+                    <small class="text-primary"><i class="las la-bolt me-1"></i>Active Bot Rules</small>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-sm-6">
+                <div class="card custom--card p-4 border shadow-sm h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted fw-bold small text-uppercase">Message Templates</span>
+                        <div class="avatar avatar--sm bg-info text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="las la-envelope-open-text fs-4"></i>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">{{ $totalTemplates }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->template_limit ?? 5 }}</span></h3>
+                    <small class="text-info"><i class="las la-file-alt me-1"></i>Saved Templates</small>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-sm-6">
+                <div class="card custom--card p-4 border shadow-sm h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted fw-bold small text-uppercase">Bulk Campaigns</span>
+                        <div class="avatar avatar--sm bg-warning text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="las la-bullhorn fs-4"></i>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">{{ $totalCampaigns }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->campaign_limit ?? 2 }}</span></h3>
+                    <small class="text-warning"><i class="las la-paper-plane me-1"></i>Marketing Broadcasts</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Section: Quick Actions & Connected Accounts -->
+        <div class="row gy-4 mb-4">
+            
+            <!-- Quick Actions Grid -->
+            <div class="col-lg-5">
+                <div class="card custom--card border shadow-sm rounded-3 h-100">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="card-title mb-0 fw-bold"><i class="las la-tools text--base me-1"></i> Quick Action Hub</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <a href="{{ route('user.whatsapp.create') }}" class="p-3 border rounded-3 d-block text-center text-decoration-none bg-light hover-shadow transition">
+                                    <i class="lab la-whatsapp fs-1 text-success mb-2 d-block"></i>
+                                    <span class="fw-bold text-dark d-block">Link WhatsApp</span>
+                                    <small class="text-muted">QR / Pairing Code</small>
+                                </a>
+                            </div>
+
+                            <div class="col-6">
+                                <a href="{{ route('user.autoreply.index') }}" class="p-3 border rounded-3 d-block text-center text-decoration-none bg-light hover-shadow transition">
+                                    <i class="las la-robot fs-1 text-primary mb-2 d-block"></i>
+                                    <span class="fw-bold text-dark d-block">Add Keyword Bot</span>
+                                    <small class="text-muted">Instant Auto-Reply</small>
+                                </a>
+                            </div>
+
+                            <div class="col-6">
+                                <a href="{{ route('user.campaigns.create') }}" class="p-3 border rounded-3 d-block text-center text-decoration-none bg-light hover-shadow transition">
+                                    <i class="las la-bullhorn fs-1 text-warning mb-2 d-block"></i>
+                                    <span class="fw-bold text-dark d-block">Launch Campaign</span>
+                                    <small class="text-muted">Broadcast to List</small>
+                                </a>
+                            </div>
+
+                            <div class="col-6">
+                                <a href="{{ route('user.settings.behavior.index') }}" class="p-3 border rounded-3 d-block text-center text-decoration-none bg-light hover-shadow transition">
+                                    <i class="las la-user-shield fs-1 text-danger mb-2 d-block"></i>
+                                    <span class="fw-bold text-dark d-block">Human Behavior</span>
+                                    <small class="text-muted">Anti-Ban Protection</small>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Current Plan Usage Progress -->
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold small text-dark">Plan Usage (Accounts):</span>
+                                <span class="small fw-bold text-muted">{{ $connectedAccountsCount }} of {{ $plan->account_limit ?? 1 }} Used</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                @php
+                                    $limit = $plan->account_limit ?: 1;
+                                    $pct = min(100, round(($connectedAccountsCount / $limit) * 100));
+                                @endphp
+                                <div class="progress-bar bg--base" role="progressbar" style="width: {{ $pct }}%;" aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connected Accounts List -->
+            <div class="col-lg-7">
+                <div class="card custom--card border shadow-sm rounded-3 h-100">
+                    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                        <h5 class="card-title mb-0 fw-bold"><i class="lab la-whatsapp text-success me-1"></i> My WhatsApp Accounts</h5>
+                        <a href="{{ route('user.whatsapp.create') }}" class="btn btn--base btn-sm"><i class="las la-plus-circle me-1"></i> Add Account</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Account Name</th>
+                                        <th>Phone Number</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($connectedAccounts as $acc)
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold text-dark">{{ $acc->account_name }}</div>
+                                                <small class="text-muted">{{ $acc->session_id }}</small>
+                                            </td>
+                                            <td>
+                                                @if($acc->phone_number)
+                                                    <span class="fw-bold">+{{ $acc->phone_number }}</span>
+                                                @else
+                                                    <span class="text-muted">Pending Link</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($acc->status == 1)
+                                                    <span class="badge bg-success"><i class="las la-check-circle me-1"></i> Connected</span>
+                                                @else
+                                                    <span class="badge bg-warning"><i class="las la-hourglass-half me-1"></i> Pending</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <form action="{{ route('user.whatsapp.delete', $acc->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Disconnect this WhatsApp account?')">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Disconnect Account">
+                                                        <i class="las la-unlink"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4">
+                                                <i class="lab la-whatsapp text-muted fs-1 d-block mb-2"></i>
+                                                <p class="text-muted mb-2">No WhatsApp account connected yet.</p>
+                                                <a href="{{ route('user.whatsapp.create') }}" class="btn btn--base btn-sm">Connect WhatsApp Now</a>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
     </div>
-    <x-confirmation-modal addClass="custom--modal" :customButton=true />
+</div>
 @endsection

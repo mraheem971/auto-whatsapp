@@ -73,6 +73,62 @@ class User extends Authenticatable
         return $this->hasOne(UserNotificationPermission::class,'user_id');
     }
 
+    public function whatsappAccounts()
+    {
+        return $this->hasMany(WhatsappAccount::class, 'user_id');
+    }
+
+    public function autoReplies()
+    {
+        return $this->hasMany(AutoReply::class, 'user_id');
+    }
+
+    public function messageTemplates()
+    {
+        return $this->hasMany(MessageTemplate::class, 'user_id');
+    }
+
+    public function campaigns()
+    {
+        return $this->hasMany(Campaign::class, 'user_id');
+    }
+
+    public function contacts()
+    {
+        return $this->hasMany(Contact::class, 'user_id');
+    }
+
+    public function contactLists()
+    {
+        return $this->hasMany(ContactList::class, 'user_id');
+    }
+
+    public function subscriptions()
+    {
+        return $this->hasMany(UserSubscription::class, 'user_id')->latest();
+    }
+
+    public function activeSubscription()
+    {
+        return $this->hasOne(UserSubscription::class, 'user_id')
+            ->where('status', 1)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>=', now());
+            })
+            ->latest();
+    }
+
+    public function currentPlan()
+    {
+        $sub = $this->activeSubscription;
+        return $sub ? $sub->plan : Plan::where('price', 0)->first();
+    }
+
+    public function botSettings()
+    {
+        return $this->hasOne(UserBotSetting::class, 'user_id');
+    }
+
     public function fullname(): Attribute
     {
         return new Attribute(

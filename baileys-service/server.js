@@ -39,32 +39,8 @@ const sessions = new Map();
 // Auto-Reply Engine Cache & Cooldown Store
 const autoReplyRuleCache = new Map(); // sessionId -> { rules, lastFetched }
 const userCooldowns = new Map(); // `${ruleId}_${remoteJid}_${senderPhone}` -> timestamp
-const RULES_DISK_CACHE_FILE = path.join(__dirname, 'rules_cache.json');
 
 const LARAVEL_BASE_URL = process.env.LARAVEL_URL || 'http://127.0.0.1:8001';
-
-function loadRulesFromDiskCache() {
-    try {
-        if (fs.existsSync(RULES_DISK_CACHE_FILE)) {
-            const raw = fs.readFileSync(RULES_DISK_CACHE_FILE, 'utf8');
-            const data = JSON.parse(raw);
-            if (Array.isArray(data) && data.length > 0) return data;
-        }
-    } catch (e) {
-        console.error('[Rules Disk Cache Read Error]:', e?.message || e);
-    }
-    return null;
-}
-
-function saveRulesToDiskCache(rules) {
-    try {
-        if (Array.isArray(rules) && rules.length > 0) {
-            fs.writeFileSync(RULES_DISK_CACHE_FILE, JSON.stringify(rules, null, 2), 'utf8');
-        }
-    } catch (e) {
-        console.error('[Rules Disk Cache Write Error]:', e?.message || e);
-    }
-}
 
 async function getActiveAutoReplies(sessionId) {
     const cached = autoReplyRuleCache.get(sessionId);
@@ -74,31 +50,18 @@ async function getActiveAutoReplies(sessionId) {
     }
 
     try {
-        const res = await fetch(`${LARAVEL_BASE_URL}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(4000) });
+        const res = await fetch(`${LARAVEL_BASE_URL}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2000) });
         if (res.ok) {
             const data = await res.json();
-            if (data.success && Array.isArray(data.rules) && data.rules.length > 0) {
+            if (data.success && Array.isArray(data.rules)) {
                 autoReplyRuleCache.set(sessionId, { rules: data.rules, lastFetched: now });
-                saveRulesToDiskCache(data.rules);
                 return data.rules;
             }
         }
     } catch (e) {
-        // Fallback to memory or disk cache
+        if (cached) return cached.rules;
     }
-
-    if (cached && cached.rules && cached.rules.length > 0) {
-        return cached.rules;
-    }
-
-    // Disk Cache Fallback (Ensures 24/7 continuous operation even if Laravel rebooted)
-    const diskRules = loadRulesFromDiskCache();
-    if (diskRules && Array.isArray(diskRules) && diskRules.length > 0) {
-        autoReplyRuleCache.set(sessionId, { rules: diskRules, lastFetched: now });
-        return diskRules;
-    }
-
-    return [];
+    return cached ? cached.rules : [];
 }
 
 async function dispatchNotificationEvent(eventType, payload) {
@@ -153,19 +116,10 @@ const processedMessageIds = new Set();
 
 async function processIncomingAutoReply(sessionId, sock, msg) {
     if (!msg || !msg.message) return;
+    if (msg.key?.fromMe) return; // Don't reply to our own messages
 
     const remoteJid = msg.key?.remoteJid;
     if (!remoteJid || remoteJid.endsWith('@broadcast')) return;
-
-    const myPhone = sock.user?.id ? sock.user.id.split(':')[0].split('@')[0].replace(/[^0-9]/g, '') : '';
-    const remotePhone = remoteJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
-    const isSelfChat = Boolean(myPhone && remotePhone === myPhone);
-
-    // If message was sent by us to another person, don't reply to avoid loops.
-    // BUT if it's a self-chat message (testing the bot from own phone), allow processing!
-    if (msg.key?.fromMe && !isSelfChat) {
-        return;
-    }
 
     const incomingText = extractMessageText(msg);
     if (!incomingText) return; // Wait for message body if not decrypted yet
@@ -293,19 +247,9 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
                     break;
                 }
             } else if (rule.match_type === 'contains') {
-                // 1. Direct substring check
                 if (lowerText.includes(lowerKw) || (normalizedKw && normalizedText.includes(normalizedKw))) {
                     isMatch = true;
                     break;
-                }
-                // 2. Multi-word flexible check (e.g. "capcut need" matches "i need capcut" or "capcut account need")
-                const kwWords = normalizedKw.split(' ').filter(Boolean);
-                if (kwWords.length > 1) {
-                    const allWordsPresent = kwWords.every(w => normalizedText.includes(w) || words.includes(w));
-                    if (allWordsPresent) {
-                        isMatch = true;
-                        break;
-                    }
                 }
             } else if (rule.match_type === 'starts_with') {
                 if (lowerText.startsWith(lowerKw) || (normalizedKw && normalizedText.startsWith(normalizedKw))) {
@@ -359,25 +303,23 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         .replace(/\{time\}/g, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
         .replace(/\{date\}/g, new Date().toLocaleDateString());
 
-    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" (Dest: ${targetRule.reply_destination || 'same_chat'}) -> Starting human-like response flow for ${remoteJid}`);
+    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" -> Starting human-like response flow for ${remoteJid}`);
 
     // Execute flow sequence asynchronously
-    executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText, senderPhone);
+    executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText);
 }
 
-async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText, senderPhone) {
+async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText) {
     try {
-        const isGroup = remoteJid.endsWith('@g.us');
-        const senderDmJid = `${senderPhone}@s.whatsapp.net`;
+        const readDelayMs = (targetRule.read_delay_seconds || 0) * 1000;
+        const typingDurationMs = (targetRule.typing_duration_seconds || 0) * 1000;
+        const replyDelayMs = (targetRule.reply_delay_seconds || 0) * 1000;
 
-        const readDelayMs = Math.min((targetRule.read_delay_seconds || 0) * 1000, 30000);
-        const typingDurationMs = Math.min((targetRule.typing_duration_seconds || 0) * 1000, 30000);
-        const replyDelayMs = Math.min((targetRule.reply_delay_seconds || 0) * 1000, 30000);
-
-        console.log(`[AutoReply Flow] ⚡ Sequence: [Seen: ${targetRule.read_delay_seconds || 0}s] -> [Typing: ${targetRule.typing_duration_seconds || 0}s] -> [Pause: ${targetRule.reply_delay_seconds || 0}s] -> [Destination: ${targetRule.reply_destination || 'same_chat'}]`);
+        console.log(`[AutoReply Flow] ⚡ Sequence: [Seen: ${targetRule.read_delay_seconds || 0}s] -> [Typing: ${targetRule.typing_duration_seconds || 0}s] -> [Pause: ${targetRule.reply_delay_seconds || 0}s] -> [Recipient: ${remoteJid}]`);
 
         // Step 1: Delay before marking as seen (Read Receipts / Blue Ticks)
         if (readDelayMs > 0) {
+            console.log(`[AutoReply Flow] ⏳ Step 1: Waiting ${targetRule.read_delay_seconds}s before marking as seen (blue ticks)...`);
             await new Promise(r => setTimeout(r, readDelayMs));
         }
 
@@ -422,32 +364,20 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
             await new Promise(r => setTimeout(r, replyDelayMs));
         }
 
-        // Step 4: Dispatch the automated reply message based on reply destination
-        const dest = targetRule.reply_destination || 'same_chat';
-
-        if (dest === 'same_chat' || dest === 'both') {
-            try {
-                if (isGroup && msg.key) {
-                    await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
-                } else {
-                    await sock.sendMessage(remoteJid, { text: processedText });
-                }
-                console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Automated reply delivered to ${remoteJid}: "${processedText}"`);
-            } catch (sendErr) {
-                console.error('[AutoReply Flow Send Error, retrying direct]:', sendErr?.message || sendErr);
-                await sock.sendMessage(remoteJid, { text: processedText }).catch(e => {
-                    console.error('[AutoReply Flow Final Send Failure]:', e?.message || e);
-                });
+        // Step 4: Dispatch the automated reply message
+        try {
+            const isGroup = remoteJid.endsWith('@g.us');
+            if (isGroup && msg.key) {
+                await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
+            } else {
+                await sock.sendMessage(remoteJid, { text: processedText });
             }
-        }
-
-        if ((dest === 'sender_dm' || dest === 'both') && isGroup && senderPhone) {
-            try {
-                await sock.sendMessage(senderDmJid, { text: processedText });
-                console.log(`[AutoReply Flow] 🚀 Step 4 (DM): ✅ Automated reply delivered in Private DM to ${senderDmJid}`);
-            } catch (dmErr) {
-                console.error('[AutoReply Flow DM Send Failure]:', dmErr?.message || dmErr);
-            }
+            console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Automated reply delivered to ${remoteJid}: "${processedText}"`);
+        } catch (sendErr) {
+            console.error('[AutoReply Flow Send Error, retrying direct]:', sendErr?.message || sendErr);
+            await sock.sendMessage(remoteJid, { text: processedText }).catch(e => {
+                console.error('[AutoReply Flow Final Send Failure]:', e?.message || e);
+            });
         }
 
         // Step 5: Log hit count to backend

@@ -42,8 +42,8 @@
                     <li class="nav-item d-block d-lg-none">
                         <div class="top-button d-flex">
                             <div class="top-button__button">
-                                <a class="btn btn--base" href="{{ route('user.account.listing.social.media.category') }}"> <span class="icon"> <i class="las la-folder-plus"></i>
-                                    </span> @lang('Sell Account') </a>
+                                <a class="btn btn--base" href="{{ route('user.whatsapp.create') }}"> <span class="icon"> <i class="lab la-whatsapp"></i>
+                                    </span> @lang('Connect WhatsApp') </a>
                             </div>
                            
                         </div>
@@ -52,8 +52,8 @@
                 <div class="d-none d-lg-block">
                     <div class="top-button d-flex justify-content-between align-items-center flex-wrap">
                         <div class="top-button__button">
-                            <a class="btn btn--base" href="{{ route('user.account.listing.social.media.category') }}"> 
-                                <span class="icon"> <i class="las la-folder-plus"></i></span> @lang('Sell Account') 
+                            <a class="btn btn--base" href="{{ route('user.whatsapp.create') }}"> 
+                                <span class="icon"> <i class="lab la-whatsapp"></i></span> @lang('Connect WhatsApp') 
                             </a>
                         </div>
                         <div class="top-header__login">
@@ -63,7 +63,7 @@
                                         <span class="user-info__icon">
                                             <i class="fas fa-user"></i>
                                         </span>
-                                        @lang('Accounts')
+                                        @lang('My Account')
                                     </button>
 
                                     <ul class="user-info-dropdown">
@@ -75,73 +75,73 @@
                                         </li>
                                       
                                         <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.account.listing.index')}} user-info-dropdown__link" href="{{ route('user.account.listing.index') }}">
-                                                <span class="icon"><i class="fas fa-list-ul"></i></span>
-                                                <span class="text"> @lang('Account Listing') </span>
+                                            <a class="{{menuActive('user.whatsapp*')}} user-info-dropdown__link" href="{{ route('user.whatsapp.index') }}">
+                                                <span class="icon"><i class="lab la-whatsapp"></i></span>
+                                                <span class="text"> @lang('WhatsApp Accounts') </span>
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.account.listing.my.bid')}} user-info-dropdown__link" href="{{ route('user.account.listing.my.bid') }}">
-                                                <span class="icon"><i class="fas fa-gavel"></i></span>
-                                                <span class="text"> @lang('My Bids') </span>
+                                            <a class="{{menuActive('user.autoreply*')}} user-info-dropdown__link" href="{{ route('user.autoreply.index') }}">
+                                                <span class="icon"><i class="las la-robot"></i></span>
+                                                <span class="text"> @lang('Auto-Reply Bots') </span>
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.account.listing.purchase')}} user-info-dropdown__link" href="{{ route('user.account.listing.purchase') }}">
-                                                <span class="icon"><i class="fas fa-shopping-basket"></i></span>
-                                                <span class="text"> @lang('Purchase Account') </span>
+                                            <a class="{{menuActive('user.templates*')}} user-info-dropdown__link" href="{{ route('user.templates.index') }}">
+                                                <span class="icon"><i class="las la-envelope-open-text"></i></span>
+                                                <span class="text"> @lang('Message Templates') </span>
+                                            </a>
+                                        </li>
+                                        <li class="user-info-dropdown__item">
+                                            <a class="{{menuActive('user.campaigns*')}} user-info-dropdown__link" href="{{ route('user.campaigns.index') }}">
+                                                <span class="icon"><i class="las la-bullhorn"></i></span>
+                                                <span class="text"> @lang('Bulk Campaigns') </span>
+                                            </a>
+                                        </li>
+                                        <li class="user-info-dropdown__item">
+                                            <a class="{{menuActive('user.contacts*')}} user-info-dropdown__link" href="{{ route('user.contacts.index') }}">
+                                                <span class="icon"><i class="las la-address-book"></i></span>
+                                                <span class="text"> @lang('Contacts & Lists') </span>
+                                            </a>
+                                        </li>
+                                        <li class="user-info-dropdown__item">
+                                            <a class="{{menuActive('user.settings.behavior*')}} user-info-dropdown__link" href="{{ route('user.settings.behavior.index') }}">
+                                                <span class="icon"><i class="las la-user-shield"></i></span>
+                                                <span class="text"> @lang('Anti-Ban Settings') </span>
+                                            </a>
+                                        </li>
+                                        <li class="user-info-dropdown__item">
+                                            <a class="{{menuActive('user.plans*')}} user-info-dropdown__link" href="{{ route('user.plans.index') }}">
+                                                <span class="icon"><i class="las la-crown"></i></span>
+                                                <span class="text"> @lang('Subscription Plans') </span>
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
                                             <a class="{{menuActive('user.deposit.index')}} user-info-dropdown__link" href="{{ route('user.deposit.index') }}">
                                                 <span class="icon"> <i class="las la-coins"></i> </span>
-                                                <span class="text"> @lang('Deposit') </span>
-                                            </a>
-                                        </li>
-                                        <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.deposit.history')}} user-info-dropdown__link" href="{{ route('user.deposit.history') }}">
-                                                <span class="icon"> <i class="las la-file-invoice-dollar"></i> </span>
-                                                <span class="text"> @lang('Deposit History') </span>
-                                            </a>
-                                        </li>
-                                        <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.withdraw')}} user-info-dropdown__link" href="{{ route('user.withdraw') }}">
-                                                <span class="icon"> <i class="las la-hand-holding-usd"></i> </span>
-                                                <span class="text"> @lang('Withdraw') </span>
-                                            </a>
-                                        </li>
-                                        <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.withdraw.history')}} user-info-dropdown__link" href="{{ route('user.withdraw.history') }}">
-                                                <span class="icon"> <i class="las la-file-invoice-dollar"></i></span>
-                                                <span class="text"> @lang('Withdraw History') </span>
-                                            </a>
-                                        </li>
-                                        <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.transactions')}} user-info-dropdown__link" href="{{ route('user.transactions') }}">
-                                                <span class="icon"> <i class="far fa-file-alt"></i> </span>
-                                                <span class="text"> @lang('Transaction History') </span>
+                                                <span class="text"> @lang('Deposit Funds') </span>
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
                                             <a class="{{menuActive('ticket.index')}} user-info-dropdown__link" href="{{ route('ticket.index') }}">
                                                 <span class="icon"> <i class="las la-ticket-alt"></i> </span>
-                                                <span class="text"> @lang('My Ticket') </span>
+                                                <span class="text"> @lang('Support Ticket') </span>
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.general.profile')}} user-info-dropdown__link" href="{{ route('user.general.profile') }}">
+                                            <a class="{{menuActive('user.profile.setting')}} user-info-dropdown__link" href="{{ route('user.profile.setting') }}">
                                                 <span class="icon"><i class="far fa-user"></i></span>
-                                                <span class="text"> @lang('Account Details') </span>
+                                                <span class="text"> @lang('Profile Setting') </span>
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
                                             <a class="{{menuActive('user.twofactor')}} user-info-dropdown__link" href="{{ route('user.twofactor') }}">
                                                 <span class="icon"> <i class="fas fa-shield-alt"></i> </span>
-                                                <span class="text"> @lang(' 2FA Security') </span>
+                                                <span class="text"> @lang('2FA Security') </span>
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.logout')}} user-info-dropdown__link" href="{{ route('user.logout') }}">
+                                            <a class="user-info-dropdown__link text-danger" href="{{ route('user.logout') }}">
                                                 <span class="icon"> <i class="fas fa-sign-out-alt"></i> </span>
                                                 <span class="text"> @lang('Logout') </span>
                                             </a>

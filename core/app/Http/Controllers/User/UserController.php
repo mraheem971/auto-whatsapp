@@ -23,22 +23,39 @@ class UserController extends Controller
 {
     public function home()
     {
-        $pageTitle             = 'Dashboard';
-        $userId                = auth()->user()->id;
-        $totalListingCount     = AccountListing::where('user_id', $userId)->count();
-        $purchaseAccountsCount = AccountListing::where('buyer_id', $userId)->count();
-        $bidCount              = BiddingListing::where('user_id', $userId)->count();
-        $totalDeposit          = Deposit::where('user_id', $userId)->where('status', Status::PAYMENT_SUCCESS)->sum('amount');
-        $totalWithdrawals      = Withdrawal::where('user_id', $userId)->where('status', Status::PAYMENT_SUCCESS)->sum('amount');
+        $pageTitle = 'WhatsApp Bot Dashboard';
+        $user      = auth()->user();
+        $userId    = $user->id;
 
-        $activeBids = BiddingListing::where('user_id', $userId)->whereHas('accountListing', function ($q) {
-            $q->active();
-        })->with('accountListing', function ($q) {
-            $q->withMax('accountBidding', 'amount');
-        })->paginate(getPaginate());
+        $connectedAccountsCount = \App\Models\WhatsappAccount::where('user_id', $userId)->active()->count();
+        $connectedAccounts      = \App\Models\WhatsappAccount::where('user_id', $userId)->latest()->get();
+        $totalAutoReplies       = \App\Models\AutoReply::where('user_id', $userId)->count();
+        $totalTemplates         = \App\Models\MessageTemplate::where('user_id', $userId)->count();
+        $totalCampaigns         = \App\Models\Campaign::where('user_id', $userId)->count();
+        $totalContacts          = \App\Models\Contact::where('user_id', $userId)->where('type', 'contact')->count();
+        $totalDeposit           = Deposit::where('user_id', $userId)->where('status', Status::PAYMENT_SUCCESS)->sum('amount');
 
-        $user = auth()->user();
-        return view('Template::user.dashboard', compact('pageTitle', 'totalListingCount', 'purchaseAccountsCount', 'activeBids', 'bidCount', 'totalDeposit', 'totalWithdrawals', 'user'));
+        $activeSubscription = $user->activeSubscription;
+        $plan = $user->currentPlan();
+
+        $recentCampaigns = \App\Models\Campaign::where('user_id', $userId)->latest()->take(5)->get();
+        $recentBots      = \App\Models\AutoReply::where('user_id', $userId)->latest()->take(5)->get();
+
+        return view('Template::user.dashboard', compact(
+            'pageTitle',
+            'user',
+            'connectedAccountsCount',
+            'connectedAccounts',
+            'totalAutoReplies',
+            'totalTemplates',
+            'totalCampaigns',
+            'totalContacts',
+            'totalDeposit',
+            'activeSubscription',
+            'plan',
+            'recentCampaigns',
+            'recentBots'
+        ));
     }
 
     public function depositHistory(Request $request)

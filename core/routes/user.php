@@ -106,6 +106,67 @@ Route::middleware('auth')->name('user.')->group(function () {
                 Route::get('history', 'withdrawLog')->name('.history');
             });
 
+            // WhatsApp Account Management
+            Route::controller('UserWhatsAppController')->prefix('whatsapp')->name('whatsapp.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/connect', 'create')->name('create');
+                Route::post('/init-session', 'initSession')->name('init.session');
+                Route::get('/session-status/{sessionId}', 'sessionStatus')->name('session.status');
+                Route::post('/test-message', 'testSendMessage')->name('test.message');
+                Route::post('/delete/{id}', 'delete')->name('delete');
+            });
+
+            // Auto-Reply & Keyword Bots
+            Route::controller('UserAutoReplyController')->prefix('autoreply')->name('autoreply.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/store', 'store')->name('store');
+                Route::post('/update/{id}', 'update')->name('update');
+                Route::post('/status/{id}', 'statusToggle')->name('status');
+                Route::post('/delete/{id}', 'delete')->name('delete');
+            });
+
+            // Message Templates
+            Route::controller('UserTemplateController')->prefix('templates')->name('templates.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/store', 'store')->name('store');
+                Route::post('/update/{id}', 'update')->name('update');
+                Route::post('/delete/{id}', 'delete')->name('delete');
+            });
+
+            // Marketing Campaigns
+            Route::controller('UserCampaignController')->prefix('campaigns')->name('campaigns.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/create', 'create')->name('create');
+                Route::post('/store', 'store')->name('store');
+                Route::get('/view/{id}', 'view')->name('view');
+                Route::post('/send-single/{id}', 'sendSingle')->name('send.single');
+                Route::post('/update-status/{id}', 'updateStatus')->name('update.status');
+                Route::post('/delete/{id}', 'delete')->name('delete');
+            });
+
+            // Contacts & Audience Lists
+            Route::controller('UserContactController')->prefix('contacts')->name('contacts.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/store', 'storeContact')->name('store');
+                Route::get('/lists', 'listsIndex')->name('lists');
+                Route::post('/lists/store', 'listStore')->name('lists.store');
+                Route::post('/lists/delete/{id}', 'listDelete')->name('lists.delete');
+                Route::post('/sync-whatsapp', 'syncWhatsApp')->name('sync.whatsapp');
+                Route::post('/delete/{id}', 'deleteContact')->name('delete');
+            });
+
+            // Anti-Ban & Human Behavior Settings
+            Route::controller('UserBotSettingController')->prefix('settings/human-behavior')->name('settings.behavior.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/update', 'update')->name('update');
+            });
+
+            // Subscription Plans
+            Route::controller('UserPlanController')->prefix('plans')->name('plans.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/subscribe/{id}', 'subscribe')->name('subscribe');
+            });
+
              // Account Listing
              Route::controller('AccountListingController')->prefix('account-listing')->name('account.listing.')->group(function () {
                 Route::get('/', 'index')->name('index');
