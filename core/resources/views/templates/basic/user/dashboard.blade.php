@@ -1,487 +1,218 @@
 @extends($activeTemplate . 'layouts.master')
 @section('content')
-
-<style>
-    /* Custom Dark SaaS Theme Matching Reference Template */
-    .saas-theme-wrapper {
-        background-color: #121318;
-        color: #e2e8f0;
-        min-height: 100vh;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    .saas-sidebar {
-        background-color: #181920;
-        width: 105px;
-        min-height: 100vh;
-        border-right: 1px solid #232530;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 20px 0;
-        flex-shrink: 0;
-    }
-    .saas-sidebar .brand-logo-box {
-        width: 60px;
-        height: 60px;
-        background-color: #232530;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #718096;
-        font-size: 11px;
-        font-weight: bold;
-        margin-bottom: 25px;
-        overflow: hidden;
-    }
-    .saas-sidebar .brand-logo-box img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: cover;
-    }
-    .saas-nav-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        width: 85px;
-        padding: 12px 0;
-        margin-bottom: 8px;
-        border-radius: 10px;
-        color: #8c93a4;
-        text-decoration: none;
-        transition: all 0.2s ease;
-    }
-    .saas-nav-item i {
-        font-size: 22px;
-        margin-bottom: 4px;
-    }
-    .saas-nav-item span {
-        font-size: 11px;
-        font-weight: 500;
-    }
-    .saas-nav-item:hover {
-        color: #ffffff;
-        background-color: #22242e;
-    }
-    .saas-nav-item.active {
-        background-color: #e53e3e20;
-        color: #f56565;
-    }
-    .saas-nav-item.active .icon-box {
-        background-color: #e53e3e;
-        color: #ffffff;
-    }
-    .saas-main {
-        flex-grow: 1;
-        background-color: #121318;
-        padding: 25px 35px;
-        overflow-x: hidden;
-    }
-    .saas-topbar {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 20px;
-        margin-bottom: 25px;
-    }
-    .saas-topbar-icon {
-        color: #a0aec0;
-        font-size: 18px;
-        cursor: pointer;
-        transition: color 0.2s;
-    }
-    .saas-topbar-icon:hover {
-        color: #ffffff;
-    }
-    .saas-user-badge {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding-left: 15px;
-        border-left: 1px solid #2d3748;
-    }
-    .saas-user-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background-color: #4a5568;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #e2e8f0;
-        font-size: 12px;
-        font-weight: bold;
-    }
-    .saas-card {
-        background-color: #1a1b23;
-        border: 1px solid #242632;
-        border-radius: 12px;
-        padding: 22px;
-    }
-    .setup-banner {
-        background-color: #1a1b23;
-        border: 1px solid #242632;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 25px;
-    }
-    .setup-bell-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, #f56565, #e53e3e);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #ffffff;
-        font-size: 20px;
-        flex-shrink: 0;
-    }
-    .setup-item-row {
-        background-color: #13141a;
-        border: 1px solid #22242f;
-        border-radius: 10px;
-        padding: 14px 18px;
-        margin-top: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        text-decoration: none;
-        transition: border-color 0.2s;
-    }
-    .setup-item-row:hover {
-        border-color: #3b82f6;
-    }
-    .stat-badge-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        margin-bottom: 12px;
-    }
-    .stat-badge-red { background-color: #e53e3e20; color: #f56565; }
-    .stat-badge-green { background-color: #38a16920; color: #48bb78; }
-    .stat-badge-blue { background-color: #3182ce20; color: #4299e1; }
-    .stat-badge-gold { background-color: #d69e2e20; color: #ecc94b; }
-
-    .service-credit-card {
-        background-color: #1a1b23;
-        border: 1px solid #242632;
-        border-radius: 12px;
-        padding: 22px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        height: 100%;
-    }
-    .service-icon-box {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        flex-shrink: 0;
-    }
-    .limit-pill {
-        background-color: #162a22;
-        color: #38a169;
-        border: 1px solid #22543d;
-        border-radius: 20px;
-        padding: 6px 14px;
-        font-size: 12px;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin: 15px 0 20px 0;
-        width: fit-content;
-    }
-    .btn-buy-credit {
-        background-color: transparent;
-        color: #ffffff;
-        border: 1px solid #4a5568;
-        border-radius: 8px;
-        padding: 10px 0;
-        width: 100%;
-        font-size: 13px;
-        font-weight: 600;
-        text-align: center;
-        text-decoration: none;
-        display: block;
-        transition: all 0.2s;
-    }
-    .btn-buy-credit:hover {
-        border-color: #f56565;
-        color: #f56565;
-        background-color: #f5656510;
-    }
-</style>
-
-<div class="saas-theme-wrapper d-flex">
-    
-    <!-- Left Vertical Dark Sidebar -->
-    <aside class="saas-sidebar d-none d-md-flex">
-        <div class="brand-logo-box">
-            @if(siteLogo())
-                <img src="{{ siteLogo() }}" alt="Logo">
-            @else
-                <span>160x160</span>
-            @endif
-        </div>
-
-        <a href="{{ route('user.home') }}" class="saas-nav-item active">
-            <i class="las la-th-large"></i>
-            <span>Dashboard</span>
-        </a>
-
-        <a href="{{ route('user.contacts.index') }}" class="saas-nav-item">
-            <i class="las la-address-book"></i>
-            <span>Contacts</span>
-        </a>
-
-        <a href="{{ route('user.autoreply.index') }}" class="saas-nav-item">
-            <i class="las la-envelope"></i>
-            <span>Messages</span>
-        </a>
-
-        <a href="{{ route('user.campaigns.index') }}" class="saas-nav-item">
-            <i class="las la-bullhorn"></i>
-            <span>Campaigns</span>
-        </a>
-
-        <a href="{{ route('user.templates.index') }}" class="saas-nav-item">
-            <i class="las la-layer-group"></i>
-            <span>Templates</span>
-        </a>
-
-        <a href="{{ route('user.whatsapp.index') }}" class="saas-nav-item">
-            <i class="las la-cube"></i>
-            <span>Gateway</span>
-        </a>
-
-        <a href="{{ route('user.transactions') }}" class="saas-nav-item">
-            <i class="las la-chart-bar"></i>
-            <span>Report</span>
-        </a>
-    </aside>
-
-    <!-- Main Content Area -->
-    <main class="saas-main">
+<div class="dashboard-section py-60">
+    <div class="container">
         
-        <!-- Topbar: Language, Dark Mode, Flag, Member Profile -->
-        <div class="saas-topbar">
-            <i class="las la-globe saas-topbar-icon" title="Language"></i>
-            <i class="las la-sun saas-topbar-icon" title="Theme Mode"></i>
-            <span class="fs-5" title="Region">🇺🇸</span>
-            
-            <div class="saas-user-badge">
-                <div class="saas-user-avatar">
-                    {{ strtoupper(substr($user->firstname ?: $user->username, 0, 2)) }}
-                </div>
+        <!-- Welcome & Plan Banner -->
+        <div class="card custom--card border-0 shadow-sm rounded-3 mb-4 bg--dark text-white p-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                 <div>
-                    <div class="text-muted" style="font-size: 11px;">Member</div>
-                    <div class="text-white fw-bold" style="font-size: 13px;">{{ $user->fullname ?: $user->username }}</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Greeting Header -->
-        <h2 class="text-white fw-bold mb-4" style="font-size: 26px;">
-            Welcome Back, {{ $user->fullname ?: $user->username }}
-        </h2>
-
-        <!-- "Complete Your Setup" Card -->
-        <div class="setup-banner">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-2">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="setup-bell-icon">
-                        <i class="las la-bell"></i>
-                    </div>
-                    <div>
-                        <h5 class="text-white fw-bold mb-1" style="font-size: 17px;">Complete Your Setup</h5>
-                        <p class="text-muted mb-0" style="font-size: 13px;">Configure Your Gateways To Start Sending Messages</p>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="text-muted fw-bold" style="font-size: 14px;">{{ $activeGateways > 0 ? '1/1' : '0/1' }}</span>
-                    <div class="bg-dark rounded" style="width: 70px; height: 5px;">
-                        <div class="{{ $activeGateways > 0 ? 'bg-success' : 'bg-danger' }} rounded h-100" style="width: {{ $activeGateways > 0 ? '100%' : '20%' }};"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Setup Item: WhatsApp Gateway -->
-            <a href="{{ route('user.whatsapp.create') }}" class="setup-item-row">
-                <div class="d-flex align-items-center gap-3">
-                    <i class="lab la-whatsapp fs-3 text-muted"></i>
-                    <div>
-                        <div class="text-white fw-bold" style="font-size: 14px;">WhatsApp Gateway</div>
-                        @if($activeGateways > 0)
-                            <div class="text-success small fw-bold"><i class="las la-check-circle me-1"></i> Active & Connected ({{ $activeGateways }} Account{{ $activeGateways > 1 ? 's' : '' }})</div>
-                        @else
-                            <div class="text-danger small fw-bold">Add Your Gateway To Start Sending</div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-success text-white fw-bold px-3 py-1 text-uppercase">WhatsApp Bot Portal</span>
+                        @if($plan)
+                            <span class="badge bg-primary text-white px-2 py-1"><i class="las la-crown me-1"></i>{{ $plan->name }}</span>
                         @endif
                     </div>
+                    <h3 class="text-white fw-bold mb-1">Welcome back, {{ $user->fullname }}!</h3>
+                    <p class="text-white text-opacity-75 mb-0">
+                        Manage your connected WhatsApp accounts, keyword bots, message templates, and marketing campaigns.
+                    </p>
                 </div>
-                <div>
-                    <i class="las la-arrow-right text-muted"></i>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('user.whatsapp.create') }}" class="btn btn--base btn-sm px-3">
+                        <i class="lab la-whatsapp me-1"></i> Connect WhatsApp
+                    </a>
+                    <a href="{{ route('user.plans.index') }}" class="btn btn-outline-light btn-sm px-3">
+                        <i class="las la-rocket me-1"></i> Upgrade Plan
+                    </a>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <!-- 4 Stat Cards Row -->
-        <div class="row g-4 mb-4">
+        <!-- 4 Metric Cards -->
+        <div class="row gy-4 mb-4">
+            <div class="col-xl-3 col-sm-6">
+                <div class="card custom--card p-4 border shadow-sm h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted fw-bold small text-uppercase">Connected Accounts</span>
+                        <div class="avatar avatar--sm bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="lab la-whatsapp fs-4"></i>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">{{ $connectedAccountsCount }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->account_limit ?? 1 }}</span></h3>
+                    <small class="text-success"><i class="las la-check-circle me-1"></i>{{ $connectedAccountsCount > 0 ? 'Online & Ready' : 'No account linked' }}</small>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-sm-6">
+                <div class="card custom--card p-4 border shadow-sm h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted fw-bold small text-uppercase">Keyword Auto-Replies</span>
+                        <div class="avatar avatar--sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="las la-robot fs-4"></i>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">{{ $totalAutoReplies }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->autoreply_limit ?? 5 }}</span></h3>
+                    <small class="text-primary"><i class="las la-bolt me-1"></i>Active Bot Rules</small>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-sm-6">
+                <div class="card custom--card p-4 border shadow-sm h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted fw-bold small text-uppercase">Message Templates</span>
+                        <div class="avatar avatar--sm bg-info text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="las la-envelope-open-text fs-4"></i>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">{{ $totalTemplates }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->template_limit ?? 5 }}</span></h3>
+                    <small class="text-info"><i class="las la-file-alt me-1"></i>Saved Templates</small>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-sm-6">
+                <div class="card custom--card p-4 border shadow-sm h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted fw-bold small text-uppercase">Bulk Campaigns</span>
+                        <div class="avatar avatar--sm bg-warning text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="las la-bullhorn fs-4"></i>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">{{ $totalCampaigns }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->campaign_limit ?? 2 }}</span></h3>
+                    <small class="text-warning"><i class="las la-paper-plane me-1"></i>Marketing Broadcasts</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Section: Quick Actions & Connected Accounts -->
+        <div class="row gy-4 mb-4">
             
-            <!-- Stat 1: CONTACTS -->
-            <div class="col-xl-3 col-sm-6">
-                <div class="saas-card">
-                    <div class="stat-badge-icon stat-badge-red">
-                        <i class="las la-address-book"></i>
+            <!-- Quick Actions Grid -->
+            <div class="col-lg-5">
+                <div class="card custom--card border shadow-sm rounded-3 h-100">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="card-title mb-0 fw-bold"><i class="las la-tools text--base me-1"></i> Quick Action Hub</h5>
                     </div>
-                    <div class="text-white fw-bold" style="font-size: 28px; line-height: 1.1;">
-                        {{ number_format($totalContacts, 2) }}
-                    </div>
-                    <div class="text-muted fw-bold mt-1" style="font-size: 12px; letter-spacing: 0.5px;">
-                        CONTACTS
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <a href="{{ route('user.whatsapp.create') }}" class="p-3 border rounded-3 d-block text-center text-decoration-none bg-light hover-shadow transition">
+                                    <i class="lab la-whatsapp fs-1 text-success mb-2 d-block"></i>
+                                    <span class="fw-bold text-dark d-block">Link WhatsApp</span>
+                                    <small class="text-muted">QR / Pairing Code</small>
+                                </a>
+                            </div>
+
+                            <div class="col-6">
+                                <a href="{{ route('user.autoreply.index') }}" class="p-3 border rounded-3 d-block text-center text-decoration-none bg-light hover-shadow transition">
+                                    <i class="las la-robot fs-1 text-primary mb-2 d-block"></i>
+                                    <span class="fw-bold text-dark d-block">Add Keyword Bot</span>
+                                    <small class="text-muted">Instant Auto-Reply</small>
+                                </a>
+                            </div>
+
+                            <div class="col-6">
+                                <a href="{{ route('user.campaigns.create') }}" class="p-3 border rounded-3 d-block text-center text-decoration-none bg-light hover-shadow transition">
+                                    <i class="las la-bullhorn fs-1 text-warning mb-2 d-block"></i>
+                                    <span class="fw-bold text-dark d-block">Launch Campaign</span>
+                                    <small class="text-muted">Broadcast to List</small>
+                                </a>
+                            </div>
+
+                            <div class="col-6">
+                                <a href="{{ route('user.settings.behavior.index') }}" class="p-3 border rounded-3 d-block text-center text-decoration-none bg-light hover-shadow transition">
+                                    <i class="las la-user-shield fs-1 text-danger mb-2 d-block"></i>
+                                    <span class="fw-bold text-dark d-block">Human Behavior</span>
+                                    <small class="text-muted">Anti-Ban Protection</small>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Current Plan Usage Progress -->
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold small text-dark">Plan Usage (Accounts):</span>
+                                <span class="small fw-bold text-muted">{{ $connectedAccountsCount }} of {{ $plan->account_limit ?? 1 }} Used</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                @php
+                                    $limit = $plan->account_limit ?: 1;
+                                    $pct = min(100, round(($connectedAccountsCount / $limit) * 100));
+                                @endphp
+                                <div class="progress-bar bg--base" role="progressbar" style="width: {{ $pct }}%;" aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
 
-            <!-- Stat 2: GROUPS -->
-            <div class="col-xl-3 col-sm-6">
-                <div class="saas-card">
-                    <div class="stat-badge-icon stat-badge-green">
-                        <i class="las la-user-friends"></i>
+            <!-- Connected Accounts List -->
+            <div class="col-lg-7">
+                <div class="card custom--card border shadow-sm rounded-3 h-100">
+                    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                        <h5 class="card-title mb-0 fw-bold"><i class="lab la-whatsapp text-success me-1"></i> My WhatsApp Accounts</h5>
+                        <a href="{{ route('user.whatsapp.create') }}" class="btn btn--base btn-sm"><i class="las la-plus-circle me-1"></i> Add Account</a>
                     </div>
-                    <div class="text-white fw-bold" style="font-size: 28px; line-height: 1.1;">
-                        {{ number_format($totalGroups, 2) }}
-                    </div>
-                    <div class="text-muted fw-bold mt-1" style="font-size: 12px; letter-spacing: 0.5px;">
-                        GROUPS
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stat 3: MESSAGES TODAY -->
-            <div class="col-xl-3 col-sm-6">
-                <div class="saas-card">
-                    <div class="stat-badge-icon stat-badge-blue">
-                        <i class="las la-paper-plane"></i>
-                    </div>
-                    <div class="text-white fw-bold" style="font-size: 28px; line-height: 1.1;">
-                        {{ number_format($messagesToday, 2) }}
-                    </div>
-                    <div class="text-muted fw-bold mt-1" style="font-size: 12px; letter-spacing: 0.5px;">
-                        MESSAGES TODAY
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stat 4: ACTIVE GATEWAYS -->
-            <div class="col-xl-3 col-sm-6">
-                <div class="saas-card">
-                    <div class="stat-badge-icon stat-badge-gold">
-                        <i class="las la-cog"></i>
-                    </div>
-                    <div class="text-white fw-bold" style="font-size: 28px; line-height: 1.1;">
-                        {{ number_format($activeGateways, 2) }}
-                    </div>
-                    <div class="text-muted fw-bold mt-1" style="font-size: 12px; letter-spacing: 0.5px;">
-                        ACTIVE GATEWAYS
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Account Name</th>
+                                        <th>Phone Number</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($connectedAccounts as $acc)
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold text-dark">{{ $acc->account_name }}</div>
+                                                <small class="text-muted">{{ $acc->session_id }}</small>
+                                            </td>
+                                            <td>
+                                                @if($acc->phone_number)
+                                                    <span class="fw-bold">+{{ $acc->phone_number }}</span>
+                                                @else
+                                                    <span class="text-muted">Pending Link</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($acc->status == 1)
+                                                    <span class="badge bg-success"><i class="las la-check-circle me-1"></i> Connected</span>
+                                                @else
+                                                    <span class="badge bg-warning"><i class="las la-hourglass-half me-1"></i> Pending</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <form action="{{ route('user.whatsapp.delete', $acc->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Disconnect this WhatsApp account?')">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Disconnect Account">
+                                                        <i class="las la-unlink"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4">
+                                                <i class="lab la-whatsapp text-muted fs-1 d-block mb-2"></i>
+                                                <p class="text-muted mb-2">No WhatsApp account connected yet.</p>
+                                                <a href="{{ route('user.whatsapp.create') }}" class="btn btn--base btn-sm">Connect WhatsApp Now</a>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
         </div>
 
-        <!-- 3 Service / Credit Cards Row -->
-        <div class="row g-4">
-            
-            <!-- Card 1: SMS Credit -->
-            <div class="col-lg-4">
-                <div class="service-credit-card">
-                    <div>
-                        <div class="d-flex align-items-center gap-3 mb-2">
-                            <div class="service-icon-box" style="background-color: #2b4c7e; color: #63b3ed;">
-                                <i class="las la-comment-dots"></i>
-                            </div>
-                            <div>
-                                <div class="text-muted small">SMS Credit</div>
-                                <div class="text-white fw-bold fs-5">Unlimited</div>
-                            </div>
-                        </div>
-
-                        <div class="limit-pill">
-                            <i class="las la-check"></i> Unlimited Daily Limit
-                        </div>
-                    </div>
-
-                    <a href="{{ route('user.plans.index') }}" class="btn-buy-credit">
-                        Buy Credit
-                    </a>
-                </div>
-            </div>
-
-            <!-- Card 2: Email Credit -->
-            <div class="col-lg-4">
-                <div class="service-credit-card">
-                    <div>
-                        <div class="d-flex align-items-center gap-3 mb-2">
-                            <div class="service-icon-box" style="background-color: #5c2424; color: #fc8181;">
-                                <i class="las la-envelope"></i>
-                            </div>
-                            <div>
-                                <div class="text-muted small">Email Credit</div>
-                                <div class="text-white fw-bold fs-5">Disabled</div>
-                            </div>
-                        </div>
-
-                        <div class="limit-pill">
-                            <i class="las la-check"></i> Unlimited Daily Limit
-                        </div>
-                    </div>
-
-                    <a href="{{ route('user.plans.index') }}" class="btn-buy-credit">
-                        Buy Credit
-                    </a>
-                </div>
-            </div>
-
-            <!-- Card 3: Whatsapp Credit -->
-            <div class="col-lg-4">
-                <div class="service-credit-card">
-                    <div>
-                        <div class="d-flex align-items-center gap-3 mb-2">
-                            <div class="service-icon-box" style="background-color: #1c4532; color: #68d391;">
-                                <i class="lab la-whatsapp"></i>
-                            </div>
-                            <div>
-                                <div class="text-muted small">Whatsapp Credit</div>
-                                <div class="text-white fw-bold fs-5">Unlimited</div>
-                            </div>
-                        </div>
-
-                        <div class="limit-pill">
-                            <i class="las la-check"></i> Unlimited Daily Limit
-                        </div>
-                    </div>
-
-                    <a href="{{ route('user.plans.index') }}" class="btn-buy-credit">
-                        Buy Credit
-                    </a>
-                </div>
-            </div>
-
-        </div>
-
-    </main>
-
+    </div>
 </div>
-
 @endsection

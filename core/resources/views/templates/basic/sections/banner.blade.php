@@ -21,20 +21,22 @@ $bannerContent = getContent('banner.content', true);
     <div class="row align-items-center justify-content-center gy-4">
         <div class="col-lg-7 col-md-7 pe-lg-5">
             <div class="banner-content">
-                <span class="banner-content__badge"> {{ __(@$bannerContent->data_values->title) }}</span>
-                <h1 class="banner-content__title"> {{ __(@$bannerContent->data_values->heading) }} </h1>
-                <p class="banner-content__desc"> {{ __(@$bannerContent->data_values->subheading) }} </p>
-                <div class="banner-content__button">
+                <span class="banner-content__badge"><i class="lab la-whatsapp text-success me-1"></i> @lang('WhatsApp Automation & Marketing SaaS')</span>
+                <h1 class="banner-content__title"> @lang('Automate Your WhatsApp Marketing & Customer Support') </h1>
+                <p class="banner-content__desc"> @lang('Connect your WhatsApp account, create intelligent keyword auto-reply bots, launch bulk marketing campaigns with anti-ban human delays, and scale your business effortlessly.') </p>
+                <div class="banner-content__button d-flex flex-wrap gap-2">
                     @guest
-                        <form class="form-group" action="{{ route('user.register') }}">
-                            <input class="form-control form--control" name="email" type="email" placeholder="@lang('Enter Your Email')">
-                            <button class="btn btn--base banner-btn" type="submit"> {{ __(@$bannerContent->data_values->button_text)}}</button>
-                        </form>
+                        <a href="{{ route('user.register') }}" class="btn btn--base py-2 px-4 fw-bold">
+                            <i class="las la-rocket me-1"></i> @lang('Get Started Free')
+                        </a>
+                        <a href="{{ route('user.login') }}" class="btn btn-outline-light py-2 px-4 fw-bold">
+                            <i class="las la-sign-in-alt me-1"></i> @lang('Login')
+                        </a>
+                    @else
+                        <a href="{{ route('user.home') }}" class="btn btn--base py-2 px-4 fw-bold">
+                            <i class="las la-tachometer-alt me-1"></i> @lang('Open WhatsApp Dashboard')
+                        </a>
                     @endguest
-                    <a class="banner-content__video" href="{{ @$bannerContent->data_values->video_link }}">
-                        <span class="banner-content__icon"> <i class="las la-play"></i> </span>
-                        <span class="text"> {{ __(@$bannerContent->data_values->video_button_text) }} </span>
-                    </a>
                 </div>
                 <div class="banner-content__rating d-flex">
                     <div class="rating-thumb">
