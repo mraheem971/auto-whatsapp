@@ -18,7 +18,10 @@ class CheckStatus
     {
         if (Auth::check()) {
             $user = auth()->user();
-            if ($user->status  && $user->ev  && $user->sv  && $user->tv) {
+            $is2faActive = ($user->ts && !empty($user->tsc));
+            $is2faVerified = $is2faActive ? $user->tv : true;
+
+            if ($user->status && $user->ev && $user->sv && $is2faVerified) {
                 return $next($request);
             } else {
                 if ($request->is('api/*')) {
