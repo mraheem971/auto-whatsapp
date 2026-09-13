@@ -135,7 +135,7 @@
                 <a href="{{ route('user.campaigns.index') }}" class="text-decoration-none">
                     <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-bold small text-uppercase">Bulk Campaigns</span>
+                            <span class="text-muted fw-bold small text-uppercase">Run Campaigns</span>
                             <div class="avatar avatar--sm bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                                 <i class="las la-bullhorn fs-3"></i>
                             </div>
@@ -192,7 +192,7 @@
                             <div class="col-6">
                                 <a href="{{ route('user.campaigns.create') }}" class="p-3 border rounded-3 d-block text-center text-decoration-none bg-light hover-shadow transition">
                                     <i class="las la-bullhorn fs-1 text-warning mb-2 d-block"></i>
-                                    <span class="fw-bold text-dark d-block">Launch Campaign</span>
+                                    <span class="fw-bold text-dark d-block">Run Campaign</span>
                                     <small class="text-muted">Broadcast to List</small>
                                 </a>
                             </div>

@@ -18,7 +18,7 @@ class UserCampaignController extends Controller
 
     public function index(Request $request)
     {
-        $pageTitle = 'My Marketing Campaigns';
+        $pageTitle = 'Run WhatsApp Marketing Campaigns';
         $user = auth()->user();
         $plan = $user->currentPlan();
 
@@ -38,7 +38,7 @@ class UserCampaignController extends Controller
 
     public function create()
     {
-        $pageTitle = 'Create Bulk WhatsApp Campaign';
+        $pageTitle = 'Run WhatsApp Campaign';
         $user = auth()->user();
         $plan = $user->currentPlan();
         $currentCount = Campaign::where('user_id', $user->id)->count();

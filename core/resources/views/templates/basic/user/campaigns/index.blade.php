@@ -5,12 +5,12 @@
         
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
             <div>
-                <h4 class="mb-1 fw-bold">WhatsApp Marketing Campaigns</h4>
-                <p class="text-muted mb-0">Launch high-speed bulk broadcast campaigns to your contact lists with anti-ban natural delay protection.</p>
+                <h4 class="mb-1 fw-bold">Run WhatsApp Marketing Campaigns</h4>
+                <p class="text-muted mb-0">Run high-speed broadcast campaigns to your contact lists with anti-ban natural delay protection.</p>
             </div>
             <div>
                 <a href="{{ route('user.campaigns.create') }}" class="btn btn--base">
-                    <i class="las la-plus-circle me-1"></i> Launch New Campaign
+                    <i class="las la-plus-circle me-1"></i> Run New Campaign
                 </a>
             </div>
         </div>

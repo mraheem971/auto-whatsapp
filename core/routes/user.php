@@ -116,6 +116,18 @@ Route::middleware('auth')->name('user.')->group(function () {
                 Route::post('/delete/{id}', 'delete')->name('delete');
             });
 
+            // Gateway & API Hub
+            Route::controller('UserGatewayController')->prefix('gateway')->name('gateway.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/test', 'testSend')->name('test');
+            });
+
+            // Direct Messages & Delivery Logs
+            Route::controller('UserMessageController')->prefix('messages')->name('messages.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/send', 'send')->name('send');
+            });
+
             // Auto-Reply & Keyword Bots
             Route::controller('UserAutoReplyController')->prefix('autoreply')->name('autoreply.')->group(function () {
                 Route::get('/', 'index')->name('index');

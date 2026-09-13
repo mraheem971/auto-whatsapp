@@ -51,6 +51,13 @@
             </li>
 
             <li class="nav-item">
+                <a class="nav-link text-white {{ menuActive('user.gateway*') }}" href="{{ route('user.gateway.index') }}">
+                    <i class="las la-server me-2 fs-5 text-warning"></i>
+                    <span>@lang('Gateway & API Hub')</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
                 <a class="nav-link text-white {{ menuActive('user.autoreply*') }}" href="{{ route('user.autoreply.index') }}">
                     <i class="las la-robot me-2 fs-5 text-primary"></i>
                     <span>@lang('Auto-Reply Bots')</span>
@@ -65,13 +72,20 @@
             </li>
 
             <li class="nav-header text-uppercase text-white-50 px-3 pt-3 pb-1" style="font-size: 11px; font-weight: 700;">
-                @lang('Broadcast & Content')
+                @lang('Broadcast & Messaging')
             </li>
 
             <li class="nav-item">
                 <a class="nav-link text-white {{ menuActive('user.campaigns*') }}" href="{{ route('user.campaigns.index') }}">
                     <i class="las la-bullhorn me-2 fs-5 text-warning"></i>
-                    <span>@lang('Bulk Campaigns')</span>
+                    <span>@lang('Run Campaigns')</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link text-white {{ menuActive('user.messages*') }}" href="{{ route('user.messages.index') }}">
+                    <i class="las la-paper-plane me-2 fs-5 text-success"></i>
+                    <span>@lang('Direct Messages & Logs')</span>
                 </a>
             </li>
 

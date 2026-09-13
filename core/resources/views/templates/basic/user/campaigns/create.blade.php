@@ -5,7 +5,7 @@
         
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
             <div>
-                <h4 class="mb-1 fw-bold">Create Bulk WhatsApp Campaign</h4>
+                <h4 class="mb-1 fw-bold">Run WhatsApp Campaign</h4>
                 <p class="text-muted mb-0">Select your sender account, audience, message template, and anti-ban delay timing.</p>
             </div>
             <div>

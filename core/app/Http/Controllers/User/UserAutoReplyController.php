@@ -77,33 +77,38 @@ class UserAutoReplyController extends Controller
         }
 
         $request->validate([
-            'name'           => 'required|string|max:150',
-            'match_type'     => 'required|in:exact,contains,starts_with,regex,fallback',
-            'keywords'       => 'nullable|string',
-            'reply_type'     => 'required|in:text,image,video,document,flow',
-            'reply_message'  => 'required|string',
-            'session_id'     => 'nullable|string',
-            'target_type'    => 'nullable|string',
-            'delay_seconds'  => 'nullable|integer|min:0|max:60',
-            'cooldown_minutes' => 'nullable|integer|min:0|max:1440',
+            'name'                    => 'required|string|max:150',
+            'match_type'              => 'required|in:exact,contains,starts_with,regex,fallback',
+            'keywords'                => 'nullable|string',
+            'reply_type'              => 'required|in:text,image,video,document,flow',
+            'reply_message'           => 'required|string',
+            'session_id'              => 'nullable|string',
+            'target_type'             => 'nullable|string',
+            'read_delay_seconds'      => 'nullable|integer|min:0|max:60',
+            'typing_duration_seconds' => 'nullable|integer|min:0|max:60',
+            'reply_delay_seconds'     => 'nullable|integer|min:0|max:60',
+            'delay_seconds'           => 'nullable|integer|min:0|max:60',
+            'cooldown_minutes'        => 'nullable|integer|min:0|max:1440',
         ]);
 
         $bot = new AutoReply();
-        $bot->user_id          = $user->id;
-        $bot->name             = $request->name;
-        $bot->match_type       = $request->match_type;
-        $bot->keywords         = $request->keywords;
-        $bot->reply_type       = $request->reply_type;
-        $bot->reply_message    = $request->reply_message;
-        $bot->media_url        = $request->media_url;
-        $bot->session_id       = $request->session_id;
-        $bot->target_type      = $request->target_type ?: 'all';
-        $bot->delay_seconds    = $request->delay_seconds ?: 2;
-        $bot->cooldown_minutes = $request->cooldown_minutes ?: 0;
-        $bot->status           = 1;
+        $bot->user_id                 = $user->id;
+        $bot->name                    = $request->name;
+        $bot->match_type              = $request->match_type;
+        $bot->keywords                = $request->keywords;
+        $bot->reply_type              = $request->reply_type;
+        $bot->reply_message           = $request->reply_message;
+        $bot->media_url               = $request->media_url;
+        $bot->session_id              = $request->session_id;
+        $bot->target_type             = $request->target_type ?: 'all';
+        $bot->read_delay_seconds      = $request->filled('read_delay_seconds') ? (int)$request->read_delay_seconds : 2;
+        $bot->typing_duration_seconds = $request->filled('typing_duration_seconds') ? (int)$request->typing_duration_seconds : 3;
+        $bot->reply_delay_seconds     = $request->filled('reply_delay_seconds') ? (int)$request->reply_delay_seconds : ($request->delay_seconds ?: 2);
+        $bot->cooldown_minutes        = $request->cooldown_minutes ?: 0;
+        $bot->status                  = 1;
         $bot->save();
 
-        $notify[] = ['success', 'Auto-Reply bot created successfully!'];
+        $notify[] = ['success', 'Auto-Reply bot created successfully with human behavior protection!'];
         return back()->withNotify($notify);
     }
 
@@ -113,23 +118,28 @@ class UserAutoReplyController extends Controller
         $bot = AutoReply::where('user_id', $user->id)->findOrFail($id);
 
         $request->validate([
-            'name'           => 'required|string|max:150',
-            'match_type'     => 'required|in:exact,contains,starts_with,regex,fallback',
-            'keywords'       => 'nullable|string',
-            'reply_type'     => 'required|in:text,image,video,document,flow',
-            'reply_message'  => 'required|string',
+            'name'                    => 'required|string|max:150',
+            'match_type'              => 'required|in:exact,contains,starts_with,regex,fallback',
+            'keywords'                => 'nullable|string',
+            'reply_type'              => 'required|in:text,image,video,document,flow',
+            'reply_message'           => 'required|string',
+            'read_delay_seconds'      => 'nullable|integer|min:0|max:60',
+            'typing_duration_seconds' => 'nullable|integer|min:0|max:60',
+            'reply_delay_seconds'     => 'nullable|integer|min:0|max:60',
         ]);
 
-        $bot->name             = $request->name;
-        $bot->match_type       = $request->match_type;
-        $bot->keywords         = $request->keywords;
-        $bot->reply_type       = $request->reply_type;
-        $bot->reply_message    = $request->reply_message;
-        $bot->media_url        = $request->media_url;
-        $bot->session_id       = $request->session_id;
-        $bot->target_type      = $request->target_type ?: 'all';
-        $bot->delay_seconds    = $request->delay_seconds ?: 2;
-        $bot->cooldown_minutes = $request->cooldown_minutes ?: 0;
+        $bot->name                    = $request->name;
+        $bot->match_type              = $request->match_type;
+        $bot->keywords                = $request->keywords;
+        $bot->reply_type              = $request->reply_type;
+        $bot->reply_message           = $request->reply_message;
+        $bot->media_url               = $request->media_url;
+        $bot->session_id              = $request->session_id;
+        $bot->target_type             = $request->target_type ?: 'all';
+        $bot->read_delay_seconds      = $request->filled('read_delay_seconds') ? (int)$request->read_delay_seconds : 0;
+        $bot->typing_duration_seconds = $request->filled('typing_duration_seconds') ? (int)$request->typing_duration_seconds : 0;
+        $bot->reply_delay_seconds     = $request->filled('reply_delay_seconds') ? (int)$request->reply_delay_seconds : ($request->delay_seconds ?: 0);
+        $bot->cooldown_minutes        = $request->cooldown_minutes ?: 0;
         $bot->save();
 
         $notify[] = ['success', 'Auto-Reply bot updated successfully!'];

@@ -95,7 +95,7 @@
                                         <li class="user-info-dropdown__item">
                                             <a class="{{menuActive('user.campaigns*')}} user-info-dropdown__link" href="{{ route('user.campaigns.index') }}">
                                                 <span class="icon"><i class="las la-bullhorn"></i></span>
-                                                <span class="text"> @lang('Bulk Campaigns') </span>
+                                                <span class="text"> @lang('Run Campaigns') </span>
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">

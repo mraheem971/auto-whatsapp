@@ -48,6 +48,7 @@
                                 <th>Match Type</th>
                                 <th>Trigger Keywords</th>
                                 <th>Reply Message</th>
+                                <th>Human Behavior</th>
                                 <th>Hits</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -73,8 +74,21 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <div class="text-muted small text-truncate" style="max-width: 250px;">
+                                        <div class="text-muted small text-truncate" style="max-width: 200px;">
                                             {{ $rule->reply_message }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column gap-1" style="font-size: 11px;">
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" title="Mark as Seen Delay">
+                                                <i class="las la-eye me-1"></i>Seen: {{ $rule->read_delay_seconds ?? 0 }}s
+                                            </span>
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" title="Typing Animation">
+                                                <i class="las la-keyboard me-1"></i>Typing: {{ $rule->typing_duration_seconds ?? 0 }}s
+                                            </span>
+                                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25" title="Send Message Delay">
+                                                <i class="las la-hourglass-half me-1"></i>Delay: {{ $rule->reply_delay_seconds ?? ($rule->delay_seconds ?? 0) }}s
+                                            </span>
                                         </div>
                                     </td>
                                     <td>
@@ -100,6 +114,9 @@
                                                     data-message="{{ $rule->reply_message }}"
                                                     data-media="{{ $rule->media_url }}"
                                                     data-session="{{ $rule->session_id }}"
+                                                    data-seen="{{ $rule->read_delay_seconds ?? 2 }}"
+                                                    data-typing="{{ $rule->typing_duration_seconds ?? 3 }}"
+                                                    data-delay="{{ $rule->reply_delay_seconds ?? ($rule->delay_seconds ?? 2) }}"
                                                     title="Edit Bot">
                                                 <i class="las la-edit"></i>
                                             </button>
@@ -115,7 +132,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-5">
+                                    <td colspan="8" class="text-center py-5">
                                         <i class="las la-robot text-muted fs-1 d-block mb-2"></i>
                                         <h6 class="text-muted">No keyword bots created yet</h6>
                                         <p class="text-muted small">Set up your first automated keyword response rule above.</p>
@@ -187,12 +204,60 @@
                         <div class="col-12">
                             <label class="fw-bold mb-1">Reply Message Content <span class="text-danger">*</span></label>
                             <textarea name="reply_message" rows="4" class="form-control" placeholder="Type the automated response message here..." required></textarea>
-                            <small class="text-muted">Tags supported: <code>@{{name}}</code>, <code>@{{phone}}</code></small>
+                            <small class="text-muted">Tags supported: <code>@{{name}}</code>, <code>@{{sender_phone}}</code>, <code>@{{time}}</code>, <code>@{{date}}</code></small>
                         </div>
                         <div class="col-12">
                             <label class="fw-bold mb-1">Media URL (Optional)</label>
                             <input type="url" name="media_url" class="form-control" placeholder="https://example.com/banner.jpg">
                         </div>
+
+                        <!-- Human Behavior & Anti-Ban System -->
+                        <div class="col-12">
+                            <div class="card border rounded-3 bg-light p-3 mt-2">
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <i class="las la-user-shield text-danger fs-4"></i>
+                                    <div>
+                                        <h6 class="mb-0 fw-bold text-dark">Human Behavior & Anti-Ban Protection</h6>
+                                        <small class="text-muted">Simulate natural human interaction delays to protect your WhatsApp account from spam detection.</small>
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small mb-1">
+                                            <i class="las la-eye text-primary me-1"></i> Mark as Seen Delay
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" name="read_delay_seconds" class="form-control" min="0" max="60" value="2">
+                                            <span class="input-group-text">sec</span>
+                                        </div>
+                                        <small class="text-muted fs-8 d-block mt-1">Delay before turning ticks Blue for sender.</small>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small mb-1">
+                                            <i class="las la-keyboard text-success me-1"></i> Typing Animation
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" name="typing_duration_seconds" class="form-control" min="0" max="60" value="3">
+                                            <span class="input-group-text">sec</span>
+                                        </div>
+                                        <small class="text-muted fs-8 d-block mt-1">Shows "typing..." presence animation.</small>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small mb-1">
+                                            <i class="las la-hourglass-half text-warning me-1"></i> Send Message Delay
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" name="reply_delay_seconds" class="form-control" min="0" max="60" value="2">
+                                            <span class="input-group-text">sec</span>
+                                        </div>
+                                        <small class="text-muted fs-8 d-block mt-1">Natural pause before final dispatch.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -254,11 +319,60 @@
                         <div class="col-12">
                             <label class="fw-bold mb-1">Reply Message Content <span class="text-danger">*</span></label>
                             <textarea name="reply_message" id="editMessage" rows="4" class="form-control" required></textarea>
+                            <small class="text-muted">Tags supported: <code>@{{name}}</code>, <code>@{{sender_phone}}</code>, <code>@{{time}}</code>, <code>@{{date}}</code></small>
                         </div>
                         <div class="col-12">
                             <label class="fw-bold mb-1">Media URL (Optional)</label>
                             <input type="url" name="media_url" id="editMedia" class="form-control">
                         </div>
+
+                        <!-- Human Behavior & Anti-Ban System (Edit) -->
+                        <div class="col-12">
+                            <div class="card border rounded-3 bg-light p-3 mt-2">
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <i class="las la-user-shield text-danger fs-4"></i>
+                                    <div>
+                                        <h6 class="mb-0 fw-bold text-dark">Human Behavior & Anti-Ban Protection</h6>
+                                        <small class="text-muted">Simulate natural human interaction delays to protect your WhatsApp account from spam detection.</small>
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small mb-1">
+                                            <i class="las la-eye text-primary me-1"></i> Mark as Seen Delay
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" name="read_delay_seconds" id="editSeenDelay" class="form-control" min="0" max="60" value="2">
+                                            <span class="input-group-text">sec</span>
+                                        </div>
+                                        <small class="text-muted fs-8 d-block mt-1">Delay before turning ticks Blue.</small>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small mb-1">
+                                            <i class="las la-keyboard text-success me-1"></i> Typing Animation
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" name="typing_duration_seconds" id="editTypingDuration" class="form-control" min="0" max="60" value="3">
+                                            <span class="input-group-text">sec</span>
+                                        </div>
+                                        <small class="text-muted fs-8 d-block mt-1">Shows "typing..." presence animation.</small>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small mb-1">
+                                            <i class="las la-hourglass-half text-warning me-1"></i> Send Message Delay
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" name="reply_delay_seconds" id="editSendDelay" class="form-control" min="0" max="60" value="2">
+                                            <span class="input-group-text">sec</span>
+                                        </div>
+                                        <small class="text-muted fs-8 d-block mt-1">Natural pause before dispatch.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -285,6 +399,9 @@
             var message = $(this).data('message');
             var media = $(this).data('media');
             var session = $(this).data('session');
+            var seen = $(this).data('seen');
+            var typing = $(this).data('typing');
+            var delay = $(this).data('delay');
 
             $('#editName').val(name);
             $('#editMatch').val(match);
@@ -293,6 +410,9 @@
             $('#editMessage').val(message);
             $('#editMedia').val(media);
             $('#editSession').val(session);
+            $('#editSeenDelay').val(seen !== undefined ? seen : 2);
+            $('#editTypingDuration').val(typing !== undefined ? typing : 3);
+            $('#editSendDelay').val(delay !== undefined ? delay : 2);
 
             var actionUrl = "{{ url('user/autoreply/update') }}/" + id;
             $('#editBotForm').attr('action', actionUrl);
