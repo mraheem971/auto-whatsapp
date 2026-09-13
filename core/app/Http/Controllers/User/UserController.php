@@ -27,12 +27,21 @@ class UserController extends Controller
         $user      = auth()->user();
         $userId    = $user->id;
 
-        $connectedAccountsCount = \App\Models\WhatsappAccount::where('user_id', $userId)->active()->count();
+        $activeGateways         = \App\Models\WhatsappAccount::where('user_id', $userId)->where('status', 1)->count();
+        $totalAccounts          = \App\Models\WhatsappAccount::where('user_id', $userId)->count();
+        $connectedAccountsCount = $activeGateways;
         $connectedAccounts      = \App\Models\WhatsappAccount::where('user_id', $userId)->latest()->get();
         $totalAutoReplies       = \App\Models\AutoReply::where('user_id', $userId)->count();
         $totalTemplates         = \App\Models\MessageTemplate::where('user_id', $userId)->count();
         $totalCampaigns         = \App\Models\Campaign::where('user_id', $userId)->count();
-        $totalContacts          = \App\Models\Contact::where('user_id', $userId)->where('type', 'contact')->count();
+        $totalContacts          = \App\Models\Contact::where('user_id', $userId)->where(function($q) {
+                                    $q->where('type', 'contact')->orWhereNull('type');
+                                })->count();
+        $totalGroups            = \App\Models\Contact::where('user_id', $userId)->where('type', 'group')->count();
+        
+        $campaignMessagesToday  = \App\Models\Campaign::where('user_id', $userId)->whereDate('updated_at', \Carbon\Carbon::today())->sum('sent_count');
+        $messagesToday          = (int)$campaignMessagesToday;
+
         $totalDeposit           = Deposit::where('user_id', $userId)->where('status', Status::PAYMENT_SUCCESS)->sum('amount');
 
         $activeSubscription = $user->activeSubscription;
@@ -44,12 +53,16 @@ class UserController extends Controller
         return view('Template::user.dashboard', compact(
             'pageTitle',
             'user',
+            'activeGateways',
+            'totalAccounts',
             'connectedAccountsCount',
             'connectedAccounts',
             'totalAutoReplies',
             'totalTemplates',
             'totalCampaigns',
             'totalContacts',
+            'totalGroups',
+            'messagesToday',
             'totalDeposit',
             'activeSubscription',
             'plan',

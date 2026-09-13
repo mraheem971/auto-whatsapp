@@ -29,58 +29,136 @@
             </div>
         </div>
 
-        <!-- 4 Metric Cards -->
-        <div class="row gy-4 mb-4">
+        <!-- Metric Cards Row 1: Core WhatsApp & Communication Stats -->
+        <div class="row gy-3 mb-3">
+            <!-- Active Gateways -->
             <div class="col-xl-3 col-sm-6">
-                <div class="card custom--card p-4 border shadow-sm h-100">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted fw-bold small text-uppercase">Connected Accounts</span>
-                        <div class="avatar avatar--sm bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                            <i class="lab la-whatsapp fs-4"></i>
+                <a href="{{ route('user.whatsapp.index') }}" class="text-decoration-none">
+                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted fw-bold small text-uppercase">Active Gateways</span>
+                            <div class="avatar avatar--sm bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="lab la-whatsapp fs-3"></i>
+                            </div>
                         </div>
+                        <h3 class="fw-bold text-dark mb-1">{{ $activeGateways }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->account_limit ?? 1 }}</span></h3>
+                        <small class="{{ $activeGateways > 0 ? 'text-success' : 'text-muted' }}">
+                            <i class="las {{ $activeGateways > 0 ? 'la-check-circle' : 'la-info-circle' }} me-1"></i>
+                            {{ $activeGateways > 0 ? 'Online & Active' : 'No active gateway' }}
+                        </small>
                     </div>
-                    <h3 class="fw-bold text-dark mb-1">{{ $connectedAccountsCount }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->account_limit ?? 1 }}</span></h3>
-                    <small class="text-success"><i class="las la-check-circle me-1"></i>{{ $connectedAccountsCount > 0 ? 'Online & Ready' : 'No account linked' }}</small>
-                </div>
+                </a>
+            </div>
+
+            <!-- Total Contacts -->
+            <div class="col-xl-3 col-sm-6">
+                <a href="{{ route('user.contacts.index') }}" class="text-decoration-none">
+                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted fw-bold small text-uppercase">Total Contacts</span>
+                            <div class="avatar avatar--sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="las la-address-book fs-3"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-1">{{ number_format($totalContacts) }}</h3>
+                        <small class="text-primary"><i class="las la-user-friends me-1"></i>Synced Audience</small>
+                    </div>
+                </a>
+            </div>
+
+            <!-- WhatsApp Groups -->
+            <div class="col-xl-3 col-sm-6">
+                <a href="{{ route('user.contacts.index') }}" class="text-decoration-none">
+                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted fw-bold small text-uppercase">WhatsApp Groups</span>
+                            <div class="avatar avatar--sm bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="las la-users fs-3"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-1">{{ number_format($totalGroups) }}</h3>
+                        <small class="text-info"><i class="las la-comments me-1"></i>Community Groups</small>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Messages Today -->
+            <div class="col-xl-3 col-sm-6">
+                <a href="{{ route('user.campaigns.index') }}" class="text-decoration-none">
+                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted fw-bold small text-uppercase">Messages Today</span>
+                            <div class="avatar avatar--sm bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="las la-paper-plane fs-3"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-1">{{ number_format($messagesToday) }}</h3>
+                        <small class="text-warning"><i class="las la-bolt me-1"></i>Delivered Today</small>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Metric Cards Row 2: Bot Automations & Broadcast Hub -->
+        <div class="row gy-3 mb-4">
+            <div class="col-xl-3 col-sm-6">
+                <a href="{{ route('user.autoreply.index') }}" class="text-decoration-none">
+                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted fw-bold small text-uppercase">Keyword Auto-Replies</span>
+                            <div class="avatar avatar--sm bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="las la-robot fs-3"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-1">{{ $totalAutoReplies }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->autoreply_limit ?? 5 }}</span></h3>
+                        <small class="text-danger"><i class="las la-magic me-1"></i>Active Bot Rules</small>
+                    </div>
+                </a>
             </div>
 
             <div class="col-xl-3 col-sm-6">
-                <div class="card custom--card p-4 border shadow-sm h-100">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted fw-bold small text-uppercase">Keyword Auto-Replies</span>
-                        <div class="avatar avatar--sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                            <i class="las la-robot fs-4"></i>
+                <a href="{{ route('user.templates.index') }}" class="text-decoration-none">
+                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted fw-bold small text-uppercase">Message Templates</span>
+                            <div class="avatar avatar--sm bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="las la-envelope-open-text fs-3"></i>
+                            </div>
                         </div>
+                        <h3 class="fw-bold text-dark mb-1">{{ $totalTemplates }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->template_limit ?? 5 }}</span></h3>
+                        <small class="text-secondary"><i class="las la-file-alt me-1"></i>Saved Templates</small>
                     </div>
-                    <h3 class="fw-bold text-dark mb-1">{{ $totalAutoReplies }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->autoreply_limit ?? 5 }}</span></h3>
-                    <small class="text-primary"><i class="las la-bolt me-1"></i>Active Bot Rules</small>
-                </div>
+                </a>
             </div>
 
             <div class="col-xl-3 col-sm-6">
-                <div class="card custom--card p-4 border shadow-sm h-100">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted fw-bold small text-uppercase">Message Templates</span>
-                        <div class="avatar avatar--sm bg-info text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                            <i class="las la-envelope-open-text fs-4"></i>
+                <a href="{{ route('user.campaigns.index') }}" class="text-decoration-none">
+                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted fw-bold small text-uppercase">Bulk Campaigns</span>
+                            <div class="avatar avatar--sm bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="las la-bullhorn fs-3"></i>
+                            </div>
                         </div>
+                        <h3 class="fw-bold text-dark mb-1">{{ $totalCampaigns }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->campaign_limit ?? 2 }}</span></h3>
+                        <small class="text-success"><i class="las la-broadcast-tower me-1"></i>Marketing Broadcasts</small>
                     </div>
-                    <h3 class="fw-bold text-dark mb-1">{{ $totalTemplates }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->template_limit ?? 5 }}</span></h3>
-                    <small class="text-info"><i class="las la-file-alt me-1"></i>Saved Templates</small>
-                </div>
+                </a>
             </div>
 
             <div class="col-xl-3 col-sm-6">
-                <div class="card custom--card p-4 border shadow-sm h-100">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted fw-bold small text-uppercase">Bulk Campaigns</span>
-                        <div class="avatar avatar--sm bg-warning text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                            <i class="las la-bullhorn fs-4"></i>
+                <a href="{{ route('user.plans.index') }}" class="text-decoration-none">
+                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted fw-bold small text-uppercase">Current Plan</span>
+                            <div class="avatar avatar--sm bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="las la-crown fs-3"></i>
+                            </div>
                         </div>
+                        <h3 class="fw-bold text-dark mb-1">{{ $plan->name ?? 'Free Tier' }}</h3>
+                        <small class="text-warning"><i class="las la-shield-alt me-1"></i>Anti-Ban Protected</small>
                     </div>
-                    <h3 class="fw-bold text-dark mb-1">{{ $totalCampaigns }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->campaign_limit ?? 2 }}</span></h3>
-                    <small class="text-warning"><i class="las la-paper-plane me-1"></i>Marketing Broadcasts</small>
-                </div>
+                </a>
             </div>
         </div>
 
