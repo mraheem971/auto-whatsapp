@@ -26,11 +26,10 @@ class SiteController extends Controller
             session()->put('reference', $reference);
         }
 
-        $pageTitle = 'Home';
-        $sections = Page::where('tempname',activeTemplate())->where('slug','/')->first();
-        $seoContents = $sections->seo_content;
-        $seoImage = @$seoContents->image ? getImage(getFilePath('seo') . '/' . @$seoContents->image, getFileSize('seo')) : null;
-        return view('Template::home', compact('pageTitle','sections','seoContents','seoImage'));
+        if (auth()->check()) {
+            return redirect()->route('user.home');
+        }
+        return redirect()->route('user.login');
     }
 
     public function pages($slug)
