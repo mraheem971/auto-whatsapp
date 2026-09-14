@@ -161,8 +161,49 @@ class PaymentController extends Controller
                 'post_balance' => showAmount($user->balance)
             ]);
 
+             //for plan subscription
+             if ($deposit->request_type == 'plan_subscription' && $deposit->account_listing_id) {
+                 $plan = \App\Models\Plan::find($deposit->account_listing_id);
+                 if ($plan) {
+                     $user->balance -= $deposit->amount;
+                     $user->save();
+
+                     $transaction               = new Transaction();
+                     $transaction->user_id      = $user->id;
+                     $transaction->amount       = $deposit->amount;
+                     $transaction->post_balance = $user->balance;
+                     $transaction->charge       = 0;
+                     $transaction->trx_type     = '-';
+                     $transaction->details      = 'Direct Subscription to Plan: ' . $plan->name;
+                     $transaction->trx          = $deposit->trx;
+                     $transaction->remark       = 'plan_subscription';
+                     $transaction->save();
+
+                     // Cancel previous active subscriptions
+                     \App\Models\UserSubscription::where('user_id', $user->id)->update(['status' => 0]);
+
+                     // Create new subscription
+                     $sub = new \App\Models\UserSubscription();
+                     $sub->user_id      = $user->id;
+                     $sub->plan_id      = $plan->id;
+                     $sub->paid_amount  = $deposit->amount;
+                     $sub->starts_at    = now();
+                     $sub->expires_at   = $plan->duration_days ? now()->addDays($plan->duration_days) : null;
+                     $sub->status       = 1;
+                     $sub->save();
+
+                     if (!$isManual) {
+                         $adminNotification = new AdminNotification();
+                         $adminNotification->user_id = $user->id;
+                         $adminNotification->title = $user->username . ' subscribed to plan: ' . $plan->name;
+                         $adminNotification->click_url = urlPath('admin.users.detail', $user->id);
+                         $adminNotification->save();
+                     }
+                 }
+             }
+
              //for account listing data
-             if ($deposit->account_listing_id) {
+             if ($deposit->account_listing_id && in_array($deposit->request_type, ['bid', 'buy'])) {
 
                 $accountListing = AccountListing::find($deposit->account_listing_id);
 

@@ -117,12 +117,6 @@
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.deposit.index')}} user-info-dropdown__link" href="{{ route('user.deposit.index') }}">
-                                                <span class="icon"> <i class="las la-coins"></i> </span>
-                                                <span class="text"> @lang('Deposit Funds') </span>
-                                            </a>
-                                        </li>
-                                        <li class="user-info-dropdown__item">
                                             <a class="{{menuActive('ticket.index')}} user-info-dropdown__link" href="{{ route('ticket.index') }}">
                                                 <span class="icon"> <i class="las la-ticket-alt"></i> </span>
                                                 <span class="text"> @lang('Support Ticket') </span>
@@ -192,18 +186,6 @@
                 <a class="{{menuActive('user.account.listing.purchase')}} user-info-dropdown__link" href="{{ route('user.account.listing.purchase') }}">
                     <span class="icon"><i class="fas fa-shopping-basket"></i></span>
                     <span class="text"> @lang('Purchase Account') </span>
-                </a>
-            </li>
-            <li class="user-info-dropdown__item">
-                <a class="{{menuActive('user.deposit.index')}} user-info-dropdown__link" href="{{ route('user.deposit.index') }}">
-                    <span class="icon"> <i class="las la-coins"></i> </span>
-                    <span class="text"> @lang('Deposit') </span>
-                </a>
-            </li>
-            <li class="user-info-dropdown__item">
-                <a class="{{menuActive('user.deposit.history')}} user-info-dropdown__link" href="{{ route('user.deposit.history') }}">
-                    <span class="icon"> <i class="las la-file-invoice-dollar"></i> </span>
-                    <span class="text"> @lang('Deposit History') </span>
                 </a>
             </li>
             <li class="user-info-dropdown__item">

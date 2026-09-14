@@ -115,13 +115,6 @@
             </li>
 
             <li class="nav-item">
-                <a class="nav-link text-white {{ menuActive('user.deposit.index') }}" href="{{ route('user.deposit.index') }}">
-                    <i class="las la-coins me-2 fs-5 text-success"></i>
-                    <span>@lang('Deposit Funds')</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
                 <a class="nav-link text-white {{ menuActive('user.transactions') }}" href="{{ route('user.transactions') }}">
                     <i class="las la-chart-bar me-2 fs-5 text-info"></i>
                     <span>@lang('Transactions & Logs')</span>
