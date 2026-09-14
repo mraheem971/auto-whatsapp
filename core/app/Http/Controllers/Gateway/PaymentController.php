@@ -44,6 +44,9 @@ class PaymentController extends Controller
             'currency' => 'required',
         ]);
 
+        $accountListingId = 0;
+        $requestType = null;
+
         if (session()->get('accountListing') && session()->get('requestAmount') && session()->get('requestType')) {
             if ($request->amount != session()->get('requestAmount')) {
                 $notify[] = ['error', 'Invalid amount'];
@@ -85,8 +88,8 @@ class PaymentController extends Controller
 
         $data = new Deposit();
         $data->user_id = $user->id;
-        $data->account_listing_id = $accountListingId ?? 0;
-        $data->request_type = $requestType ?? null;
+        $data->account_listing_id = $accountListingId;
+        $data->request_type = $requestType;
         $data->method_code = $gate->method_code;
         $data->method_currency = strtoupper($gate->currency);
         $data->amount = $request->amount;
@@ -96,7 +99,7 @@ class PaymentController extends Controller
         $data->btc_amount = 0;
         $data->btc_wallet = "";
         $data->trx = getTrx();
-        $data->success_url = $requestType == 'plan_subscription' ? urlPath('user.plans.index') : urlPath('user.deposit.history');
+        $data->success_url = ($requestType === 'plan_subscription') ? urlPath('user.plans.index') : urlPath('user.deposit.history');
         $data->failed_url = urlPath('user.deposit.history');
         $data->save();
         session()->put('Track', $data->trx);
