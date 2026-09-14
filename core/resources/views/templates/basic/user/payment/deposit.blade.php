@@ -1,232 +1,451 @@
 @extends($activeTemplate . 'layouts.master')
 @section('content')
-    <section class="section py-120">
-        <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-lg-9">
-                    <form class="deposit-form" action="{{ route('user.deposit.insert') }}" method="post">
-                        @csrf
-                        <input name="currency" type="hidden">
-                        <div class="gateway-card card custom--card">
-                            <div class="card-header">
-                                @if (session()->get('requestAmount'))
-                                    <h5 class="card-title">@lang('Payment')</h5>
-                                @else
-                                    <h5 class="card-title">@lang('Deposit')</h5>
-                                @endif
-                            </div>
-                            <div class="card-body">
-                                <div class="row justify-content-center gy-sm-4 gy-3">
-                                    <div class="col-lg-6">
-                                        <div class="payment-system-list is-scrollable gateway-option-list">
-                                            @foreach ($gatewayCurrency as $data)
-                                                <label class="payment-item @if ($loop->index > 4) d-none @endif gateway-option" for="{{ titleToKey($data->name) }}">
-                                                    <div class="payment-item__info">
-                                                        <span class="payment-item__check"></span>
-                                                        <span class="payment-item__name">{{ __($data->name) }}</span>
-                                                    </div>
-                                                    <div class="payment-item__thumb">
-                                                        <img class="payment-item__thumb-img" src="{{ getImage(getFilePath('gateway') . '/' . $data->method->image) }}" alt="@lang('payment-thumb')">
-                                                    </div>
-                                                    <input class="payment-item__radio gateway-input" id="{{ titleToKey($data->name) }}" name="gateway" data-gateway='@json($data)' data-min-amount="{{ showAmount($data->min_amount) }}" data-max-amount="{{ showAmount($data->max_amount) }}" type="radio" value="{{ $data->method_code }}" hidden @if (old('gateway')) @checked(old('gateway') == $data->method_code) @else @checked($loop->first) @endif>
-                                                </label>
-                                            @endforeach
-                                            @if ($gatewayCurrency->count() > 4)
-                                                <button class="payment-item__btn more-gateway-option" type="button">
-                                                    <p class="payment-item__btn-text">@lang('Show All Payment Options')</p>
-                                                    <span class="payment-item__btn__icon"><i class="fas fa-chevron-down"></i></i></span>
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-6">
-                                        <div class="payment-system-list p-3">
-                                            <div class="deposit-info">
-                                                <div class="deposit-info__title">
-                                                    <p class="text mb-0">@lang('Amount')</p>
-                                                </div>
-                                                <div class="deposit-info__input">
-                                                    <div class="deposit-info__input-group input-group">
-                                                        <span class="deposit-info__input-group-text px-2">{{ gs('cur_sym') }}</span>
-                                                        @if (session()->get('requestAmount'))
-                                                            <input class="form-control form--control amount" name="amount" type="number" value="{{ session()->get('requestAmount') }}" placeholder="@lang('00.00')" autocomplete="off" @readonly(true)>
-                                                        @else
-                                                            <input class="form-control form--control amount" name="amount" type="number" value="{{ old('amount') }}" placeholder="@lang('00.00')" autocomplete="off">
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <hr>
-                                            <div class="deposit-info">
-                                                <div class="deposit-info__title">
-                                                    <p class="text has-icon"> @lang('Limit')
-                                                        <span></span>
-                                                    </p>
-                                                </div>
-                                                <div class="deposit-info__input">
-                                                    <p class="text"><span class="gateway-limit">@lang('0.00')</span>
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div class="deposit-info">
-                                                <div class="deposit-info__title">
-                                                    <p class="text has-icon">@lang('Processing Charge')
-                                                        <span class="proccessing-fee-info" data-bs-toggle="tooltip" title="@lang('Processing charge for payment gateways')"><i
-                                                               class="las la-info-circle"></i> </span>
-                                                    </p>
-                                                </div>
-                                                <div class="deposit-info__input">
-                                                    <p class="text"><span class="processing-fee">@lang('0.00')</span>
-                                                        {{ __(gs('cur_text')) }}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div class="deposit-info total-amount pt-3">
-                                                <div class="deposit-info__title">
-                                                    <p class="text">@lang('Total')</p>
-                                                </div>
-                                                <div class="deposit-info__input">
-                                                    <p class="text"><span class="final-amount">@lang('0.00')</span>
-                                                        {{ __(gs('cur_text')) }}</p>
-                                                </div>
-                                            </div>
-
-                                            <div class="deposit-info gateway-conversion d-none total-amount pt-2">
-                                                <div class="deposit-info__title">
-                                                    <p class="text">@lang('Conversion')
-                                                    </p>
-                                                </div>
-                                                <div class="deposit-info__input">
-                                                    <p class="text"></p>
-                                                </div>
-                                            </div>
-                                            <div class="deposit-info conversion-currency d-none total-amount pt-2">
-                                                <div class="deposit-info__title">
-                                                    <p class="text">
-                                                        @lang('In') <span class="gateway-currency"></span>
-                                                    </p>
-                                                </div>
-                                                <div class="deposit-info__input">
-                                                    <p class="text">
-                                                        <span class="in-currency"></span>
-                                                    </p>
-
-                                                </div>
-                                            </div>
-                                            <div class="d-none crypto-message mb-3">
-                                                @lang('Conversion with') <span class="gateway-currency"></span> @lang('and final value will Show on next step')
-                                            </div>
-
-                                            <button class="btn btn--base w-100" type="submit" disabled>
-                                                @if (session()->get('requestAmount'))
-                                                    @lang('Pay') {{ showAmount(session()->get('requestAmount')) }} {{ gs('cur_text') }}
-                                                @else
-                                                    @lang('Confirm Deposit')
-                                                @endif
-                                            </button>
-                                            <div class="info-text pt-3">
-                                                <p class="text">@lang('Ensuring your funds grow safely through our secure deposit process with world-class payment options.')</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
+    <div class="deposit-container py-4">
+        <!-- Header & Balance Overview -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+            <div>
+                <h4 class="fw-bold mb-1">
+                    @if (session()->get('requestAmount'))
+                        @lang('Complete Payment')
+                    @else
+                        @lang('Deposit Funds')
+                    @endif
+                </h4>
+                <p class="text-muted mb-0 small">
+                    @lang('Add funds securely to your account balance to purchase plans, run campaigns, and activate bots.')
+                </p>
+            </div>
+            <div class="balance-card px-4 py-2 rounded-3 border d-flex align-items-center gap-3">
+                <div class="balance-icon rounded-circle d-flex align-items-center justify-content-center">
+                    <i class="las la-wallet fs-3 text-success"></i>
+                </div>
+                <div>
+                    <span class="text-muted small d-block">@lang('Current Balance')</span>
+                    <h5 class="fw-bold mb-0 text-success">{{ showAmount(auth()->user()->balance) }} {{ __(gs('cur_text')) }}</h5>
                 </div>
             </div>
         </div>
-    </section>
+
+        <form class="deposit-form" action="{{ route('user.deposit.insert') }}" method="post">
+            @csrf
+            <input name="currency" type="hidden">
+
+            <div class="row g-4">
+                <!-- Left Column: Payment Methods Selection -->
+                <div class="col-xl-7 col-lg-6">
+                    <div class="card custom--card h-100 border shadow-sm">
+                        <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+                            <h6 class="card-title fw-bold mb-0 d-flex align-items-center gap-2">
+                                <i class="las la-credit-card text-success fs-5"></i>
+                                @lang('1. Select Payment Method')
+                            </h6>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
+                                {{ $gatewayCurrency->count() }} @lang('Available Gateways')
+                            </span>
+                        </div>
+                        <div class="card-body p-3 p-md-4">
+                            <div class="gateway-grid row g-3 gateway-option-list">
+                                @forelse ($gatewayCurrency as $data)
+                                    <div class="col-sm-6 gateway-col @if ($loop->index > 5) d-none extra-gateway @endif">
+                                        <label class="gateway-card-item w-100 h-100 p-3 rounded-3 border position-relative d-flex flex-column justify-content-between cursor-pointer @if (old('gateway') ? old('gateway') == $data->method_code : $loop->first) active-gateway @endif" for="{{ titleToKey($data->name) }}_{{ $data->method_code }}">
+                                            <!-- Checkmark Badge -->
+                                            <div class="active-check-badge position-absolute top-0 end-0 m-2">
+                                                <i class="las la-check-circle fs-5 text-success"></i>
+                                            </div>
+
+                                            <div class="d-flex align-items-center gap-3 mb-3">
+                                                <div class="gateway-thumb-wrapper bg-white p-2 rounded border d-flex align-items-center justify-content-center">
+                                                    <img class="gateway-thumb-img img-fluid" src="{{ getImage(getFilePath('gateway') . '/' . $data->method->image) }}" alt="{{ __($data->name) }}">
+                                                </div>
+                                                <div class="gateway-meta overflow-hidden">
+                                                    <h6 class="fw-bold mb-0 text-truncate">{{ __($data->name) }}</h6>
+                                                    <span class="badge bg-secondary-subtle text-muted small mt-1">
+                                                        {{ $data->currency }}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="gateway-details pt-2 border-top small text-muted">
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span>@lang('Limit'):</span>
+                                                    <span class="fw-semibold text-dark-emphasis">{{ showAmount($data->min_amount) }} - {{ showAmount($data->max_amount) }} {{ __(gs('cur_text')) }}</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between">
+                                                    <span>@lang('Charge'):</span>
+                                                    <span class="fw-semibold text-dark-emphasis">
+                                                        @if($data->fixed_charge > 0 || $data->percent_charge > 0)
+                                                            {{ showAmount($data->fixed_charge) }} {{ __(gs('cur_text')) }} + {{ showAmount($data->percent_charge) }}%
+                                                        @else
+                                                            <span class="text-success fw-bold">@lang('Free')</span>
+                                                        @endif
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <input class="payment-item__radio gateway-input" id="{{ titleToKey($data->name) }}_{{ $data->method_code }}" name="gateway" data-gateway='@json($data)' data-min-amount="{{ showAmount($data->min_amount) }}" data-max-amount="{{ showAmount($data->max_amount) }}" type="radio" value="{{ $data->method_code }}" hidden @if (old('gateway')) @checked(old('gateway') == $data->method_code) @else @checked($loop->first) @endif>
+                                        </label>
+                                    </div>
+                                @empty
+                                    <div class="col-12 text-center py-5">
+                                        <i class="las la-exclamation-triangle fs-1 text-warning mb-2"></i>
+                                        <p class="text-muted">@lang('No active deposit payment methods available at the moment.')</p>
+                                    </div>
+                                @endforelse
+                            </div>
+
+                            @if ($gatewayCurrency->count() > 6)
+                                <div class="text-center mt-3">
+                                    <button class="btn btn-sm btn-outline-secondary more-gateway-btn" type="button">
+                                        <i class="las la-angle-down me-1"></i> @lang('Show All Payment Options') ({{ $gatewayCurrency->count() }})
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Amount & Live Calculation Summary -->
+                <div class="col-xl-5 col-lg-6">
+                    <div class="card custom--card h-100 border shadow-sm">
+                        <div class="card-header bg-transparent border-bottom py-3">
+                            <h6 class="card-title fw-bold mb-0 d-flex align-items-center gap-2">
+                                <i class="las la-calculator text-success fs-5"></i>
+                                @lang('2. Enter Deposit Amount')
+                            </h6>
+                        </div>
+                        <div class="card-body p-3 p-md-4 d-flex flex-column justify-content-between">
+                            <div>
+                                <!-- Amount Input -->
+                                <div class="form-group mb-3">
+                                    <label class="form-label fw-semibold small text-muted mb-2">@lang('Deposit Amount')</label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text fw-bold bg-light text-muted">{{ gs('cur_sym') }}</span>
+                                        @if (session()->get('requestAmount'))
+                                            <input class="form-control form-control-lg fw-bold amount" name="amount" type="number" step="any" value="{{ session()->get('requestAmount') }}" placeholder="0.00" autocomplete="off" @readonly(true)>
+                                        @else
+                                            <input class="form-control form-control-lg fw-bold amount" name="amount" type="number" step="any" value="{{ old('amount') }}" placeholder="0.00" autocomplete="off">
+                                        @endif
+                                        <span class="input-group-text fw-bold bg-light text-muted">{{ __(gs('cur_text')) }}</span>
+                                    </div>
+                                    <!-- Dynamic Limit Alert / Guidance -->
+                                    <div class="d-flex justify-content-between align-items-center mt-2 small">
+                                        <span class="text-muted">@lang('Allowed Limit'):</span>
+                                        <span class="fw-semibold text-primary gateway-limit-text">@lang('0.00 - 0.00')</span>
+                                    </div>
+                                    <div class="amount-validation-msg mt-1 small d-none"></div>
+                                </div>
+
+                                <!-- Quick Amount Chips -->
+                                @if (!session()->get('requestAmount'))
+                                    <div class="quick-amounts mb-4">
+                                        <label class="form-label fw-semibold small text-muted mb-2">@lang('Quick Select'):</label>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary quick-amt-btn" data-amt="50">+{{ gs('cur_sym') }}50</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary quick-amt-btn" data-amt="100">+{{ gs('cur_sym') }}100</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary quick-amt-btn" data-amt="500">+{{ gs('cur_sym') }}500</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary quick-amt-btn" data-amt="1000">+{{ gs('cur_sym') }}1,000</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary quick-amt-btn" data-amt="5000">+{{ gs('cur_sym') }}5,000</button>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <!-- Summary Breakdown Card -->
+                                <div class="summary-box p-3 rounded-3 bg-light border mb-4">
+                                    <h6 class="fw-bold mb-3 small text-uppercase text-muted letter-spacing-1">
+                                        <i class="las la-file-invoice me-1"></i> @lang('Payment Summary')
+                                    </h6>
+                                    
+                                    <div class="summary-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <span class="text-muted small">@lang('Selected Gateway')</span>
+                                        <span class="fw-bold selected-gateway-name text-dark-emphasis">-</span>
+                                    </div>
+
+                                    <div class="summary-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <span class="text-muted small">@lang('Deposit Amount')</span>
+                                        <span class="fw-semibold deposit-amount-preview">{{ gs('cur_sym') }}0.00</span>
+                                    </div>
+
+                                    <div class="summary-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <span class="text-muted small d-flex align-items-center gap-1">
+                                            @lang('Gateway Charge')
+                                            <i class="las la-info-circle text-muted proccessing-fee-info" data-bs-toggle="tooltip" title="@lang('Gateway processing fee')"></i>
+                                        </span>
+                                        <span class="fw-semibold text-danger processing-fee-preview">{{ gs('cur_sym') }}0.00</span>
+                                    </div>
+
+                                    <div class="summary-item d-flex justify-content-between align-items-center py-2 border-bottom total-row">
+                                        <span class="fw-bold text-dark-emphasis">@lang('Total Payable')</span>
+                                        <h5 class="fw-bold text-success mb-0 final-amount-preview">{{ gs('cur_sym') }}0.00</h5>
+                                    </div>
+
+                                    <!-- Currency Conversion Row (Conditional) -->
+                                    <div class="gateway-conversion-box d-none pt-2 mt-2 border-top">
+                                        <div class="d-flex justify-content-between align-items-center py-1 small">
+                                            <span class="text-muted">@lang('Exchange Rate')</span>
+                                            <span class="fw-semibold conversion-rate-text">-</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center py-1">
+                                            <span class="fw-bold text-dark-emphasis small">@lang('Payable in Gateway Currency')</span>
+                                            <h6 class="fw-bold text-primary mb-0 in-currency-text">-</h6>
+                                        </div>
+                                    </div>
+
+                                    <div class="crypto-message alert alert-info py-2 px-3 mt-3 mb-0 small d-none">
+                                        <i class="las la-coins me-1"></i>
+                                        @lang('Conversion with') <strong class="gateway-currency"></strong> @lang('and wallet address will be provided on the next confirmation step.')
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action & Security Badges -->
+                            <div>
+                                <button class="btn btn-success btn-lg w-100 fw-bold py-3 shadow-sm d-flex align-items-center justify-content-center gap-2 deposit-submit-btn" type="submit" disabled>
+                                    <i class="las la-lock"></i>
+                                    @if (session()->get('requestAmount'))
+                                        @lang('Pay Now') ({{ showAmount(session()->get('requestAmount')) }} {{ gs('cur_text') }})
+                                    @else
+                                        @lang('Proceed to Payment')
+                                    @endif
+                                </button>
+
+                                <div class="d-flex justify-content-center align-items-center gap-3 text-muted small mt-3 pt-2">
+                                    <span class="d-flex align-items-center gap-1"><i class="las la-shield-alt text-success fs-5"></i> 256-bit SSL</span>
+                                    <span>&bull;</span>
+                                    <span class="d-flex align-items-center gap-1"><i class="las la-bolt text-warning fs-5"></i> Instant Deposit</span>
+                                    <span>&bull;</span>
+                                    <span class="d-flex align-items-center gap-1"><i class="las la-check-circle text-primary fs-5"></i> 100% Verified</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
 @endsection
+
+@push('style')
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .balance-card {
+        background: rgba(37, 211, 102, 0.08);
+        border-color: rgba(37, 211, 102, 0.25) !important;
+    }
+    .balance-icon {
+        width: 46px;
+        height: 46px;
+        background: rgba(37, 211, 102, 0.15);
+    }
+    .gateway-thumb-wrapper {
+        width: 60px;
+        height: 44px;
+        flex-shrink: 0;
+    }
+    .gateway-thumb-img {
+        max-height: 36px;
+        max-width: 100%;
+        object-fit: contain;
+    }
+    .gateway-card-item {
+        background: var(--card-bg-light, #ffffff);
+        border: 2px solid rgba(0, 0, 0, 0.08) !important;
+        transition: all 0.25s ease-in-out;
+    }
+    .gateway-card-item:hover {
+        border-color: #25d366 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .gateway-card-item.active-gateway {
+        border-color: #25d366 !important;
+        background: rgba(37, 211, 102, 0.05);
+        box-shadow: 0 0 0 1px #25d366, 0 4px 14px rgba(37, 211, 102, 0.12);
+    }
+    .active-check-badge {
+        display: none;
+    }
+    .gateway-card-item.active-gateway .active-check-badge {
+        display: block;
+    }
+    .quick-amt-btn {
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 20px;
+        padding: 4px 12px;
+        transition: all 0.2s;
+    }
+    .quick-amt-btn:hover {
+        background-color: #25d366;
+        border-color: #25d366;
+        color: #fff;
+    }
+    .letter-spacing-1 {
+        letter-spacing: 0.5px;
+    }
+
+    /* Dark Mode specific enhancements */
+    body.dark-mode .balance-card {
+        background: rgba(37, 211, 102, 0.1);
+        border-color: rgba(37, 211, 102, 0.3) !important;
+    }
+    body.dark-mode .gateway-card-item {
+        background: #182229;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        color: #e9edef;
+    }
+    body.dark-mode .gateway-card-item.active-gateway {
+        border-color: #25d366 !important;
+        background: rgba(37, 211, 102, 0.12);
+    }
+    body.dark-mode .gateway-thumb-wrapper {
+        background: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+    body.dark-mode .summary-box {
+        background: #111b21 !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    body.dark-mode .quick-amt-btn {
+        background: #111b21;
+        border-color: rgba(255, 255, 255, 0.15);
+        color: #e9edef;
+    }
+    body.dark-mode .quick-amt-btn:hover {
+        background: #25d366;
+        border-color: #25d366;
+        color: #ffffff;
+    }
+    body.dark-mode .input-group-text {
+        background: #111b21 !important;
+        border-color: rgba(255, 255, 255, 0.15) !important;
+        color: #8696a0 !important;
+    }
+    body.dark-mode .text-dark-emphasis {
+        color: #e9edef !important;
+    }
+</style>
+@endpush
 
 @push('script')
     <script>
         "use strict";
         (function($) {
-
             var amount = parseFloat($('.amount').val() || 0);
             var gateway, minAmount, maxAmount;
 
-
-            $('.amount').on('input', function(e) {
-                amount = parseFloat($(this).val());
-                if (!amount) {
-                    amount = 0;
-                }
-                calculation();
-            });
-
-            $('.gateway-input').on('change', function(e) {
+            // Gateway Card selection click
+            $('.gateway-card-item').on('click', function() {
+                $('.gateway-card-item').removeClass('active-gateway');
+                $(this).addClass('active-gateway');
+                var radio = $(this).find('.gateway-input');
+                radio.prop('checked', true);
                 gatewayChange();
             });
 
+            // Quick amount buttons
+            $('.quick-amt-btn').on('click', function(e) {
+                e.preventDefault();
+                var addAmt = parseFloat($(this).data('amt') || 0);
+                var currentAmt = parseFloat($('.amount').val() || 0);
+                var newAmt = currentAmt + addAmt;
+                $('.amount').val(newAmt);
+                amount = newAmt;
+                calculation();
+            });
+
+            // Amount input change
+            $('.amount').on('input keyup', function(e) {
+                amount = parseFloat($(this).val() || 0);
+                calculation();
+            });
+
             function gatewayChange() {
-                let gatewayElement = $('.gateway-input:checked');
-                let methodCode = gatewayElement.val();
+                var gatewayElement = $('.gateway-input:checked');
+                if (!gatewayElement.length) {
+                    gatewayElement = $('.gateway-input').first();
+                    gatewayElement.prop('checked', true);
+                    gatewayElement.closest('.gateway-card-item').addClass('active-gateway');
+                }
 
                 gateway = gatewayElement.data('gateway');
-                minAmount = gatewayElement.data('min-amount');
-                maxAmount = gatewayElement.data('max-amount');
+                minAmount = parseFloat(gatewayElement.data('min-amount') || 0);
+                maxAmount = parseFloat(gatewayElement.data('max-amount') || 0);
 
-                let processingFeeInfo =
-                    `${parseFloat(gateway.percent_charge).toFixed(2)}% with ${parseFloat(gateway.fixed_charge).toFixed(2)} {{ __(gs('cur_text')) }} charge for payment gateway processing fees`
-                $(".proccessing-fee-info").attr("data-bs-original-title", processingFeeInfo);
+                $('.selected-gateway-name').text(gateway.name || '-');
+                $('.gateway-limit-text').text(`${minAmount.toFixed(2)} - ${maxAmount.toFixed(2)} {{ __(gs('cur_text')) }}`);
+
+                var percentCharge = parseFloat(gateway.percent_charge || 0);
+                var fixedCharge = parseFloat(gateway.fixed_charge || 0);
+                var feeInfo = `${percentCharge.toFixed(2)}% + ${fixedCharge.toFixed(2)} {{ __(gs('cur_text')) }}`;
+                $(".proccessing-fee-info").attr("data-bs-original-title", `@lang('Processing fee:') ${feeInfo}`);
+
                 calculation();
             }
 
-            gatewayChange();
-
-            $(".more-gateway-option").on("click", function(e) {
-                let paymentList = $(".gateway-option-list");
-                paymentList.find(".gateway-option").removeClass("d-none");
-                $(this).addClass('d-none');
-                paymentList.animate({
-                    scrollTop: (paymentList.height() - 60)
-                }, 'slow');
+            // Show more gateways toggle
+            $(".more-gateway-btn").on("click", function(e) {
+                e.preventDefault();
+                $(".extra-gateway").removeClass("d-none");
+                $(this).hide();
             });
 
             function calculation() {
                 if (!gateway) return;
-                $(".gateway-limit").text(minAmount + " - " + maxAmount);
 
-                let percentCharge = 0;
-                let fixedCharge = 0;
-                let totalPercentCharge = 0;
+                var percentCharge = parseFloat(gateway.percent_charge || 0);
+                var fixedCharge = parseFloat(gateway.fixed_charge || 0);
+                var totalPercentCharge = 0;
 
-                if (amount) {
-                    percentCharge = parseFloat(gateway.percent_charge);
-                    fixedCharge = parseFloat(gateway.fixed_charge);
-                    totalPercentCharge = parseFloat(amount / 100 * percentCharge);
+                if (amount > 0) {
+                    totalPercentCharge = (amount / 100) * percentCharge;
                 }
 
-                let totalCharge = parseFloat(totalPercentCharge + fixedCharge);
-                let totalAmount = parseFloat((amount || 0) + totalPercentCharge + fixedCharge);
+                var totalCharge = totalPercentCharge + fixedCharge;
+                var totalAmount = (amount > 0 ? amount : 0) + totalCharge;
 
-                $(".final-amount").text(totalAmount.toFixed(2));
-                $(".processing-fee").text(totalCharge.toFixed(2));
-                $("input[name=currency]").val(gateway.currency);
-                $(".gateway-currency").text(gateway.currency);
+                // Update summary texts
+                $('.deposit-amount-preview').text(`{{ gs('cur_sym') }}${(amount || 0).toFixed(2)}`);
+                $('.processing-fee-preview').text(`{{ gs('cur_sym') }}${totalCharge.toFixed(2)}`);
+                $('.final-amount-preview').text(`{{ gs('cur_sym') }}${totalAmount.toFixed(2)}`);
+                $('input[name=currency]').val(gateway.currency);
+                $('.gateway-currency').text(gateway.currency);
 
-                if (amount < Number(gateway.min_amount) || amount > Number(gateway.max_amount)) {
-                    $(".deposit-form button[type=submit]").attr('disabled', true);
+                // Validation messaging & button state
+                var submitBtn = $('.deposit-submit-btn');
+                var valMsg = $('.amount-validation-msg');
+
+                if (!amount || amount <= 0) {
+                    submitBtn.prop('disabled', true);
+                    valMsg.addClass('d-none').removeClass('text-danger text-success');
+                } else if (amount < minAmount) {
+                    submitBtn.prop('disabled', true);
+                    valMsg.removeClass('d-none text-success').addClass('text-danger')
+                          .html(`<i class="las la-exclamation-circle me-1"></i> @lang('Amount is below minimum limit of') ${minAmount.toFixed(2)} {{ __(gs('cur_text')) }}`);
+                } else if (amount > maxAmount) {
+                    submitBtn.prop('disabled', true);
+                    valMsg.removeClass('d-none text-success').addClass('text-danger')
+                          .html(`<i class="las la-exclamation-circle me-1"></i> @lang('Amount exceeds maximum limit of') ${maxAmount.toFixed(2)} {{ __(gs('cur_text')) }}`);
                 } else {
-                    $(".deposit-form button[type=submit]").removeAttr('disabled');
+                    submitBtn.prop('disabled', false);
+                    valMsg.removeClass('d-none text-danger').addClass('text-success')
+                          .html(`<i class="las la-check-circle me-1"></i> @lang('Valid deposit amount')`);
                 }
 
-                if (gateway.currency != "{{ gs('cur_text') }}" && gateway.method.crypto != 1) {
-                    $('.deposit-form').addClass('adjust-height')
-
-                    $(".gateway-conversion, .conversion-currency").removeClass('d-none');
-                    $(".gateway-conversion").find('.deposit-info__input .text').html(
-                        `1 {{ __(gs('cur_text')) }} = <span class="rate">${parseFloat(gateway.rate).toFixed(2)}</span>  <span class="method_currency">${gateway.currency}</span>`
-                    );
-                    $('.in-currency').text(parseFloat(totalAmount * gateway.rate).toFixed(gateway.method.crypto == 1 ? 8 : 2))
+                // Currency conversion display
+                if (gateway.currency !== "{{ gs('cur_text') }}" && gateway.method.crypto != 1) {
+                    var rate = parseFloat(gateway.rate || 1);
+                    var inCurrency = (totalAmount * rate).toFixed(2);
+                    $('.gateway-conversion-box').removeClass('d-none');
+                    $('.conversion-rate-text').text(`1 {{ __(gs('cur_text')) }} = ${rate.toFixed(2)} ${gateway.currency}`);
+                    $('.in-currency-text').text(`${inCurrency} ${gateway.currency}`);
                 } else {
-                    $(".gateway-conversion, .conversion-currency").addClass('d-none');
-                    $('.deposit-form').removeClass('adjust-height')
+                    $('.gateway-conversion-box').addClass('d-none');
                 }
 
+                // Crypto message
                 if (gateway.method.crypto == 1) {
                     $('.crypto-message').removeClass('d-none');
                 } else {
@@ -234,11 +453,14 @@
                 }
             }
 
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-            var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl)
-            })
-            $('.gateway-input').change();
+            // Init Tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Initialize on load
+            gatewayChange();
         })(jQuery);
     </script>
 @endpush
