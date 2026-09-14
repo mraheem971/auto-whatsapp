@@ -114,6 +114,7 @@
                 </a>
             </li>
 
+
             <li class="nav-item">
                 <a class="nav-link text-white {{ menuActive('user.transactions') }}" href="{{ route('user.transactions') }}">
                     <i class="las la-chart-bar me-2 fs-5 text-info"></i>

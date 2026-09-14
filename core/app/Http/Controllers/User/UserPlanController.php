@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers\User;
 
-use App\Constants\Status;
 use App\Http\Controllers\Controller;
-use App\Models\Deposit;
-use App\Models\GatewayCurrency;
 use App\Models\Plan;
 use App\Models\Transaction;
 use App\Models\UserSubscription;
@@ -21,8 +18,8 @@ class UserPlanController extends Controller
         $activeSubscription = $user->activeSubscription;
         $currentPlan = $user->currentPlan();
 
-        $gatewayCurrency = GatewayCurrency::whereHas('method', function ($gate) {
-            $gate->where('status', Status::ENABLE);
+        $gatewayCurrency = \App\Models\GatewayCurrency::whereHas('method', function ($gate) {
+            $gate->where('status', \App\Constants\Status::ENABLE);
         })->with('method')->orderby('name')->get();
 
         return view('Template::user.plans.index', compact('pageTitle', 'plans', 'activeSubscription', 'currentPlan', 'gatewayCurrency'));
@@ -32,10 +29,9 @@ class UserPlanController extends Controller
     {
         $user = auth()->user();
         $plan = Plan::active()->findOrFail($id);
-        $paymentType = $request->payment_type ?? ($plan->price > 0 ? 'gateway' : 'free');
 
-        // Free Plan (1-click trial activation)
-        if ($plan->price == 0) {
+        // 1. Free Plan
+        if ($plan->price <= 0) {
             UserSubscription::where('user_id', $user->id)->update(['status' => 0]);
 
             $sub = new UserSubscription();
@@ -47,28 +43,23 @@ class UserPlanController extends Controller
             $sub->status       = 1;
             $sub->save();
 
-            $notify[] = ['success', "Congratulations! You have activated the {$plan->name} trial successfully."];
+            $notify[] = ['success', "Congratulations! You have activated the {$plan->name} plan successfully."];
             return redirect()->route('user.home')->withNotify($notify);
         }
 
-        // Direct Payment via Payment Gateway
-        if ($paymentType == 'gateway') {
+        // 2. Direct Online Payment Gateway Checkout
+        if ($request->payment_type == 'gateway' || $request->has('gateway')) {
             $request->validate([
                 'gateway'  => 'required',
                 'currency' => 'required',
             ]);
 
-            $gate = GatewayCurrency::whereHas('method', function ($g) {
-                $g->where('status', Status::ENABLE);
+            $gate = \App\Models\GatewayCurrency::whereHas('method', function ($gate) {
+                $gate->where('status', \App\Constants\Status::ENABLE);
             })->where('method_code', $request->gateway)->where('currency', $request->currency)->first();
 
             if (!$gate) {
-                $notify[] = ['error', 'Selected payment method is invalid or currently unavailable.'];
-                return back()->withNotify($notify);
-            }
-
-            if ($gate->min_amount > $plan->price || $gate->max_amount < $plan->price) {
-                $notify[] = ['error', 'Plan price is outside the limit for this payment method. Please choose another method.'];
+                $notify[] = ['error', 'Selected payment gateway is invalid or unavailable.'];
                 return back()->withNotify($notify);
             }
 
@@ -76,9 +67,9 @@ class UserPlanController extends Controller
             $payable = $plan->price + $charge;
             $finalAmount = $payable * $gate->rate;
 
-            $deposit = new Deposit();
+            $deposit = new \App\Models\Deposit();
             $deposit->user_id = $user->id;
-            $deposit->account_listing_id = $plan->id;
+            $deposit->account_listing_id = 0;
             $deposit->request_type = 'plan_subscription';
             $deposit->method_code = $gate->method_code;
             $deposit->method_currency = strtoupper($gate->currency);
@@ -89,54 +80,52 @@ class UserPlanController extends Controller
             $deposit->btc_amount = 0;
             $deposit->btc_wallet = "";
             $deposit->trx = getTrx();
-            $deposit->success_url = urlPath('user.home');
-            $deposit->failed_url = urlPath('user.plans.index');
+            $deposit->detail = (object)['plan_id' => $plan->id, 'plan_name' => $plan->name];
+            $deposit->success_url = route('user.home');
+            $deposit->failed_url = route('user.plans.index');
             $deposit->save();
 
             session()->put('Track', $deposit->trx);
-            return to_route('user.deposit.confirm');
+            session()->put('plan_id', $plan->id);
+
+            return redirect()->route('user.deposit.confirm');
         }
 
-        // Payment via Wallet Balance
-        if ($paymentType == 'balance') {
-            if ($user->balance < $plan->price) {
-                $notify[] = ['error', 'Insufficient wallet balance. Please select an online payment method to subscribe directly.'];
-                return back()->withNotify($notify);
-            }
-
-            // Deduct balance
-            $user->balance -= $plan->price;
-            $user->save();
-
-            // Record transaction
-            $trx = new Transaction();
-            $trx->user_id      = $user->id;
-            $trx->amount       = $plan->price;
-            $trx->post_balance = $user->balance;
-            $trx->trx_type     = '-';
-            $trx->trx          = getTrx();
-            $trx->details      = 'Subscribed to plan: ' . $plan->name;
-            $trx->remark       = 'plan_subscription';
-            $trx->save();
-
-            // Cancel previous active subscriptions
-            UserSubscription::where('user_id', $user->id)->update(['status' => 0]);
-
-            // Create new subscription
-            $sub = new UserSubscription();
-            $sub->user_id      = $user->id;
-            $sub->plan_id      = $plan->id;
-            $sub->paid_amount  = $plan->price;
-            $sub->starts_at    = now();
-            $sub->expires_at   = $plan->duration_days ? now()->addDays($plan->duration_days) : null;
-            $sub->status       = 1;
-            $sub->save();
-
-            $notify[] = ['success', "Congratulations! You have subscribed to {$plan->name} successfully."];
-            return redirect()->route('user.home')->withNotify($notify);
+        // 3. Wallet Balance Payment
+        if ($user->balance < $plan->price) {
+            $notify[] = ['error', "Your wallet balance (\${$user->balance}) is insufficient for \${$plan->price}. Please choose an Online Payment Gateway below."];
+            return back()->withNotify($notify);
         }
 
-        $notify[] = ['error', 'Invalid payment option selected.'];
-        return back()->withNotify($notify);
+        // Deduct balance
+        $user->balance -= $plan->price;
+        $user->save();
+
+        // Record transaction
+        $trx = new Transaction();
+        $trx->user_id      = $user->id;
+        $trx->amount       = $plan->price;
+        $trx->post_balance = $user->balance;
+        $trx->trx_type     = '-';
+        $trx->trx          = getTrx();
+        $trx->details      = 'Subscribed to plan: ' . $plan->name;
+        $trx->remark       = 'plan_subscription';
+        $trx->save();
+
+        // Cancel previous active subscriptions
+        UserSubscription::where('user_id', $user->id)->update(['status' => 0]);
+
+        // Create new subscription
+        $sub = new UserSubscription();
+        $sub->user_id      = $user->id;
+        $sub->plan_id      = $plan->id;
+        $sub->paid_amount  = $plan->price;
+        $sub->starts_at    = now();
+        $sub->expires_at   = $plan->duration_days ? now()->addDays($plan->duration_days) : null;
+        $sub->status       = 1;
+        $sub->save();
+
+        $notify[] = ['success', "Congratulations! You have subscribed to {$plan->name} successfully."];
+        return redirect()->route('user.home')->withNotify($notify);
     }
 }

@@ -161,49 +161,46 @@ class PaymentController extends Controller
                 'post_balance' => showAmount($user->balance)
             ]);
 
-             //for plan subscription
-             if ($deposit->request_type == 'plan_subscription' && $deposit->account_listing_id) {
-                 $plan = \App\Models\Plan::find($deposit->account_listing_id);
-                 if ($plan) {
-                     $user->balance -= $deposit->amount;
-                     $user->save();
+            // for direct plan subscription
+            if ($deposit->request_type == 'plan_subscription' || @$deposit->detail->plan_id) {
+                $planId = @$deposit->detail->plan_id;
+                $plan = \App\Models\Plan::find($planId);
+                if ($plan) {
+                    // Deduct plan price from user's balance
+                    if ($user->balance >= $plan->price) {
+                        $user->balance -= $plan->price;
+                        $user->save();
+                    }
 
-                     $transaction               = new Transaction();
-                     $transaction->user_id      = $user->id;
-                     $transaction->amount       = $deposit->amount;
-                     $transaction->post_balance = $user->balance;
-                     $transaction->charge       = 0;
-                     $transaction->trx_type     = '-';
-                     $transaction->details      = 'Direct Subscription to Plan: ' . $plan->name;
-                     $transaction->trx          = $deposit->trx;
-                     $transaction->remark       = 'plan_subscription';
-                     $transaction->save();
+                    // Record plan subscription transaction
+                    $trx = new Transaction();
+                    $trx->user_id      = $user->id;
+                    $trx->amount       = $plan->price;
+                    $trx->post_balance = $user->balance;
+                    $trx->charge       = 0;
+                    $trx->trx_type     = '-';
+                    $trx->details      = 'Direct Subscription to plan: ' . $plan->name;
+                    $trx->trx          = $deposit->trx;
+                    $trx->remark       = 'plan_subscription';
+                    $trx->save();
 
-                     // Cancel previous active subscriptions
-                     \App\Models\UserSubscription::where('user_id', $user->id)->update(['status' => 0]);
+                    // Cancel previous active subscriptions
+                    \App\Models\UserSubscription::where('user_id', $user->id)->update(['status' => 0]);
 
-                     // Create new subscription
-                     $sub = new \App\Models\UserSubscription();
-                     $sub->user_id      = $user->id;
-                     $sub->plan_id      = $plan->id;
-                     $sub->paid_amount  = $deposit->amount;
-                     $sub->starts_at    = now();
-                     $sub->expires_at   = $plan->duration_days ? now()->addDays($plan->duration_days) : null;
-                     $sub->status       = 1;
-                     $sub->save();
-
-                     if (!$isManual) {
-                         $adminNotification = new AdminNotification();
-                         $adminNotification->user_id = $user->id;
-                         $adminNotification->title = $user->username . ' subscribed to plan: ' . $plan->name;
-                         $adminNotification->click_url = urlPath('admin.users.detail', $user->id);
-                         $adminNotification->save();
-                     }
-                 }
-             }
+                    // Create new subscription
+                    $sub = new \App\Models\UserSubscription();
+                    $sub->user_id      = $user->id;
+                    $sub->plan_id      = $plan->id;
+                    $sub->paid_amount  = $plan->price;
+                    $sub->starts_at    = now();
+                    $sub->expires_at   = $plan->duration_days ? now()->addDays($plan->duration_days) : null;
+                    $sub->status       = 1;
+                    $sub->save();
+                }
+            }
 
              //for account listing data
-             if ($deposit->account_listing_id && in_array($deposit->request_type, ['bid', 'buy'])) {
+             if ($deposit->account_listing_id) {
 
                 $accountListing = AccountListing::find($deposit->account_listing_id);
 
