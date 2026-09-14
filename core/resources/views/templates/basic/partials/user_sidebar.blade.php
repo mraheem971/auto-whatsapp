@@ -129,6 +129,13 @@
             </li>
 
             <li class="nav-item">
+                <a class="nav-link text-white {{ menuActive('user.settings*') }}" href="{{ route('user.settings.index') }}">
+                    <i class="las la-cog me-2 fs-5 text-primary"></i>
+                    <span>@lang('Settings Hub')</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
                 <a class="nav-link text-white {{ menuActive('ticket.index') }}" href="{{ route('ticket.index') }}">
                     <i class="las la-ticket-alt me-2 fs-5 text-primary"></i>
                     <span>@lang('Support Ticket')</span>

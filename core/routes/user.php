@@ -167,7 +167,18 @@ Route::middleware('auth')->name('user.')->group(function () {
                 Route::post('/delete/{id}', 'deleteContact')->name('delete');
             });
 
-            // Anti-Ban & Human Behavior Settings
+            // Settings Hub & System Preferences
+            Route::controller('UserSettingsController')->prefix('settings')->name('settings.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/profile', 'updateProfile')->name('profile.update');
+                Route::post('/behavior', 'updateBehavior')->name('behavior.update');
+                Route::post('/bot', 'updateBotPreferences')->name('bot.update');
+                Route::post('/security', 'updateSecurity')->name('security.update');
+                Route::post('/webhooks', 'updateWebhooks')->name('webhooks.update');
+                Route::post('/webhooks/secret-regen', 'regenerateWebhookSecret')->name('webhooks.secret.regen');
+            });
+
+            // Anti-Ban Legacy Route Alias
             Route::controller('UserBotSettingController')->prefix('settings/human-behavior')->name('settings.behavior.')->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::post('/update', 'update')->name('update');

@@ -129,9 +129,9 @@
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
-                                            <a class="{{menuActive('user.profile.setting')}} user-info-dropdown__link" href="{{ route('user.profile.setting') }}">
-                                                <span class="icon"><i class="far fa-user"></i></span>
-                                                <span class="text"> @lang('Profile Setting') </span>
+                                            <a class="{{menuActive('user.settings*')}} user-info-dropdown__link" href="{{ route('user.settings.index') }}">
+                                                <span class="icon"><i class="las la-cog"></i></span>
+                                                <span class="text"> @lang('Settings Hub') </span>
                                             </a>
                                         </li>
                                         <li class="user-info-dropdown__item">
