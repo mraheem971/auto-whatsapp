@@ -36,7 +36,7 @@
                                     @if($plan->price == 0)
                                         Free
                                     @else
-                                        {{ gs('cur_sym') }}{{ showAmount($plan->price) }}
+                                        {{ showAmount($plan->price) }}
                                     @endif
                                 </h2>
                                 <small class="text-muted">for {{ $plan->duration_days }} days</small>
@@ -111,12 +111,12 @@
                                     <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 mb-3 border">
                                         <div>
                                             <span class="text-muted small d-block">Plan Price:</span>
-                                            <h4 class="fw-bold text-dark mb-0">{{ gs('cur_sym') }}{{ showAmount($plan->price) }} {{ gs('cur_text') }}</h4>
+                                            <h4 class="fw-bold text-dark mb-0">{{ showAmount($plan->price) }}</h4>
                                         </div>
                                         <div class="text-end">
                                             <span class="text-muted small d-block">Your Wallet Balance:</span>
                                             <h5 class="fw-bold {{ auth()->user()->balance >= $plan->price ? 'text-success' : 'text-danger' }} mb-0">
-                                                {{ gs('cur_sym') }}{{ showAmount(auth()->user()->balance) }}
+                                                {{ showAmount(auth()->user()->balance) }}
                                             </h5>
                                         </div>
                                     </div>
@@ -140,12 +140,12 @@
                                                 <form action="{{ route('user.plans.subscribe', $plan->id) }}" method="POST">
                                                     @csrf
                                                     <button type="submit" class="btn btn-success w-100 py-2 mt-2 fw-bold">
-                                                        <i class="las la-check-circle me-1"></i> Confirm & Pay {{ gs('cur_sym') }}{{ showAmount($plan->price) }} from Wallet
+                                                        <i class="las la-check-circle me-1"></i> Confirm & Pay {{ showAmount($plan->price) }} from Wallet
                                                     </button>
                                                 </form>
                                             @else
                                                 <div class="alert alert-warning py-2 px-3 mb-0 mt-2 small d-flex align-items-center justify-content-between">
-                                                    <span><i class="las la-exclamation-circle"></i> Insufficient balance (Need {{ gs('cur_sym') }}{{ showAmount($plan->price - auth()->user()->balance) }} more)</span>
+                                                    <span><i class="las la-exclamation-circle"></i> Insufficient balance (Need {{ showAmount($plan->price - auth()->user()->balance) }} more)</span>
                                                 </div>
                                             @endif
                                         </div>

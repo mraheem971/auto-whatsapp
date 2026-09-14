@@ -18,4 +18,10 @@ class Plan extends Model
     {
         return $query->where('status', 1);
     }
+
+    public function subscriptions()
+    {
+        return $this->hasMany(UserSubscription::class);
+    }
 }
+

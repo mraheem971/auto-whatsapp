@@ -26,6 +26,25 @@
         "route_name": "admin.dashboard",
         "menu_active": "admin.dashboard"
     },
+    "subscription_plans": {
+        "title": "Subscription Plans",
+        "icon": "las la-crown",
+        "menu_active": "admin.plans*",
+        "submenu": [
+            {
+                "keyword": ["All Plans", "Pricing Setting", "Create Plan", "Subscription Plans", "Bot Plans"],
+                "title": "Pricing & Plans",
+                "route_name": "admin.plans.index",
+                "menu_active": "admin.plans.index"
+            },
+            {
+                "keyword": ["User Subscriptions", "Subscribers", "Active Subscriptions", "Plan Memberships"],
+                "title": "User Subscriptions",
+                "route_name": "admin.plans.subscriptions",
+                "menu_active": "admin.plans.subscriptions"
+            }
+        ]
+    },
     "account_listing": {
         "title": "WhatsApp Accounts",
         "icon": "lab la-whatsapp",

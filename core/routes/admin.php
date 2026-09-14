@@ -286,6 +286,17 @@ Route::middleware('admin')->group(function () {
     });
 
 
+    // Subscription Plans & Pricing Rules
+    Route::controller('PlanController')->prefix('plans')->name('plans.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/store', 'store')->name('store');
+        Route::post('/update/{id}', 'update')->name('update');
+        Route::post('/status/{id}', 'status')->name('status');
+        Route::post('/delete/{id}', 'delete')->name('delete');
+        Route::get('/subscriptions', 'subscriptions')->name('subscriptions');
+        Route::post('/subscriptions/assign', 'assignSubscription')->name('subscriptions.assign');
+    });
+
     // Admin Support
     Route::controller('SupportTicketController')->prefix('ticket')->name('ticket.')->group(function(){
         Route::get('/', 'tickets')->name('index');
