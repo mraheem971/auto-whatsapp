@@ -102,15 +102,23 @@ class UserAutoReplyController extends Controller
             $contactsFormatted = json_encode($cArray);
         }
 
+        $keywordsFormatted = null;
+        if (!empty($request->keywords)) {
+            $kwArray = array_values(array_filter(array_map(function($kw) {
+                return preg_replace('/\s+/', ' ', trim($kw));
+            }, explode(',', $request->keywords))));
+            $keywordsFormatted = json_encode($kwArray);
+        }
+
         $bot = new AutoReply();
         $bot->user_id                 = $user->id;
         $bot->name                    = $request->name;
         $bot->match_type              = $request->match_type;
-        $bot->keywords                = $request->keywords;
+        $bot->keywords                = $keywordsFormatted;
         $bot->reply_type              = $request->reply_type;
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
-        $bot->session_id              = $request->session_id;
+        $bot->session_id              = $request->session_id ?: null;
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;
         $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
@@ -154,13 +162,21 @@ class UserAutoReplyController extends Controller
             $contactsFormatted = json_encode($cArray);
         }
 
+        $keywordsFormatted = null;
+        if (!empty($request->keywords)) {
+            $kwArray = array_values(array_filter(array_map(function($kw) {
+                return preg_replace('/\s+/', ' ', trim($kw));
+            }, explode(',', $request->keywords))));
+            $keywordsFormatted = json_encode($kwArray);
+        }
+
         $bot->name                    = $request->name;
         $bot->match_type              = $request->match_type;
-        $bot->keywords                = $request->keywords;
+        $bot->keywords                = $keywordsFormatted;
         $bot->reply_type              = $request->reply_type;
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
-        $bot->session_id              = $request->session_id;
+        $bot->session_id              = $request->session_id ?: null;
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;
         $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;

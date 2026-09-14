@@ -60,33 +60,29 @@ class AutoReply extends Model
             $account = !empty($sessionId) ? WhatsappAccount::where('session_id', $sessionId)->first() : null;
 
             if ($account && $account->user_id) {
-                // User account: match user's rules for all their accounts or specific session
+                // User account: match all rules belonging to this user
                 $q->where('user_id', $account->user_id)
                   ->where(function ($sq) use ($sessionId) {
                       $sq->whereNull('session_id')
                          ->orWhere('session_id', '')
-                         ->orWhere('session_id', $sessionId);
+                         ->orWhere('session_id', $sessionId)
+                         ->orWhereNotIn('session_id', function ($sub) {
+                             $sub->select('session_id')->from('whatsapp_accounts')->whereNotNull('session_id');
+                         });
                   });
             } else {
-                // Admin or Global account: match admin rules
+                // Admin or Global account: match all admin rules
                 $q->where(function ($sq) use ($sessionId) {
                     $sq->whereNull('user_id')
                        ->where(function ($ssq) use ($sessionId) {
                            $ssq->whereNull('session_id')
                               ->orWhere('session_id', '')
-                              ->orWhere('session_id', $sessionId);
+                              ->orWhere('session_id', $sessionId)
+                              ->orWhereNotIn('session_id', function ($sub) {
+                                  $sub->select('session_id')->from('whatsapp_accounts')->whereNotNull('session_id');
+                              });
                        });
                 })->orWhere('session_id', $sessionId);
-            }
-
-            if ($account && $account->phone_number) {
-                $otherSessionIds = WhatsappAccount::where('phone_number', $account->phone_number)
-                    ->pluck('session_id')
-                    ->filter()
-                    ->toArray();
-                if (!empty($otherSessionIds)) {
-                    $q->orWhereIn('session_id', $otherSessionIds);
-                }
             }
         });
     }

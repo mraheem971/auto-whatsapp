@@ -40,44 +40,81 @@ const sessions = new Map();
 const autoReplyRuleCache = new Map(); // sessionId -> { rules, lastFetched }
 const userCooldowns = new Map(); // `${ruleId}_${remoteJid}_${senderPhone}` -> timestamp
 
-const LARAVEL_BASE_URL = process.env.LARAVEL_URL || 'http://127.0.0.1:8001';
+let discoveredLaravelUrl = process.env.LARAVEL_URL || null;
+
+async function probeLaravelUrl() {
+    if (discoveredLaravelUrl) return discoveredLaravelUrl;
+    const candidates = [
+        'http://127.0.0.1:8000',
+        'http://127.0.0.1:8001',
+        'http://localhost:8000',
+        'http://localhost:8001',
+        'http://127.0.0.1',
+        'http://localhost'
+    ];
+    for (const url of candidates) {
+        try {
+            const res = await fetch(`${url}/api/autoreply/rules/ping`, { signal: AbortSignal.timeout(800) });
+            discoveredLaravelUrl = url;
+            console.log(`[Baileys AutoReply] 🔗 Connected to Laravel backend at ${url}`);
+            return url;
+        } catch (e) {}
+    }
+    return 'http://127.0.0.1:8000';
+}
 
 async function getActiveAutoReplies(sessionId) {
     const cached = autoReplyRuleCache.get(sessionId);
     const now = Date.now();
-    if (cached && (now - cached.lastFetched < 15000)) { // 15s memory cache for ultra-fast 0ms matching
+    if (cached && (now - cached.lastFetched < 10000)) { // 10s memory cache for ultra-fast instant matching
         return cached.rules;
     }
 
-    try {
-        const res = await fetch(`${LARAVEL_BASE_URL}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-            const data = await res.json();
-            if (data.success && Array.isArray(data.rules)) {
-                autoReplyRuleCache.set(sessionId, { rules: data.rules, lastFetched: now });
-                return data.rules;
+    const baseUrl = await probeLaravelUrl();
+    const candidateUrls = [baseUrl, 'http://127.0.0.1:8000', 'http://127.0.0.1:8001', 'http://localhost:8000', 'http://127.0.0.1'];
+    
+    for (const url of candidateUrls) {
+        try {
+            const res = await fetch(`${url}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2000) });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && Array.isArray(data.rules)) {
+                    discoveredLaravelUrl = url;
+                    autoReplyRuleCache.set(sessionId, { rules: data.rules, lastFetched: now });
+                    return data.rules;
+                }
             }
+        } catch (e) {
+            // probe next
         }
-    } catch (e) {
-        if (cached) return cached.rules;
     }
+
     return cached ? cached.rules : [];
 }
 
 async function dispatchNotificationEvent(eventType, payload) {
     try {
-        await fetch(`${LARAVEL_BASE_URL}/api/notifications/event`, {
+        const baseUrl = await probeLaravelUrl();
+        await fetch(`${baseUrl}/api/notifications/event`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 event_type: eventType,
                 ...payload
             }),
-            signal: AbortSignal.timeout(3000)
+            signal: AbortSignal.timeout(2000)
         });
     } catch (e) {
         // Non-blocking background event dispatch
     }
+}
+
+async function logBotHitToLaravel(botId) {
+    if (!botId) return;
+    try {
+        const baseUrl = await probeLaravelUrl();
+        await fetch(`${baseUrl}/api/autoreply/log-hit/${botId}`, { signal: AbortSignal.timeout(2000) });
+    } catch (e) {}
 }
 
 // Robust text extractor from all WhatsApp message formats
@@ -303,7 +340,8 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         .replace(/\{time\}/g, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
         .replace(/\{date\}/g, new Date().toLocaleDateString());
 
-    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" -> Starting human-like response flow for ${remoteJid}`);
+    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" (ID: ${targetRule.id}) -> Starting human-like response flow for ${remoteJid}`);
+    logBotHitToLaravel(targetRule.id);
 
     // Execute flow sequence asynchronously
     executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText);
