@@ -5,10 +5,10 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                 <div>
-                    <h5 class="mb-0 fw-bold"><i class="las la-crown text--warning me-1"></i> WhatsApp SaaS Plans & Pricing Setting</h5>
-                    <small class="text-muted">Create and manage pricing tiers, quotas, anti-ban limits, and feature rules for your users.</small>
+                    <h5 class="mb-0 fw-bold"><i class="las la-crown text--warning me-1"></i> WhatsApp SaaS Plans & Pricing Settings</h5>
+                    <small class="text-muted">Configure Monthly & Yearly pricing tiers, SaaS quotas, anti-ban limits, and feature rules.</small>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                     <a href="{{ route('admin.plans.subscriptions') }}" class="btn btn-outline--primary">
                         <i class="las la-users me-1"></i> User Subscriptions
                     </a>
@@ -17,15 +17,38 @@
                     </button>
                 </div>
             </div>
+
+            {{-- Plan Type Filter Pills --}}
+            <div class="d-flex gap-2 mb-3">
+                <button type="button" class="btn btn-sm btn--primary admin-plan-filter active" data-filter="all">
+                    All Plans ({{ $plans->count() }})
+                </button>
+                <button type="button" class="btn btn-sm btn-outline--primary admin-plan-filter" data-filter="monthly">
+                    Monthly Plans
+                </button>
+                <button type="button" class="btn btn-sm btn-outline--danger admin-plan-filter" data-filter="yearly">
+                    Yearly / Annual Plans
+                </button>
+            </div>
         </div>
 
         {{-- Plan Cards Grid Preview --}}
         @foreach($plans as $plan)
-            <div class="col-xl-4 col-md-6">
-                <div class="card b-radius--10 shadow-sm border h-100 position-relative {{ $plan->is_featured ? 'border--primary' : '' }}">
+            @php
+                $isYearly = $plan->duration_days >= 300;
+                $isMonthly = $plan->duration_days >= 25 && $plan->duration_days < 300;
+                $isTrial = $plan->duration_days < 25;
+                $filterClass = $isYearly ? 'plan-yearly' : ($isMonthly ? 'plan-monthly' : 'plan-trial');
+            @endphp
+            <div class="col-xl-4 col-md-6 admin-plan-card {{ $filterClass }}">
+                <div class="card b-radius--10 shadow-sm border h-100 position-relative {{ $plan->is_featured ? 'border--primary' : ($isYearly ? 'border--danger' : '') }}">
                     @if($plan->is_featured)
                         <span class="badge badge--primary position-absolute top-0 end-0 m-3 px-2 py-1 text-uppercase">
                             <i class="las la-star me-1"></i> Most Popular
+                        </span>
+                    @elseif($isYearly)
+                        <span class="badge badge--danger position-absolute top-0 end-0 m-3 px-2 py-1 text-uppercase">
+                            <i class="las la-calendar-check me-1"></i> Annual Plan
                         </span>
                     @endif
 
@@ -49,7 +72,15 @@
                                         {{ showAmount($plan->price) }}
                                     @endif
                                 </h2>
-                                <span class="text-muted small">Valid for {{ $plan->duration_days }} Days</span>
+                                <span class="badge {{ $isYearly ? 'badge--danger' : ($isMonthly ? 'badge--primary' : 'badge--secondary') }} small mt-1">
+                                    @if($isYearly)
+                                        <i class="las la-calendar-check me-1"></i> Annual Plan ({{ $plan->duration_days }} Days)
+                                    @elseif($isMonthly)
+                                        <i class="las la-calendar me-1"></i> Monthly Plan ({{ $plan->duration_days }} Days)
+                                    @else
+                                        <i class="las la-stopwatch me-1"></i> Trial ({{ $plan->duration_days }} Days)
+                                    @endif
+                                </span>
                             </div>
 
                             <ul class="list-group list-group-flush mb-4 small">
@@ -133,11 +164,11 @@
                         <div class="row gy-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Plan Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="name" placeholder="e.g. Starter, Pro Business, VIP Agency" required>
+                                <input type="text" class="form-control" name="name" placeholder="e.g. Starter, Pro Business (Yearly)" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Tagline / Short Description</label>
-                                <input type="text" class="form-control" name="tagline" placeholder="e.g. Perfect for growing e-commerce stores">
+                                <input type="text" class="form-control" name="tagline" placeholder="e.g. Save 20% with annual billing">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Price ({{ gs('cur_text') }}) <span class="text-danger">*</span></label>
@@ -145,7 +176,13 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Duration (in Days) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" name="duration_days" placeholder="30 (e.g. 14, 30, 365)" min="1" required>
+                                <input type="number" class="form-control" name="duration_days" id="add_duration_days" placeholder="30 (e.g. 30, 365)" min="1" required>
+                                <div class="d-flex gap-1 mt-1">
+                                    <button type="button" class="btn btn-xs btn-outline--secondary duration-preset" data-target="#add_duration_days" data-val="7">7d Trial</button>
+                                    <button type="button" class="btn btn-xs btn-outline--primary duration-preset" data-target="#add_duration_days" data-val="30">30d (Monthly)</button>
+                                    <button type="button" class="btn btn-xs btn-outline--warning duration-preset" data-target="#add_duration_days" data-val="90">90d (Quarterly)</button>
+                                    <button type="button" class="btn btn-xs btn-outline--danger duration-preset" data-target="#add_duration_days" data-val="365">365d (Yearly)</button>
+                                </div>
                             </div>
 
                             <div class="col-12"><hr class="my-2"><h6 class="fw-bold text--primary">SaaS Quotas & Feature Limits</h6></div>
@@ -243,6 +280,12 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Duration (in Days) <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control" name="duration_days" id="edit_duration_days" min="1" required>
+                                <div class="d-flex gap-1 mt-1">
+                                    <button type="button" class="btn btn-xs btn-outline--secondary duration-preset" data-target="#edit_duration_days" data-val="7">7d</button>
+                                    <button type="button" class="btn btn-xs btn-outline--primary duration-preset" data-target="#edit_duration_days" data-val="30">30d (Monthly)</button>
+                                    <button type="button" class="btn btn-xs btn-outline--warning duration-preset" data-target="#edit_duration_days" data-val="90">90d (Quarterly)</button>
+                                    <button type="button" class="btn btn-xs btn-outline--danger duration-preset" data-target="#edit_duration_days" data-val="365">365d (Yearly)</button>
+                                </div>
                             </div>
 
                             <div class="col-12"><hr class="my-2"><h6 class="fw-bold text--primary">SaaS Quotas & Feature Limits</h6></div>
@@ -333,6 +376,30 @@
 <script>
     (function($) {
         "use strict";
+
+        // Duration Presets click handler
+        $('.duration-preset').on('click', function() {
+            var target = $(this).data('target');
+            var val = $(this).data('val');
+            $(target).val(val);
+        });
+
+        // Filter Pills in Admin
+        $('.admin-plan-filter').on('click', function() {
+            $('.admin-plan-filter').removeClass('active btn--primary btn--danger').addClass('btn-outline--primary');
+            $(this).removeClass('btn-outline--primary btn-outline--danger').addClass('active btn--primary');
+
+            var filter = $(this).data('filter');
+            if (filter === 'all') {
+                $('.admin-plan-card').show();
+            } else if (filter === 'monthly') {
+                $('.admin-plan-card').hide();
+                $('.plan-monthly, .plan-trial').show();
+            } else if (filter === 'yearly') {
+                $('.admin-plan-card').hide();
+                $('.plan-yearly').show();
+            }
+        });
 
         // Dynamic Feature row adder for Add Modal
         $('#addMoreFeatureBtn').on('click', function() {

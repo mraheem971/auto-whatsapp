@@ -26,51 +26,56 @@
         "route_name": "admin.dashboard",
         "menu_active": "admin.dashboard"
     },
-    "subscription_plans": {
-        "title": "Subscription Plans",
-        "icon": "las la-crown",
-        "menu_active": "admin.plans*",
-        "submenu": [
-            {
-                "keyword": ["All Plans", "Pricing Setting", "Create Plan", "Subscription Plans", "Bot Plans"],
-                "title": "Pricing & Plans",
-                "route_name": "admin.plans.index",
-                "menu_active": "admin.plans.index"
-            },
-            {
-                "keyword": ["User Subscriptions", "Subscribers", "Active Subscriptions", "Plan Memberships"],
-                "title": "User Subscriptions",
-                "route_name": "admin.plans.subscriptions",
-                "menu_active": "admin.plans.subscriptions"
-            }
-        ]
-    },
     "account_listing": {
         "title": "WhatsApp Accounts",
         "icon": "lab la-whatsapp",
-        "counters": ["pendingAccountListingCount"],
+        "counters": [
+            "pendingAccountListingCount"
+        ],
         "menu_active": "admin.account.listing*",
-        "submenu": [{
-                "keyword": ["Add account","Add WhatsApp","Connect WhatsApp","Scan QR","Link account"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Add account",
+                    "Add WhatsApp",
+                    "Connect WhatsApp",
+                    "Scan QR",
+                    "Link account"
+                ],
                 "title": "Add Account",
                 "route_name": "admin.account.listing.create",
                 "menu_active": "admin.account.listing.create"
             },
             {
-                "keyword": ["Active accounts","Connected WhatsApp","Active WhatsApp","Approved accounts"],
+                "keyword": [
+                    "Active accounts",
+                    "Connected WhatsApp",
+                    "Active WhatsApp",
+                    "Approved accounts"
+                ],
                 "title": "Active Accounts",
                 "route_name": "admin.account.listing.active",
                 "menu_active": "admin.account.listing.active"
             },
             {
-                "keyword": ["Pending accounts","Pending WhatsApp","Waiting accounts","Pending approval"],
+                "keyword": [
+                    "Pending accounts",
+                    "Pending WhatsApp",
+                    "Waiting accounts",
+                    "Pending approval"
+                ],
                 "title": "Pending Accounts",
                 "route_name": "admin.account.listing.pending",
                 "menu_active": "admin.account.listing.pending",
                 "counter": "pendingAccountListingCount"
             },
             {
-                "keyword": ["All WhatsApp accounts","All accounts","Every account","Total accounts"],
+                "keyword": [
+                    "All WhatsApp accounts",
+                    "All accounts",
+                    "Every account",
+                    "Total accounts"
+                ],
                 "title": "All Accounts",
                 "route_name": "admin.account.listing.index",
                 "menu_active": "admin.account.listing.index"
@@ -81,20 +86,40 @@
         "title": "Device Messenger",
         "icon": "lab la-android",
         "menu_active": "admin.device.sender*",
-        "submenu": [{
-                "keyword": ["Send message", "Device sender", "Send from phone", "Send from Android", "Quick dispatch", "Direct message"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Send message",
+                    "Device sender",
+                    "Send from phone",
+                    "Send from Android",
+                    "Quick dispatch",
+                    "Direct message"
+                ],
                 "title": "Send Message",
                 "route_name": "admin.device.sender.index",
                 "menu_active": "admin.device.sender.index"
             },
             {
-                "keyword": ["Message logs", "Sent history", "Outgoing messages", "Device history", "Delivery logs"],
+                "keyword": [
+                    "Message logs",
+                    "Sent history",
+                    "Outgoing messages",
+                    "Device history",
+                    "Delivery logs"
+                ],
                 "title": "Message Logs",
                 "route_name": "admin.device.sender.logs",
                 "menu_active": "admin.device.sender.logs"
             },
             {
-                "keyword": ["Android gateway", "Mobile hub", "Gateway API", "Phone gateway", "Mobile sync"],
+                "keyword": [
+                    "Android gateway",
+                    "Mobile hub",
+                    "Gateway API",
+                    "Phone gateway",
+                    "Mobile sync"
+                ],
                 "title": "Android Gateway",
                 "route_name": "admin.device.sender.gateway",
                 "menu_active": "admin.device.sender.gateway"
@@ -105,26 +130,48 @@
         "title": "Manage Contacts",
         "icon": "las la-address-book",
         "menu_active": "admin.contacts*",
-        "submenu": [{
-                "keyword": ["Contact Lists", "All Lists", "Audience lists", "Groups list"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Contact Lists",
+                    "All Lists",
+                    "Audience lists",
+                    "Groups list"
+                ],
                 "title": "Contact Lists",
                 "route_name": "admin.contacts.lists.index",
                 "menu_active": "admin.contacts.lists*"
             },
             {
-                "keyword": ["Add contact", "New contact", "Create contact", "Save contact"],
+                "keyword": [
+                    "Add contact",
+                    "New contact",
+                    "Create contact",
+                    "Save contact"
+                ],
                 "title": "Add Contact",
                 "route_name": "admin.contacts.create",
                 "menu_active": "admin.contacts.create"
             },
             {
-                "keyword": ["Import CSV", "Excel import", "Bulk upload", "CSV contacts"],
+                "keyword": [
+                    "Import CSV",
+                    "Excel import",
+                    "Bulk upload",
+                    "CSV contacts"
+                ],
                 "title": "Import CSV / Excel",
                 "route_name": "admin.contacts.import.csv.view",
                 "menu_active": "admin.contacts.import.csv*"
             },
             {
-                "keyword": ["Sync contacts", "Import contacts", "Extract contacts", "WhatsApp contacts", "Fetch contacts"],
+                "keyword": [
+                    "Sync contacts",
+                    "Import contacts",
+                    "Extract contacts",
+                    "WhatsApp contacts",
+                    "Fetch contacts"
+                ],
                 "title": "Sync from WhatsApp",
                 "route_name": "admin.contacts.sync",
                 "menu_active": "admin.contacts.sync"
@@ -135,14 +182,23 @@
         "title": "Message Templates",
         "icon": "las la-envelope-open-text",
         "menu_active": "admin.templates*",
-        "submenu": [{
-                "keyword": ["New template", "Add template", "Create template"],
+        "submenu": [
+            {
+                "keyword": [
+                    "New template",
+                    "Add template",
+                    "Create template"
+                ],
                 "title": "Add Template",
                 "route_name": "admin.templates.create",
                 "menu_active": "admin.templates.create"
             },
             {
-                "keyword": ["All templates", "Template list", "Message templates"],
+                "keyword": [
+                    "All templates",
+                    "Template list",
+                    "Message templates"
+                ],
                 "title": "All Templates",
                 "route_name": "admin.templates.index",
                 "menu_active": "admin.templates.index"
@@ -153,14 +209,25 @@
         "title": "Campaigns",
         "icon": "las la-bullhorn",
         "menu_active": "admin.campaigns*",
-        "submenu": [{
-                "keyword": ["Create campaign", "New broadcast", "Send to groups", "Auto send", "Bulk message"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Create campaign",
+                    "New broadcast",
+                    "Send to groups",
+                    "Auto send",
+                    "Bulk message"
+                ],
                 "title": "Create Campaign",
                 "route_name": "admin.campaigns.create",
                 "menu_active": "admin.campaigns.create"
             },
             {
-                "keyword": ["All campaigns", "Campaign list", "Broadcast history"],
+                "keyword": [
+                    "All campaigns",
+                    "Campaign list",
+                    "Broadcast history"
+                ],
                 "title": "All Campaigns",
                 "route_name": "admin.campaigns.index",
                 "menu_active": "admin.campaigns.index"
@@ -171,14 +238,30 @@
         "title": "Auto-Reply Bot",
         "icon": "las la-robot",
         "menu_active": "admin.autoreply*",
-        "submenu": [{
-                "keyword": ["Keyword bots", "Auto replies", "Chatbot", "Keywords", "Auto responder", "WhatsApp Bot"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Keyword bots",
+                    "Auto replies",
+                    "Chatbot",
+                    "Keywords",
+                    "Auto responder",
+                    "WhatsApp Bot"
+                ],
                 "title": "Keyword Bots",
                 "route_name": "admin.autoreply.index",
                 "menu_active": "admin.autoreply.index"
             },
             {
-                "keyword": ["API Documentation", "Developer API", "REST API", "Send Message API", "Endpoints", "WhatsApp API", "Webhook"],
+                "keyword": [
+                    "API Documentation",
+                    "Developer API",
+                    "REST API",
+                    "Send Message API",
+                    "Endpoints",
+                    "WhatsApp API",
+                    "Webhook"
+                ],
                 "title": "API Documentation",
                 "route_name": "admin.autoreply.docs",
                 "menu_active": "admin.autoreply.docs"
@@ -189,26 +272,50 @@
         "title": "Bot Notifications",
         "icon": "las la-bell",
         "menu_active": "admin.bot.notifications*",
-        "submenu": [{
-                "keyword": ["Notification Dashboard", "Bot Notifications", "Alerts", "Notification overview", "Bot alerts"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Notification Dashboard",
+                    "Bot Notifications",
+                    "Alerts",
+                    "Notification overview",
+                    "Bot alerts"
+                ],
                 "title": "Dashboard",
                 "route_name": "admin.bot.notifications.index",
                 "menu_active": "admin.bot.notifications.index"
             },
             {
-                "keyword": ["Scheduled Notifications", "Reminders", "Scheduled tasks", "Broadcasts", "Cron jobs"],
+                "keyword": [
+                    "Scheduled Notifications",
+                    "Reminders",
+                    "Scheduled tasks",
+                    "Broadcasts",
+                    "Cron jobs"
+                ],
                 "title": "Schedules & Reminders",
                 "route_name": "admin.bot.notifications.schedules",
                 "menu_active": "admin.bot.notifications.schedules"
             },
             {
-                "keyword": ["Notification Preferences", "Admin alert settings", "Error escalation", "Alert settings"],
+                "keyword": [
+                    "Notification Preferences",
+                    "Admin alert settings",
+                    "Error escalation",
+                    "Alert settings"
+                ],
                 "title": "Preferences & Alerts",
                 "route_name": "admin.bot.notifications.settings",
                 "menu_active": "admin.bot.notifications.settings"
             },
             {
-                "keyword": ["Notification logs", "Error audit", "Sent alerts", "Escalation history", "Audit log"],
+                "keyword": [
+                    "Notification logs",
+                    "Error audit",
+                    "Sent alerts",
+                    "Escalation history",
+                    "Audit log"
+                ],
                 "title": "Logs & Error Audit",
                 "route_name": "admin.bot.notifications.logs",
                 "menu_active": "admin.bot.notifications.logs"
@@ -218,63 +325,127 @@
     "manage_users": {
         "title": "Manage Users",
         "icon": "las la-users",
-        "counters": ["bannedUsersCount", "emailUnverifiedUsersCount", "mobileUnverifiedUsersCount", "kycUnverifiedUsersCount", "kycPendingUsersCount"],
+        "counters": [
+            "bannedUsersCount",
+            "emailUnverifiedUsersCount",
+            "mobileUnverifiedUsersCount",
+            "kycUnverifiedUsersCount",
+            "kycPendingUsersCount"
+        ],
         "menu_active": "admin.users*",
-        "submenu": [{
-                "keyword": ["active users", "Manage Users", "User management", "User control", "User status", "User activity", "User analytics"],
+        "submenu": [
+            {
+                "keyword": [
+                    "active users",
+                    "Manage Users",
+                    "User management",
+                    "User control",
+                    "User status",
+                    "User activity",
+                    "User analytics"
+                ],
                 "title": "Active Users",
                 "route_name": "admin.users.active",
                 "menu_active": "admin.users.active"
             },
             {
-                "keyword": ["banned users", "Manage Users", "User management", "Account bans", "User activity"],
+                "keyword": [
+                    "banned users",
+                    "Manage Users",
+                    "User management",
+                    "Account bans",
+                    "User activity"
+                ],
                 "title": "Banned Users",
                 "route_name": "admin.users.banned",
                 "menu_active": "admin.users.banned",
                 "counter": "bannedUsersCount"
             },
             {
-                "keyword": ["email unverified users", "Manage Users", "User verification", "User authentication", "User management"],
+                "keyword": [
+                    "email unverified users",
+                    "Manage Users",
+                    "User verification",
+                    "User authentication",
+                    "User management"
+                ],
                 "title": "Email Unverified",
                 "route_name": "admin.users.email.unverified",
                 "menu_active": "admin.users.email.unverified",
                 "counter": "emailUnverifiedUsersCount"
             },
             {
-                "keyword": ["mobile unverified users", "Manage Users", "User verification", "User authentication", "User management"],
+                "keyword": [
+                    "mobile unverified users",
+                    "Manage Users",
+                    "User verification",
+                    "User authentication",
+                    "User management"
+                ],
                 "title": "Mobile Unverified",
                 "route_name": "admin.users.mobile.unverified",
                 "menu_active": "admin.users.mobile.unverified",
                 "counter": "mobileUnverifiedUsersCount"
             },
             {
-                "keyword": ["kyc unverified users", "Manage Users", "User verification", "User authentication", "User management"],
+                "keyword": [
+                    "kyc unverified users",
+                    "Manage Users",
+                    "User verification",
+                    "User authentication",
+                    "User management"
+                ],
                 "title": "KYC Unverified",
                 "route_name": "admin.users.kyc.unverified",
                 "menu_active": "admin.users.kyc.unverified",
                 "counter": "kycUnverifiedUsersCount"
             },
             {
-                "keyword": ["kyc pending users", "Manage Users", "User verification", "User authentication", "User management"],
+                "keyword": [
+                    "kyc pending users",
+                    "Manage Users",
+                    "User verification",
+                    "User authentication",
+                    "User management"
+                ],
                 "title": "KYC Pending",
                 "route_name": "admin.users.kyc.pending",
                 "menu_active": "admin.users.kyc.pending",
                 "counter": "kycPendingUsersCount"
             },
             {
-                "keyword": ["with balance users", "Manage Users", "User management", "User activity", "Account management"],
+                "keyword": [
+                    "with balance users",
+                    "Manage Users",
+                    "User management",
+                    "User activity",
+                    "Account management"
+                ],
                 "title": "With Balance",
                 "route_name": "admin.users.with.balance",
                 "menu_active": "admin.users.with.balance"
             },
             {
-                "keyword": ["all users users", "Manage Users", "User management", "User control", "User activity", "User analytics"],
+                "keyword": [
+                    "all users users",
+                    "Manage Users",
+                    "User management",
+                    "User control",
+                    "User activity",
+                    "User analytics"
+                ],
                 "title": "All Users",
                 "route_name": "admin.users.all",
                 "menu_active": "admin.users.all"
             },
             {
-                "keyword": ["send notification users", "Manage Users", "User notifications", "User management", "User activity"],
+                "keyword": [
+                    "send notification users",
+                    "Manage Users",
+                    "User notifications",
+                    "User management",
+                    "User activity"
+                ],
                 "title": "Send Notification",
                 "route_name": "admin.users.notification.all",
                 "menu_active": "admin.users.notification.all"
@@ -284,135 +455,243 @@
     "deposits": {
         "title": "Deposits",
         "icon": "las la-file-invoice-dollar",
-        "counters": ["pendingDepositsCount"],
+        "counters": [
+            "pendingDepositsCount"
+        ],
         "menu_active": "admin.deposit*",
-        "submenu": [{
-                "keyword": ["Pending Deposits", "Deposits", "Deposit management", "Deposit control", "Deposit status", "Deposit activity"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Pending Deposits",
+                    "Deposits",
+                    "Deposit management",
+                    "Deposit control",
+                    "Deposit status",
+                    "Deposit activity"
+                ],
                 "title": "Pending Deposits",
                 "route_name": "admin.deposit.pending",
                 "menu_active": "admin.deposit.pending",
                 "counter": "pendingDepositsCount",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             },
             {
-                "keyword": ["Approved Deposits", "Deposits", "Deposit management", "Deposit activity"],
+                "keyword": [
+                    "Approved Deposits",
+                    "Deposits",
+                    "Deposit management",
+                    "Deposit activity"
+                ],
                 "title": "Approved Deposits",
                 "route_name": "admin.deposit.approved",
                 "menu_active": "admin.deposit.approved",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             },
             {
-                "keyword": ["Successful Deposits", "Deposits", "Deposit management", "Deposit activity"],
+                "keyword": [
+                    "Successful Deposits",
+                    "Deposits",
+                    "Deposit management",
+                    "Deposit activity"
+                ],
                 "title": "Successful Deposits",
                 "route_name": "admin.deposit.successful",
                 "menu_active": "admin.deposit.successful",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             },
             {
-                "keyword": ["Rejected Deposits", "Deposits", "Deposit management", "Deposit activity"],
+                "keyword": [
+                    "Rejected Deposits",
+                    "Deposits",
+                    "Deposit management",
+                    "Deposit activity"
+                ],
                 "title": "Rejected Deposits",
                 "route_name": "admin.deposit.rejected",
                 "menu_active": "admin.deposit.rejected",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             },
             {
-                "keyword": ["Initiated Deposits", "Deposits", "Deposit management", "Deposit activity"],
+                "keyword": [
+                    "Initiated Deposits",
+                    "Deposits",
+                    "Deposit management",
+                    "Deposit activity"
+                ],
                 "title": "Initiated Deposits",
                 "route_name": "admin.deposit.initiated",
                 "menu_active": "admin.deposit.initiated",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             },
             {
-                "keyword": ["All Deposits", "Deposits", "Deposit management", "Deposit control", "Deposit activity"],
+                "keyword": [
+                    "All Deposits",
+                    "Deposits",
+                    "Deposit management",
+                    "Deposit control",
+                    "Deposit activity"
+                ],
                 "title": "All Deposits",
                 "route_name": "admin.deposit.list",
                 "menu_active": "admin.deposit.list",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             }
         ]
     },
     "withdrawals": {
         "title": "Withdrawals",
         "icon": "la la-bank",
-        "counters": ["pendingWithdrawCount"],
+        "counters": [
+            "pendingWithdrawCount"
+        ],
         "menu_active": "admin.withdraw.data*",
-        "submenu": [{
-                "keyword": ["Pending Withdrawals", "Withdrawals", "Withdrawal management", "Withdrawal control", "Withdrawal status", "Withdrawal activity"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Pending Withdrawals",
+                    "Withdrawals",
+                    "Withdrawal management",
+                    "Withdrawal control",
+                    "Withdrawal status",
+                    "Withdrawal activity"
+                ],
                 "title": "Pending Withdrawals",
                 "route_name": "admin.withdraw.data.pending",
                 "menu_active": "admin.withdraw.data.pending",
                 "counter": "pendingWithdrawCount",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             },
             {
-                "keyword": ["Approved Withdrawals", "Withdrawals", "Withdrawal management", "Withdrawal activity"],
+                "keyword": [
+                    "Approved Withdrawals",
+                    "Withdrawals",
+                    "Withdrawal management",
+                    "Withdrawal activity"
+                ],
                 "title": "Approved Withdrawals",
                 "route_name": "admin.withdraw.data.approved",
                 "menu_active": "admin.withdraw.data.approved",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             },
             {
-                "keyword": ["Rejected Withdrawals", "Withdrawals", "Withdrawal management", "Withdrawal activity"],
+                "keyword": [
+                    "Rejected Withdrawals",
+                    "Withdrawals",
+                    "Withdrawal management",
+                    "Withdrawal activity"
+                ],
                 "title": "Rejected Withdrawals",
                 "route_name": "admin.withdraw.data.rejected",
                 "menu_active": "admin.withdraw.data.rejected",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             },
             {
-                "keyword": ["All Withdrawals", "Withdrawals", "Withdrawal management", "Withdrawal control", "Withdrawal activity"],
+                "keyword": [
+                    "All Withdrawals",
+                    "Withdrawals",
+                    "Withdrawal management",
+                    "Withdrawal control",
+                    "Withdrawal activity"
+                ],
                 "title": "All Withdrawals",
                 "route_name": "admin.withdraw.data.all",
                 "menu_active": "admin.withdraw.data.all",
-                "params":[{
-                    "user_id":""
-                }]
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             }
         ]
     },
     "support_ticket": {
         "title": "Support Ticket",
         "icon": "la la-ticket",
-        "counters": ["pendingTicketCount"],
+        "counters": [
+            "pendingTicketCount"
+        ],
         "menu_active": "admin.ticket*",
-        "submenu": [{
-                "keyword": ["Pending Ticket", "Support Ticket", "Ticket management", "Ticket control", "Ticket status", "Ticket activity"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Pending Ticket",
+                    "Support Ticket",
+                    "Ticket management",
+                    "Ticket control",
+                    "Ticket status",
+                    "Ticket activity"
+                ],
                 "title": "Pending Ticket",
                 "route_name": "admin.ticket.pending",
                 "menu_active": "admin.ticket.pending",
                 "counter": "pendingTicketCount"
             },
             {
-                "keyword": ["Closed Ticket", "Support Ticket", "Ticket management", "Ticket activity"],
+                "keyword": [
+                    "Closed Ticket",
+                    "Support Ticket",
+                    "Ticket management",
+                    "Ticket activity"
+                ],
                 "title": "Closed Ticket",
                 "route_name": "admin.ticket.closed",
                 "menu_active": "admin.ticket.closed"
             },
             {
-                "keyword": ["Answered Ticket", "Support Ticket", "Ticket management", "Ticket activity"],
+                "keyword": [
+                    "Answered Ticket",
+                    "Support Ticket",
+                    "Ticket management",
+                    "Ticket activity"
+                ],
                 "title": "Answered Ticket",
                 "route_name": "admin.ticket.answered",
                 "menu_active": "admin.ticket.answered"
             },
             {
-                "keyword": ["All Ticket", "Support Ticket", "Ticket management", "Ticket control", "Ticket activity"],
+                "keyword": [
+                    "All Ticket",
+                    "Support Ticket",
+                    "Ticket management",
+                    "Ticket control",
+                    "Ticket activity"
+                ],
                 "title": "All Ticket",
                 "route_name": "admin.ticket.index",
                 "menu_active": "admin.ticket.index"
@@ -423,38 +702,104 @@
         "title": "Report",
         "icon": "la la-list",
         "menu_active": "admin.report*",
-        "submenu": [{
-                "keyword": ["Transaction Log", "Report", "Transaction report", "Transaction history", "Transaction activity","balance sheet","balance log","balance history"],
+        "submenu": [
+            {
+                "keyword": [
+                    "Transaction Log",
+                    "Report",
+                    "Transaction report",
+                    "Transaction history",
+                    "Transaction activity",
+                    "balance sheet",
+                    "balance log",
+                    "balance history"
+                ],
                 "title": "Transaction History",
                 "route_name": "admin.report.transaction",
-                "menu_active": ["admin.report.transaction", "admin.report.transaction.search"],
-                "params":[{
-                    "user_id":""
-                }]
+                "menu_active": [
+                    "admin.report.transaction",
+                    "admin.report.transaction.search"
+                ],
+                "params": [
+                    {
+                        "user_id": ""
+                    }
+                ]
             },
             {
-                "keyword": ["Login History", "Report", "Login report", "Login history", "Login activity"],
+                "keyword": [
+                    "Login History",
+                    "Report",
+                    "Login report",
+                    "Login history",
+                    "Login activity"
+                ],
                 "title": "Login History",
                 "route_name": "admin.report.login.history",
-                "menu_active": ["admin.report.login.history", "admin.report.login.ipHistory"]
+                "menu_active": [
+                    "admin.report.login.history",
+                    "admin.report.login.ipHistory"
+                ]
             },
             {
-                "keyword": ["Notification History", "Report", "Notification report", "Notification history", "Notification activity","email log","email history","sms log","sms history","push notification log","push notification history"],
+                "keyword": [
+                    "Notification History",
+                    "Report",
+                    "Notification report",
+                    "Notification history",
+                    "Notification activity",
+                    "email log",
+                    "email history",
+                    "sms log",
+                    "sms history",
+                    "push notification log",
+                    "push notification history"
+                ],
                 "title": "Notification History",
                 "route_name": "admin.report.notification.history",
                 "menu_active": "admin.report.notification.history"
             }
         ]
     },
-    "subscriber": {
-        "keyword": ["subscriber", "subscribers", "Subscription management", "Subscriber list", "Subscriber activity"],
-        "title": "Subscribers",
-        "icon": "las la-thumbs-up",
-        "route_name": "admin.subscriber.index",
-        "menu_active": "admin.subscriber.*"
+    "subscription_plans": {
+        "title": "Subscription Plans",
+        "icon": "las la-crown",
+        "menu_active": "admin.plans*",
+        "submenu": [
+            {
+                "keyword": [
+                    "All Plans",
+                    "Pricing Setting",
+                    "Create Plan",
+                    "Subscription Plans",
+                    "Bot Plans"
+                ],
+                "title": "Pricing & Plans",
+                "route_name": "admin.plans.index",
+                "menu_active": "admin.plans.index"
+            },
+            {
+                "keyword": [
+                    "User Subscriptions",
+                    "Subscribers",
+                    "Active Subscriptions",
+                    "Plan Memberships"
+                ],
+                "title": "User Subscriptions",
+                "route_name": "admin.plans.subscriptions",
+                "menu_active": "admin.plans.subscriptions"
+            }
+        ]
     },
     "system_setting": {
-        "keyword": ["System Setting", "setting", "System configuration", "System preferences", "Configuration management", "System setup"],
+        "keyword": [
+            "System Setting",
+            "setting",
+            "System configuration",
+            "System preferences",
+            "Configuration management",
+            "System setup"
+        ],
         "title": "System Setting",
         "icon": "las la-life-ring",
         "route_name": "admin.setting.system",
@@ -496,36 +841,86 @@
         "title": "Extra",
         "icon": "la la-server",
         "menu_active": "admin.system*",
-        "counters": ["updateAvailable"],
-        "submenu": [{
-                "keyword": ["Application", "System", "Application management", "Application settings", "System information","version","laravel","timezone"],
+        "counters": [
+            "updateAvailable"
+        ],
+        "submenu": [
+            {
+                "keyword": [
+                    "Application",
+                    "System",
+                    "Application management",
+                    "Application settings",
+                    "System information",
+                    "version",
+                    "laravel",
+                    "timezone"
+                ],
                 "title": "Application",
                 "route_name": "admin.system.info",
                 "menu_active": "admin.system.info"
             },
             {
-                "keyword": ["Server", "System", "Server management", "Server settings", "System information","version","php version","software","ip address","server ip address","server port","http host"],
+                "keyword": [
+                    "Server",
+                    "System",
+                    "Server management",
+                    "Server settings",
+                    "System information",
+                    "version",
+                    "php version",
+                    "software",
+                    "ip address",
+                    "server ip address",
+                    "server port",
+                    "http host"
+                ],
                 "title": "Server",
                 "route_name": "admin.system.server.info",
                 "menu_active": "admin.system.server.info"
             },
             {
-                "keyword": ["Cache", "System", "Cache management", "Cache optimization", "System performance","clear cache"],
+                "keyword": [
+                    "Cache",
+                    "System",
+                    "Cache management",
+                    "Cache optimization",
+                    "System performance",
+                    "clear cache"
+                ],
                 "title": "Cache",
                 "route_name": "admin.system.optimize",
                 "menu_active": "admin.system.optimize"
             },
             {
-                "keyword": ["Update", "System", "Update management", "System update", "Software updates","version update","upgrade","latest version"],
+                "keyword": [
+                    "Update",
+                    "System",
+                    "Update management",
+                    "System update",
+                    "Software updates",
+                    "version update",
+                    "upgrade",
+                    "latest version"
+                ],
                 "title": "Update",
                 "route_name": "admin.system.update",
                 "menu_active": "admin.system.update*",
-                "counter":"updateAvailable"
+                "counter": "updateAvailable"
             }
         ]
     },
     "report_and_request": {
-        "keyword": ["Report & Request", "Report and Request", "Reports and Requests", "Reporting and Requests", "Report management", "Request management","feature request","bug report"],
+        "keyword": [
+            "Report & Request",
+            "Report and Request",
+            "Reports and Requests",
+            "Reporting and Requests",
+            "Report management",
+            "Request management",
+            "feature request",
+            "bug report"
+        ],
         "title": "Report & Request",
         "icon": "las la-bug",
         "route_name": "admin.request.report",

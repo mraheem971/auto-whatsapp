@@ -3,11 +3,11 @@
 <div class="dashboard-section py-60">
     <div class="container">
         
-        <div class="text-center mb-5">
-            <h3 class="fw-bold mb-2">WhatsApp Bot Subscription Plans</h3>
-            <p class="text-muted">Choose a plan that fits your business needs. Upgrade or renew anytime using wallet balance or direct payment gateways.</p>
+        <div class="text-center mb-4">
+            <h3 class="fw-bold mb-2">WhatsApp Bot SaaS Subscription Plans</h3>
+            <p class="text-muted">Scale your WhatsApp marketing & auto-reply bots with high-volume accounts and anti-ban automation.</p>
             @if($currentPlan)
-                <div class="d-inline-flex align-items-center gap-2 bg-light px-3 py-2 rounded-pill border shadow-xs">
+                <div class="d-inline-flex align-items-center gap-2 bg-light px-3 py-2 rounded-pill border shadow-xs mb-3">
                     <span class="text-muted small">Current Active Plan:</span>
                     <strong class="text-success fw-bold">{{ $currentPlan->name }}</strong>
                     @if($activeSubscription && $activeSubscription->expires_at)
@@ -15,21 +15,49 @@
                     @endif
                 </div>
             @endif
+
+            {{-- Billing Cycle Filter Tabs --}}
+            <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+                <div class="btn-group p-1 bg-light border rounded-pill shadow-xs" role="group" id="billingFilterGroup">
+                    <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold billing-filter active" data-filter="all">
+                        All Plans
+                    </button>
+                    <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold billing-filter" data-filter="monthly">
+                        Monthly Plans
+                    </button>
+                    <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold billing-filter position-relative" data-filter="yearly">
+                        Yearly Plans
+                        <span class="badge bg-danger rounded-pill ms-1" style="font-size: 10px;">SAVE 20%</span>
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div class="row gy-4 justify-content-center">
+        <div class="row gy-4 justify-content-center" id="plansContainer">
             @foreach($plans as $plan)
-                <div class="col-lg-4 col-md-6">
+                @php
+                    $isYearly = $plan->duration_days >= 300;
+                    $isMonthly = $plan->duration_days >= 25 && $plan->duration_days < 300;
+                    $isTrial = $plan->duration_days < 25;
+                    $filterClass = $isYearly ? 'plan-yearly' : ($isMonthly ? 'plan-monthly' : 'plan-trial');
+                @endphp
+                <div class="col-lg-4 col-md-6 plan-card-item {{ $filterClass }}">
                     <div class="card custom--card border shadow-sm rounded-3 h-100 position-relative {{ $plan->is_featured ? 'border-primary' : '' }}">
                         @if($plan->is_featured)
                             <div class="position-absolute top-0 end-0 bg-primary text-white small fw-bold px-3 py-1 text-uppercase shadow-xs" style="border-bottom-left-radius: 8px; border-top-right-radius: 8px;">
                                 Most Popular
                             </div>
+                        @elseif($isYearly)
+                            <div class="position-absolute top-0 end-0 bg-danger text-white small fw-bold px-3 py-1 text-uppercase shadow-xs" style="border-bottom-left-radius: 8px; border-top-right-radius: 8px;">
+                                Best Value (Annual)
+                            </div>
                         @endif
 
                         <div class="card-body p-4 text-center d-flex flex-column">
-                            <h5 class="fw-bold text-dark mb-1">{{ $plan->name }}</h5>
-                            <p class="text-muted small mb-3">{{ $plan->tagline }}</p>
+                            <div class="mb-2">
+                                <h5 class="fw-bold text-dark mb-1">{{ $plan->name }}</h5>
+                                <p class="text-muted small mb-0">{{ $plan->tagline }}</p>
+                            </div>
 
                             <div class="my-3 py-3 bg-light rounded-3 border">
                                 <h2 class="fw-bold text-dark mb-0">
@@ -39,10 +67,18 @@
                                         {{ showAmount($plan->price) }}
                                     @endif
                                 </h2>
-                                <small class="text-muted">for {{ $plan->duration_days }} days</small>
+                                <span class="badge {{ $isYearly ? 'bg-danger' : ($isMonthly ? 'bg-primary' : 'bg-secondary') }} text-white small mt-1">
+                                    @if($isYearly)
+                                        <i class="las la-calendar-check me-1"></i> Annual Plan ({{ $plan->duration_days }} Days)
+                                    @elseif($isMonthly)
+                                        <i class="las la-calendar me-1"></i> Monthly Plan ({{ $plan->duration_days }} Days)
+                                    @else
+                                        <i class="las la-stopwatch me-1"></i> Trial ({{ $plan->duration_days }} Days)
+                                    @endif
+                                </span>
                             </div>
 
-                            <ul class="list-unstyled text-start my-4 flex-grow-1">
+                            <ul class="list-unstyled text-start my-3 flex-grow-1">
                                 <li class="mb-2 d-flex align-items-center">
                                     <i class="las la-check-circle text-success fs-5 me-2"></i>
                                     <span><strong>{{ $plan->account_limit }}</strong> WhatsApp Account{{ $plan->account_limit > 1 ? 's' : '' }}</span>
@@ -73,7 +109,7 @@
                                 @endif
                             </ul>
 
-                            <div>
+                            <div class="mt-auto pt-3 border-top">
                                 @if($currentPlan && $currentPlan->id == $plan->id && $activeSubscription && $activeSubscription->isValid())
                                     <button class="btn btn-secondary w-100 py-2 disabled" disabled>
                                         <i class="las la-check me-1"></i> Currently Active
@@ -86,7 +122,7 @@
                                         </button>
                                     </form>
                                 @else
-                                    <button type="button" class="btn {{ $plan->is_featured ? 'btn--base' : 'btn-outline--base' }} w-100 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#subscribeModal_{{ $plan->id }}">
+                                    <button type="button" class="btn {{ $plan->is_featured ? 'btn--base' : ($isYearly ? 'btn-danger' : 'btn-outline--base') }} w-100 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#subscribeModal_{{ $plan->id }}">
                                         <i class="las la-bolt me-1"></i> Subscribe Now
                                     </button>
                                 @endif
@@ -112,6 +148,7 @@
                                         <div>
                                             <span class="text-muted small d-block">Plan Price:</span>
                                             <h4 class="fw-bold text-dark mb-0">{{ showAmount($plan->price) }}</h4>
+                                            <small class="text-muted">Duration: {{ $plan->duration_days }} Days</small>
                                         </div>
                                         <div class="text-end">
                                             <span class="text-muted small d-block">Your Wallet Balance:</span>
@@ -180,3 +217,29 @@
 </div>
 @endsection
 
+@push('script')
+<script>
+    (function($) {
+        "use strict";
+
+        $('.billing-filter').on('click', function() {
+            $('.billing-filter').removeClass('active btn--base text-white').addClass('btn-light text-dark');
+            $(this).removeClass('btn-light text-dark').addClass('active btn--base text-white');
+
+            var filter = $(this).data('filter');
+            if (filter === 'all') {
+                $('.plan-card-item').fadeIn(200);
+            } else if (filter === 'monthly') {
+                $('.plan-card-item').hide();
+                $('.plan-monthly, .plan-trial').fadeIn(200);
+            } else if (filter === 'yearly') {
+                $('.plan-card-item').hide();
+                $('.plan-yearly').fadeIn(200);
+            }
+        });
+
+        // Set initial active button styling
+        $('.billing-filter.active').addClass('btn--base text-white');
+    })(jQuery);
+</script>
+@endpush
