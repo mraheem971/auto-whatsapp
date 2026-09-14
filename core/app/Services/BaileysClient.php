@@ -48,11 +48,13 @@ class BaileysClient
         }
 
         if (is_dir($servicePath)) {
-            $escapedPath = escapeshellarg($servicePath);
-            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                pclose(popen("start /B cmd /c cd /d {$escapedPath} && node server.js", "r"));
-            } else {
-                exec("cd {$escapedPath} && node server.js > /dev/null 2>&1 &");
+            $realPath = realpath($servicePath);
+            if ($realPath) {
+                if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                    pclose(popen("start /B cmd /c \"cd /d \"{$realPath}\" && node server.js\"", "r"));
+                } else {
+                    exec("cd \"{$realPath}\" && node server.js > /dev/null 2>&1 &");
+                }
             }
         }
     }

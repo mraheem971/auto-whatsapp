@@ -14,9 +14,19 @@ class DeviceMessage extends Model
         return $this->belongsTo(Admin::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function whatsappAccount()
     {
         return $this->belongsTo(WhatsappAccount::class, 'whatsapp_account_id');
+    }
+
+    public function scopeForUser($query, $userId)
+    {
+        return $query->where('user_id', $userId);
     }
 
     public function statusBadge(): Attribute
