@@ -11,7 +11,8 @@ Route::get('cron', 'CronController@cron')->name('cron');
 
 // Auto-Reply Engine API (Baileys Integration)
 Route::get('api/autoreply/rules/{sessionId}', 'Admin\AutoReplyController@apiFetchRules')->name('api.autoreply.rules');
-Route::post('api/autoreply/log-hit/{id}', 'Admin\AutoReplyController@apiLogHit')->name('api.autoreply.log_hit');
+Route::match(['GET', 'POST'], 'api/autoreply/log-hit/{id}', 'Admin\AutoReplyController@apiLogHit')->name('api.autoreply.log_hit');
+
 
 // WhatsApp Message Sending REST API Endpoints
 Route::match(['GET', 'POST'], 'api/send-message', 'Api\MessageApiController@sendMessage')->name('api.send_message');

@@ -148,6 +148,18 @@ function extractMessageText(msg) {
     ).toString().trim();
 }
 
+// Robust text normalizer for keyword matching (strips diacritics, emojis, punctuation, extra whitespace)
+function normalizeSearchText(str) {
+    if (!str) return '';
+    return str
+        .toString()
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 // Set to prevent duplicate processing of the same incoming message ID
 const processedMessageIds = new Set();
 
@@ -197,8 +209,7 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
     }
 
     const lowerText = incomingText.toLowerCase().trim();
-    // Normalized text with unified spaces and removed symbols for robust matching
-    const normalizedText = lowerText.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+    const normalizedText = normalizeSearchText(incomingText);
     const words = normalizedText.split(' ').filter(Boolean);
     const first2Words = words.slice(0, 2).join(' ');
     const first3Words = words.slice(0, 3).join(' ');
@@ -268,52 +279,76 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
                 const parsed = JSON.parse(rule.keywords);
                 kwList = Array.isArray(parsed) ? parsed : [rule.keywords];
             } catch {
-                kwList = rule.keywords.split(',').map(s => s.trim()).filter(Boolean);
+                kwList = rule.keywords.split(/[\r\n,;|]+/).map(s => s.trim()).filter(Boolean);
             }
         }
 
         let isMatch = false;
         for (const kw of kwList) {
-            const lowerKw = kw.toString().toLowerCase().trim();
-            const normalizedKw = lowerKw.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+            if (!kw) continue;
+            const rawKw = kw.toString().trim();
+            const lowerKw = rawKw.toLowerCase();
+            const normalizedKw = normalizeSearchText(rawKw);
             if (!lowerKw && !normalizedKw) continue;
 
-            if (rule.match_type === 'exact') {
-                if (lowerText === lowerKw || normalizedText === normalizedKw) {
+            const matchType = rule.match_type || 'contains';
+
+            if (matchType === 'exact') {
+                if (lowerText === lowerKw || normalizedText === normalizedKw || normalizedText === lowerKw) {
                     isMatch = true;
                     break;
                 }
-            } else if (rule.match_type === 'contains') {
-                if (lowerText.includes(lowerKw) || (normalizedKw && normalizedText.includes(normalizedKw))) {
+            } else if (matchType === 'contains') {
+                if (
+                    lowerText.includes(lowerKw) ||
+                    (normalizedKw && normalizedText.includes(normalizedKw)) ||
+                    words.some(w => w === normalizedKw || w === lowerKw)
+                ) {
                     isMatch = true;
                     break;
                 }
-            } else if (rule.match_type === 'starts_with') {
-                if (lowerText.startsWith(lowerKw) || (normalizedKw && normalizedText.startsWith(normalizedKw))) {
+            } else if (matchType === 'starts_with') {
+                if (
+                    lowerText.startsWith(lowerKw) ||
+                    (normalizedKw && normalizedText.startsWith(normalizedKw)) ||
+                    (words.length > 0 && (words[0] === normalizedKw || words[0] === lowerKw))
+                ) {
                     isMatch = true;
                     break;
                 }
-            } else if (rule.match_type === 'ends_with') {
-                if (lowerText.endsWith(lowerKw) || (normalizedKw && normalizedText.endsWith(normalizedKw))) {
+            } else if (matchType === 'ends_with') {
+                if (
+                    lowerText.endsWith(lowerKw) ||
+                    (normalizedKw && normalizedText.endsWith(normalizedKw)) ||
+                    (words.length > 0 && (words[words.length - 1] === normalizedKw || words[words.length - 1] === lowerKw))
+                ) {
                     isMatch = true;
                     break;
                 }
-            } else if (rule.match_type === 'first_words_2') {
+            } else if (matchType === 'regex') {
+                try {
+                    const reg = new RegExp(rawKw, 'i');
+                    if (reg.test(incomingText) || reg.test(normalizedText)) {
+                        isMatch = true;
+                        break;
+                    }
+                } catch(e) {}
+            } else if (matchType === 'first_words_2') {
                 if (first2Words.includes(lowerKw) || (normalizedKw && (first2Words.includes(normalizedKw) || words.slice(0, 2).includes(normalizedKw)))) {
                     isMatch = true;
                     break;
                 }
-            } else if (rule.match_type === 'first_words_3') {
+            } else if (matchType === 'first_words_3') {
                 if (first3Words.includes(lowerKw) || (normalizedKw && (first3Words.includes(normalizedKw) || words.slice(0, 3).includes(normalizedKw)))) {
                     isMatch = true;
                     break;
                 }
-            } else if (rule.match_type === 'last_words_2') {
+            } else if (matchType === 'last_words_2') {
                 if (last2Words.includes(lowerKw) || (normalizedKw && (last2Words.includes(normalizedKw) || words.slice(-2).includes(normalizedKw)))) {
                     isMatch = true;
                     break;
                 }
-            } else if (rule.match_type === 'last_words_3') {
+            } else if (matchType === 'last_words_3') {
                 if (last3Words.includes(lowerKw) || (normalizedKw && (last3Words.includes(normalizedKw) || words.slice(-3).includes(normalizedKw)))) {
                     isMatch = true;
                     break;
@@ -334,14 +369,13 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
     }
 
     // Variable substitutions
-    const processedText = targetRule.reply_message
+    const processedText = (targetRule.reply_message || '')
         .replace(/\{name\}/g, senderName)
         .replace(/\{sender_phone\}/g, senderPhone)
         .replace(/\{time\}/g, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
         .replace(/\{date\}/g, new Date().toLocaleDateString());
 
-    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" (ID: ${targetRule.id}) -> Starting human-like response flow for ${remoteJid}`);
-    logBotHitToLaravel(targetRule.id);
+    console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" (ID #${targetRule.id}) -> Starting response flow for ${remoteJid}`);
 
     // Execute flow sequence asynchronously
     executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, processedText);
@@ -418,12 +452,29 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
             });
         }
 
-        // Step 5: Log hit count to backend
-        fetch(`${LARAVEL_BASE_URL}/api/autoreply/log-hit/${targetRule.id}`, { method: 'POST' }).catch(() => {});
+        // Step 5: Log hit count directly to Laravel backend
+        try {
+            const baseUrl = discoveredLaravelUrl || await probeLaravelUrl();
+            const hitRes = await fetch(`${baseUrl}/api/autoreply/log-hit/${targetRule.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(3000)
+            });
+            if (hitRes.ok) {
+                const hitData = await hitRes.json();
+                console.log(`[AutoReply Hit Recorded] ✅ Rule #${targetRule.id} ("${targetRule.name}") new hit_count: ${hitData.hit_count}`);
+            } else {
+                console.warn(`[AutoReply Hit Log Status]: ${hitRes.status} from ${baseUrl}`);
+            }
+        } catch (hitErr) {
+            console.error('[AutoReply Hit Log Error]:', hitErr?.message || hitErr);
+        }
+
     } catch (err) {
         console.error('[AutoReply Flow Global Error]:', err?.message || err);
     }
 }
+
 const logger = pino({ level: 'silent' });
 
 async function initBaileysSession(sessionId, accountName, phoneNumber = null, usePairingCode = false) {
@@ -1282,6 +1333,19 @@ async function restoreSavedSessions() {
         console.error('Error auto-restoring sessions:', e);
     }
 }
+
+
+// Invalidate AutoReply rule cache
+app.post('/api/autoreply/clear-cache', (req, res) => {
+    const { sessionId } = req.body || {};
+    if (sessionId) {
+        autoReplyRuleCache.delete(sessionId);
+    } else {
+        autoReplyRuleCache.clear();
+    }
+    console.log(`[AutoReply Cache] 🔄 Cache cleared for ${sessionId || 'all sessions'}`);
+    res.json({ success: true, message: 'AutoReply cache cleared' });
+});
 
 app.listen(PORT, '127.0.0.1', () => {
     console.log(`Baileys WhatsApp Service running on http://127.0.0.1:${PORT}`);

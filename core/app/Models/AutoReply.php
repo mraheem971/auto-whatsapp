@@ -11,25 +11,7 @@ class AutoReply extends Model
 
     protected $table = 'auto_replies';
 
-    protected $fillable = [
-        'admin_id',
-        'session_id',
-        'name',
-        'chat_scope',
-        'target_type',
-        'target_contacts',
-        'target_group_ids',
-        'contact_list_id',
-        'match_type',
-        'keywords',
-        'reply_message',
-        'reply_destination',
-        'read_delay_seconds',
-        'typing_duration_seconds',
-        'reply_delay_seconds',
-        'status',
-        'hit_count',
-    ];
+    protected $guarded = ['id'];
 
     protected $casts = [
         'status'                  => 'boolean',
@@ -60,29 +42,33 @@ class AutoReply extends Model
             $account = !empty($sessionId) ? WhatsappAccount::where('session_id', $sessionId)->first() : null;
 
             if ($account && $account->user_id) {
-                // User account: match all rules belonging to this user
+                // User account: match user's rules for all their accounts or specific session
                 $q->where('user_id', $account->user_id)
                   ->where(function ($sq) use ($sessionId) {
                       $sq->whereNull('session_id')
                          ->orWhere('session_id', '')
-                         ->orWhere('session_id', $sessionId)
-                         ->orWhereNotIn('session_id', function ($sub) {
-                             $sub->select('session_id')->from('whatsapp_accounts')->whereNotNull('session_id');
-                         });
+                         ->orWhere('session_id', $sessionId);
                   });
             } else {
-                // Admin or Global account: match all admin rules
+                // Admin or Global account: match admin rules
                 $q->where(function ($sq) use ($sessionId) {
                     $sq->whereNull('user_id')
                        ->where(function ($ssq) use ($sessionId) {
                            $ssq->whereNull('session_id')
                               ->orWhere('session_id', '')
-                              ->orWhere('session_id', $sessionId)
-                              ->orWhereNotIn('session_id', function ($sub) {
-                                  $sub->select('session_id')->from('whatsapp_accounts')->whereNotNull('session_id');
-                              });
+                              ->orWhere('session_id', $sessionId);
                        });
                 })->orWhere('session_id', $sessionId);
+            }
+
+            if ($account && $account->phone_number) {
+                $otherSessionIds = WhatsappAccount::where('phone_number', $account->phone_number)
+                    ->pluck('session_id')
+                    ->filter()
+                    ->toArray();
+                if (!empty($otherSessionIds)) {
+                    $q->orWhereIn('session_id', $otherSessionIds);
+                }
             }
         });
     }

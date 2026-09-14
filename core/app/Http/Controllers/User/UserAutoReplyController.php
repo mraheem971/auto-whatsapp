@@ -102,23 +102,15 @@ class UserAutoReplyController extends Controller
             $contactsFormatted = json_encode($cArray);
         }
 
-        $keywordsFormatted = null;
-        if (!empty($request->keywords)) {
-            $kwArray = array_values(array_filter(array_map(function($kw) {
-                return preg_replace('/\s+/', ' ', trim($kw));
-            }, explode(',', $request->keywords))));
-            $keywordsFormatted = json_encode($kwArray);
-        }
-
         $bot = new AutoReply();
         $bot->user_id                 = $user->id;
         $bot->name                    = $request->name;
         $bot->match_type              = $request->match_type;
-        $bot->keywords                = $keywordsFormatted;
+        $bot->keywords                = $request->keywords;
         $bot->reply_type              = $request->reply_type;
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
-        $bot->session_id              = $request->session_id ?: null;
+        $bot->session_id              = $request->session_id;
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;
         $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
@@ -129,6 +121,10 @@ class UserAutoReplyController extends Controller
         $bot->cooldown_minutes        = $request->cooldown_minutes ?: 0;
         $bot->status                  = 1;
         $bot->save();
+
+        try {
+            BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $bot->session_id]);
+        } catch (\Throwable $e) {}
 
         $notify[] = ['success', 'Auto-Reply bot created successfully with custom target audience!'];
         return back()->withNotify($notify);
@@ -162,21 +158,13 @@ class UserAutoReplyController extends Controller
             $contactsFormatted = json_encode($cArray);
         }
 
-        $keywordsFormatted = null;
-        if (!empty($request->keywords)) {
-            $kwArray = array_values(array_filter(array_map(function($kw) {
-                return preg_replace('/\s+/', ' ', trim($kw));
-            }, explode(',', $request->keywords))));
-            $keywordsFormatted = json_encode($kwArray);
-        }
-
         $bot->name                    = $request->name;
         $bot->match_type              = $request->match_type;
-        $bot->keywords                = $keywordsFormatted;
+        $bot->keywords                = $request->keywords;
         $bot->reply_type              = $request->reply_type;
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
-        $bot->session_id              = $request->session_id ?: null;
+        $bot->session_id              = $request->session_id;
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;
         $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
@@ -186,6 +174,10 @@ class UserAutoReplyController extends Controller
         $bot->reply_delay_seconds     = $request->filled('reply_delay_seconds') ? (int)$request->reply_delay_seconds : ($request->delay_seconds ?: 0);
         $bot->cooldown_minutes        = $request->cooldown_minutes ?: 0;
         $bot->save();
+
+        try {
+            BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $bot->session_id]);
+        } catch (\Throwable $e) {}
 
         $notify[] = ['success', 'Auto-Reply bot updated successfully!'];
         return back()->withNotify($notify);
@@ -198,6 +190,10 @@ class UserAutoReplyController extends Controller
         $bot->status = ($bot->status == 1) ? 0 : 1;
         $bot->save();
 
+        try {
+            BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $bot->session_id]);
+        } catch (\Throwable $e) {}
+
         $notify[] = ['success', 'Bot status changed to ' . ($bot->status == 1 ? 'Active' : 'Disabled')];
         return back()->withNotify($notify);
     }
@@ -206,7 +202,12 @@ class UserAutoReplyController extends Controller
     {
         $user = auth()->user();
         $bot = AutoReply::where('user_id', $user->id)->findOrFail($id);
+        $sessionId = $bot->session_id;
         $bot->delete();
+
+        try {
+            BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $sessionId]);
+        } catch (\Throwable $e) {}
 
         $notify[] = ['success', 'Auto-reply bot deleted.'];
         return back()->withNotify($notify);
