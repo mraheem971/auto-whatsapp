@@ -60,8 +60,14 @@ class BaileysClient
     /**
      * Resilient POST request to Baileys with automatic retry and watchdog
      */
-    public static function post($endpoint, array $data = [], $timeout = 15)
+    public static function post($endpoint, $data = [], $timeout = 15)
     {
+        if (is_numeric($data)) {
+            $timeout = (int) $data;
+            $data = [];
+        }
+        $data = is_array($data) ? $data : [];
+
         $url = rtrim(self::$baseUrl, '/') . '/' . ltrim($endpoint, '/');
 
         for ($attempt = 1; $attempt <= 2; $attempt++) {
@@ -73,19 +79,26 @@ class BaileysClient
                     self::ensureServiceRunning();
                     usleep(500000);
                 } else {
-                    throw $e;
+                    Log::warning("BaileysClient POST {$endpoint} failed: " . $e->getMessage());
+                    return null;
                 }
             }
         }
 
-        return Http::timeout($timeout)->post($url, $data);
+        return null;
     }
 
     /**
      * Resilient GET request to Baileys with automatic retry and watchdog
      */
-    public static function get($endpoint, array $query = [], $timeout = 10)
+    public static function get($endpoint, $query = [], $timeout = 10)
     {
+        if (is_numeric($query)) {
+            $timeout = (int) $query;
+            $query = [];
+        }
+        $query = is_array($query) ? $query : [];
+
         $url = rtrim(self::$baseUrl, '/') . '/' . ltrim($endpoint, '/');
 
         for ($attempt = 1; $attempt <= 2; $attempt++) {
@@ -97,26 +110,38 @@ class BaileysClient
                     self::ensureServiceRunning();
                     usleep(500000);
                 } else {
-                    throw $e;
+                    Log::warning("BaileysClient GET {$endpoint} failed: " . $e->getMessage());
+                    return null;
                 }
             }
         }
 
-        return Http::timeout($timeout)->get($url, $query);
+        return null;
     }
 
     /**
      * Resilient DELETE request
      */
-    public static function delete($endpoint, array $data = [], $timeout = 10)
+    public static function delete($endpoint, $data = [], $timeout = 10)
     {
+        if (is_numeric($data)) {
+            $timeout = (int) $data;
+            $data = [];
+        }
+        $data = is_array($data) ? $data : [];
+
         $url = rtrim(self::$baseUrl, '/') . '/' . ltrim($endpoint, '/');
 
         try {
             return Http::timeout($timeout)->delete($url, $data);
         } catch (\Throwable $e) {
             self::ensureServiceRunning();
-            return Http::timeout($timeout)->delete($url, $data);
+            try {
+                return Http::timeout($timeout)->delete($url, $data);
+            } catch (\Throwable $ex) {
+                Log::warning("BaileysClient DELETE {$endpoint} failed: " . $ex->getMessage());
+                return null;
+            }
         }
     }
 }

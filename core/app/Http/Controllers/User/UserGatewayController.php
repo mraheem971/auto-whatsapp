@@ -18,8 +18,16 @@ class UserGatewayController extends Controller
         $accounts = WhatsappAccount::where('user_id', $user->id)->latest()->get();
         $activeCount = WhatsappAccount::where('user_id', $user->id)->where('status', 1)->count();
 
-        $health = BaileysClient::get('health', 3);
-        $isEngineOnline = ($health && isset($health['status']) && $health['status'] === 'healthy');
+        $isEngineOnline = false;
+        try {
+            $health = BaileysClient::get('health', [], 3);
+            if ($health && $health->successful()) {
+                $data = $health->json();
+                $isEngineOnline = (isset($data['status']) && $data['status'] === 'healthy');
+            }
+        } catch (\Throwable $e) {
+            $isEngineOnline = false;
+        }
 
         return view('Template::user.gateway.index', compact(
             'pageTitle',
@@ -49,12 +57,15 @@ class UserGatewayController extends Controller
             'message'   => $request->message,
         ], 10);
 
-        if ($res && isset($res['status']) && $res['status'] === 'success') {
-            $notify[] = ['success', "Test message successfully dispatched through Gateway (+{$account->phone_number})!"];
-            return back()->withNotify($notify);
+        if ($res && $res->successful()) {
+            $data = $res->json();
+            if (isset($data['status']) && $data['status'] === 'success') {
+                $notify[] = ['success', "Test message successfully dispatched through Gateway (+{$account->phone_number})!"];
+                return back()->withNotify($notify);
+            }
         }
 
-        $errorMsg = $res['message'] ?? 'Gateway dispatch failed. Ensure the account is connected and online.';
+        $errorMsg = $res ? ($res->json('message') ?? 'Gateway dispatch failed.') : 'Gateway connection error. Ensure WhatsApp is online.';
         $notify[] = ['error', $errorMsg];
         return back()->withNotify($notify);
     }

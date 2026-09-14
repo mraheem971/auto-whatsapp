@@ -95,9 +95,25 @@ class UserMessageController extends Controller
         $msgRecord->media_type          = $request->media_type;
         $msgRecord->send_mode           = 'direct';
 
-        if ($res && isset($res['status']) && $res['status'] === 'success') {
+        $isSuccess = false;
+        $messageId = null;
+        $errorMessage = 'Connection error';
+
+        if ($res && $res->successful()) {
+            $data = $res->json();
+            if (isset($data['status']) && $data['status'] === 'success') {
+                $isSuccess = true;
+                $messageId = $data['messageId'] ?? null;
+            } else {
+                $errorMessage = $data['message'] ?? 'Gateway failed to deliver message.';
+            }
+        } elseif ($res) {
+            $errorMessage = $res->json('message') ?? 'Gateway returned an error.';
+        }
+
+        if ($isSuccess) {
             $msgRecord->status = 'sent';
-            $msgRecord->message_id = $res['messageId'] ?? null;
+            $msgRecord->message_id = $messageId;
             $msgRecord->save();
 
             $notify[] = ['success', "Message sent successfully to +{$cleanPhone}!"];
@@ -105,10 +121,10 @@ class UserMessageController extends Controller
         }
 
         $msgRecord->status = 'failed';
-        $msgRecord->error_message = $res['message'] ?? 'Connection error';
+        $msgRecord->error_message = $errorMessage;
         $msgRecord->save();
 
-        $notify[] = ['error', 'Failed to send message: ' . ($res['message'] ?? 'Gateway offline')];
+        $notify[] = ['error', 'Failed to send message: ' . $errorMessage];
         return back()->withNotify($notify);
     }
 }
