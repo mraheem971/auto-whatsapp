@@ -1025,10 +1025,18 @@ app.get('/api/groups/:sessionId', async (req, res) => {
             });
         }
 
-        const groups = await session.socket.groupFetchAllParticipating();
-        const groupList = Object.values(groups).map(g => ({
-            id: g.id,
-            subject: g.subject || 'Unnamed Group',
+        let groups = {};
+        try {
+            if (typeof session.socket.groupFetchAllParticipating === 'function') {
+                groups = await session.socket.groupFetchAllParticipating();
+            }
+        } catch (fetchErr) {
+            console.warn(`[${sessionId}] groupFetchAllParticipating warning:`, fetchErr.message);
+        }
+
+        const groupList = Object.values(groups || {}).map(g => ({
+            id: g.id || '',
+            subject: g.subject || g.name || 'WhatsApp Group',
             owner: g.owner || g.subjectOwner || '',
             creation: g.creation || 0,
             desc: g.desc ? g.desc.toString() : '',
@@ -1038,7 +1046,7 @@ app.get('/api/groups/:sessionId', async (req, res) => {
                 const cached = session.contacts ? session.contacts.get(phone) : null;
                 const resolvedName = (cached && cached.name && !cached.name.startsWith('+')) ? cached.name : (p.name || `+${phone}`);
                 return {
-                    id: p.id,
+                    id: p.id || `${phone}@s.whatsapp.net`,
                     admin: p.admin || null,
                     phone: phone,
                     name: resolvedName
@@ -1053,7 +1061,7 @@ app.get('/api/groups/:sessionId', async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching groups:', error);
-        res.status(500).json({ error: error.message || 'Failed to extract groups' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to extract groups' });
     }
 });
 

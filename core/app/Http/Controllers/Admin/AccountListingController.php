@@ -188,6 +188,38 @@ class AccountListingController extends Controller
         }
     }
 
+    public function extractGroups($sessionId)
+    {
+        $account = WhatsappAccount::where('session_id', $sessionId)->first();
+        if (!$account) {
+            return response()->json(['success' => false, 'error' => 'WhatsApp account session not found.'], 404);
+        }
+
+        if ($account->status != 1) {
+            return response()->json([
+                'success' => false, 
+                'error'   => "WhatsApp account '{$account->account_name}' is not currently connected. Please connect or scan QR code first."
+            ], 400);
+        }
+
+        try {
+            $response = BaileysClient::get("api/groups/{$sessionId}", [], 25);
+
+            if ($response && $response->successful()) {
+                $data = $response->json();
+                return response()->json($data);
+            }
+
+            $errMsg = $response ? ($response->json()['error'] ?? 'WhatsApp service could not fetch groups.') : 'Baileys microservice is unreachable.';
+            return response()->json(['success' => false, 'error' => $errMsg], 400);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Failed to extract WhatsApp groups: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function deleteAccount(Request $request, $id)
     {
         $account = WhatsappAccount::findOrFail($id);
