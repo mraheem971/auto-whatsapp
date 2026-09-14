@@ -83,13 +83,24 @@ class UserAutoReplyController extends Controller
             'reply_type'              => 'required|in:text,image,video,document,flow',
             'reply_message'           => 'required|string',
             'session_id'              => 'nullable|string',
-            'target_type'             => 'nullable|string',
+            'target_type'             => 'required|in:all,all_individual,all_group,saved_contacts,unsaved_contacts,specific_contacts,specific_groups,contact_list',
+            'target_contacts'         => 'nullable|string',
+            'target_group_ids'        => 'nullable|array',
+            'contact_list_id'         => 'nullable|exists:contact_lists,id',
             'read_delay_seconds'      => 'nullable|integer|min:0|max:60',
             'typing_duration_seconds' => 'nullable|integer|min:0|max:60',
             'reply_delay_seconds'     => 'nullable|integer|min:0|max:60',
             'delay_seconds'           => 'nullable|integer|min:0|max:60',
             'cooldown_minutes'        => 'nullable|integer|min:0|max:1440',
         ]);
+
+        $contactsFormatted = null;
+        if (!empty($request->target_contacts)) {
+            $cArray = array_values(array_filter(array_map(function($p){
+                return preg_replace('/[^0-9]/', '', trim($p));
+            }, explode(',', $request->target_contacts))));
+            $contactsFormatted = json_encode($cArray);
+        }
 
         $bot = new AutoReply();
         $bot->user_id                 = $user->id;
@@ -100,7 +111,10 @@ class UserAutoReplyController extends Controller
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
         $bot->session_id              = $request->session_id;
-        $bot->target_type             = $request->target_type ?: 'all';
+        $bot->target_type             = $request->target_type;
+        $bot->target_contacts         = $contactsFormatted;
+        $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
+        $bot->contact_list_id         = $request->contact_list_id ?: null;
         $bot->read_delay_seconds      = $request->filled('read_delay_seconds') ? (int)$request->read_delay_seconds : 2;
         $bot->typing_duration_seconds = $request->filled('typing_duration_seconds') ? (int)$request->typing_duration_seconds : 3;
         $bot->reply_delay_seconds     = $request->filled('reply_delay_seconds') ? (int)$request->reply_delay_seconds : ($request->delay_seconds ?: 2);
@@ -108,7 +122,7 @@ class UserAutoReplyController extends Controller
         $bot->status                  = 1;
         $bot->save();
 
-        $notify[] = ['success', 'Auto-Reply bot created successfully with human behavior protection!'];
+        $notify[] = ['success', 'Auto-Reply bot created successfully with custom target audience!'];
         return back()->withNotify($notify);
     }
 
@@ -123,10 +137,22 @@ class UserAutoReplyController extends Controller
             'keywords'                => 'nullable|string',
             'reply_type'              => 'required|in:text,image,video,document,flow',
             'reply_message'           => 'required|string',
+            'target_type'             => 'required|in:all,all_individual,all_group,saved_contacts,unsaved_contacts,specific_contacts,specific_groups,contact_list',
+            'target_contacts'         => 'nullable|string',
+            'target_group_ids'        => 'nullable|array',
+            'contact_list_id'         => 'nullable|exists:contact_lists,id',
             'read_delay_seconds'      => 'nullable|integer|min:0|max:60',
             'typing_duration_seconds' => 'nullable|integer|min:0|max:60',
             'reply_delay_seconds'     => 'nullable|integer|min:0|max:60',
         ]);
+
+        $contactsFormatted = null;
+        if (!empty($request->target_contacts)) {
+            $cArray = array_values(array_filter(array_map(function($p){
+                return preg_replace('/[^0-9]/', '', trim($p));
+            }, explode(',', $request->target_contacts))));
+            $contactsFormatted = json_encode($cArray);
+        }
 
         $bot->name                    = $request->name;
         $bot->match_type              = $request->match_type;
@@ -135,7 +161,10 @@ class UserAutoReplyController extends Controller
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
         $bot->session_id              = $request->session_id;
-        $bot->target_type             = $request->target_type ?: 'all';
+        $bot->target_type             = $request->target_type;
+        $bot->target_contacts         = $contactsFormatted;
+        $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
+        $bot->contact_list_id         = $request->contact_list_id ?: null;
         $bot->read_delay_seconds      = $request->filled('read_delay_seconds') ? (int)$request->read_delay_seconds : 0;
         $bot->typing_duration_seconds = $request->filled('typing_duration_seconds') ? (int)$request->typing_duration_seconds : 0;
         $bot->reply_delay_seconds     = $request->filled('reply_delay_seconds') ? (int)$request->reply_delay_seconds : ($request->delay_seconds ?: 0);

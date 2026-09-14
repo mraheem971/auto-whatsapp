@@ -45,6 +45,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Bot Name & Account</th>
+                                <th>Target Audience</th>
                                 <th>Match Type</th>
                                 <th>Trigger Keywords</th>
                                 <th>Reply Message</th>
@@ -64,6 +65,41 @@
                                         </small>
                                     </td>
                                     <td>
+                                        @if($rule->target_type == 'all_individual')
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">
+                                                <i class="las la-user me-1"></i> Direct Chats Only
+                                            </span>
+                                        @elseif($rule->target_type == 'all_group')
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+                                                <i class="las la-users me-1"></i> Groups Only
+                                            </span>
+                                        @elseif($rule->target_type == 'saved_contacts')
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                                                <i class="las la-user-check me-1"></i> Saved Contacts
+                                            </span>
+                                        @elseif($rule->target_type == 'unsaved_contacts')
+                                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">
+                                                <i class="las la-user-plus me-1"></i> Unsaved Numbers
+                                            </span>
+                                        @elseif($rule->target_type == 'specific_contacts')
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">
+                                                <i class="las la-phone me-1"></i> Specific Numbers
+                                            </span>
+                                        @elseif($rule->target_type == 'specific_groups')
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+                                                <i class="las la-comments me-1"></i> Specific Groups
+                                            </span>
+                                        @elseif($rule->target_type == 'contact_list')
+                                            <span class="badge bg-dark bg-opacity-10 text-dark border border-dark border-opacity-25">
+                                                <i class="las la-list me-1"></i> List: {{ $rule->contactList ? $rule->contactList->name : 'Audience' }}
+                                            </span>
+                                        @else
+                                            <span class="badge bg-light text-dark border">
+                                                <i class="las la-globe me-1"></i> All Chats
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td>
                                         <span class="badge bg-secondary text-uppercase">{{ $rule->match_type }}</span>
                                     </td>
                                     <td>
@@ -74,7 +110,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <div class="text-muted small text-truncate" style="max-width: 200px;">
+                                        <div class="text-muted small text-truncate" style="max-width: 180px;">
                                             {{ $rule->reply_message }}
                                         </div>
                                     </td>
@@ -114,6 +150,10 @@
                                                     data-message="{{ $rule->reply_message }}"
                                                     data-media="{{ $rule->media_url }}"
                                                     data-session="{{ $rule->session_id }}"
+                                                    data-target-type="{{ $rule->target_type ?: 'all' }}"
+                                                    data-target-contacts="{{ is_array($rule->target_contacts_array) ? implode(',', $rule->target_contacts_array) : '' }}"
+                                                    data-target-groups='{{ json_encode($rule->target_group_ids_array ?? []) }}'
+                                                    data-contact-list="{{ $rule->contact_list_id }}"
                                                     data-seen="{{ $rule->read_delay_seconds ?? 2 }}"
                                                     data-typing="{{ $rule->typing_duration_seconds ?? 3 }}"
                                                     data-delay="{{ $rule->reply_delay_seconds ?? ($rule->delay_seconds ?? 2) }}"
@@ -132,7 +172,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-5">
+                                    <td colspan="9" class="text-center py-5">
                                         <i class="las la-robot text-muted fs-1 d-block mb-2"></i>
                                         <h6 class="text-muted">No keyword bots created yet</h6>
                                         <p class="text-muted small">Set up your first automated keyword response rule above.</p>
@@ -183,6 +223,22 @@
                             <input type="text" name="keywords" class="form-control" placeholder="e.g. hello, hi, price, info, help">
                             <small class="text-muted">Comma separated words that will trigger this automated response.</small>
                         </div>
+
+                        <!-- Target Audience Selector -->
+                        <div class="col-md-6">
+                            <label class="fw-bold mb-1">Target Audience / Chat Scope <span class="text-danger">*</span></label>
+                            <select name="target_type" class="form-select targetTypeSelect" data-prefix="create" required>
+                                <option value="all">All Chats (Direct & Groups)</option>
+                                <option value="all_individual">Direct / 1-to-1 Chats Only</option>
+                                <option value="all_group">Group Chats Only</option>
+                                <option value="saved_contacts">Saved Contacts Only</option>
+                                <option value="unsaved_contacts">Unsaved / New Numbers Only</option>
+                                <option value="specific_contacts">Specific Phone Numbers</option>
+                                <option value="specific_groups">Specific WhatsApp Groups</option>
+                                <option value="contact_list">Contact List / Audience Group</option>
+                            </select>
+                        </div>
+
                         <div class="col-md-6">
                             <label class="fw-bold mb-1">Assigned WhatsApp Account</label>
                             <select name="session_id" class="form-select">
@@ -192,7 +248,35 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-6">
+
+                        <!-- Conditional Target Details -->
+                        <div class="col-12 conditional-target d-none" id="createSpecificContactsDiv">
+                            <label class="fw-bold mb-1">Specific Target Numbers (comma separated)</label>
+                            <input type="text" name="target_contacts" class="form-control" placeholder="e.g. 923001234567, 923007654321">
+                            <small class="text-muted">Only these specific recipient phone numbers will trigger this auto-reply.</small>
+                        </div>
+
+                        <div class="col-12 conditional-target d-none" id="createSpecificGroupsDiv">
+                            <label class="fw-bold mb-1">Select Target WhatsApp Groups</label>
+                            <select name="target_group_ids[]" class="form-select" multiple style="min-height: 90px;">
+                                @foreach($groups as $grp)
+                                    <option value="{{ $grp->group_id }}">{{ $grp->group_name }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">Hold Ctrl/Cmd to select multiple groups.</small>
+                        </div>
+
+                        <div class="col-12 conditional-target d-none" id="createContactListDiv">
+                            <label class="fw-bold mb-1">Select Contact List</label>
+                            <select name="contact_list_id" class="form-select">
+                                <option value="">-- Choose Contact List --</option>
+                                @foreach($contactLists as $list)
+                                    <option value="{{ $list->id }}">{{ $list->name }} ({{ $list->contacts_count }} contacts)</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-12">
                             <label class="fw-bold mb-1">Reply Format</label>
                             <select name="reply_type" class="form-select">
                                 <option value="text">Text Only</option>
@@ -201,11 +285,13 @@
                                 <option value="document">Document Attachment</option>
                             </select>
                         </div>
+
                         <div class="col-12">
                             <label class="fw-bold mb-1">Reply Message Content <span class="text-danger">*</span></label>
                             <textarea name="reply_message" rows="4" class="form-control" placeholder="Type the automated response message here..." required></textarea>
                             <small class="text-muted">Tags supported: <code>@{{name}}</code>, <code>@{{sender_phone}}</code>, <code>@{{time}}</code>, <code>@{{date}}</code></small>
                         </div>
+
                         <div class="col-12">
                             <label class="fw-bold mb-1">Media URL (Optional)</label>
                             <input type="url" name="media_url" class="form-control" placeholder="https://example.com/banner.jpg">
@@ -298,6 +384,22 @@
                             <label class="fw-bold mb-1">Trigger Keywords</label>
                             <input type="text" name="keywords" id="editKeywords" class="form-control">
                         </div>
+
+                        <!-- Target Audience (Edit) -->
+                        <div class="col-md-6">
+                            <label class="fw-bold mb-1">Target Audience / Chat Scope <span class="text-danger">*</span></label>
+                            <select name="target_type" id="editTargetType" class="form-select targetTypeSelect" data-prefix="edit" required>
+                                <option value="all">All Chats (Direct & Groups)</option>
+                                <option value="all_individual">Direct / 1-to-1 Chats Only</option>
+                                <option value="all_group">Group Chats Only</option>
+                                <option value="saved_contacts">Saved Contacts Only</option>
+                                <option value="unsaved_contacts">Unsaved / New Numbers Only</option>
+                                <option value="specific_contacts">Specific Phone Numbers</option>
+                                <option value="specific_groups">Specific WhatsApp Groups</option>
+                                <option value="contact_list">Contact List / Audience Group</option>
+                            </select>
+                        </div>
+
                         <div class="col-md-6">
                             <label class="fw-bold mb-1">Assigned Account</label>
                             <select name="session_id" id="editSession" class="form-select">
@@ -307,7 +409,33 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-6">
+
+                        <!-- Conditional Target Details (Edit) -->
+                        <div class="col-12 conditional-target d-none" id="editSpecificContactsDiv">
+                            <label class="fw-bold mb-1">Specific Target Numbers (comma separated)</label>
+                            <input type="text" name="target_contacts" id="editTargetContacts" class="form-control" placeholder="e.g. 923001234567, 923007654321">
+                        </div>
+
+                        <div class="col-12 conditional-target d-none" id="editSpecificGroupsDiv">
+                            <label class="fw-bold mb-1">Select Target WhatsApp Groups</label>
+                            <select name="target_group_ids[]" id="editTargetGroupIds" class="form-select" multiple style="min-height: 90px;">
+                                @foreach($groups as $grp)
+                                    <option value="{{ $grp->group_id }}">{{ $grp->group_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-12 conditional-target d-none" id="editContactListDiv">
+                            <label class="fw-bold mb-1">Select Contact List</label>
+                            <select name="contact_list_id" id="editContactListId" class="form-select">
+                                <option value="">-- Choose Contact List --</option>
+                                @foreach($contactLists as $list)
+                                    <option value="{{ $list->id }}">{{ $list->name }} ({{ $list->contacts_count }} contacts)</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-12">
                             <label class="fw-bold mb-1">Reply Format</label>
                             <select name="reply_type" id="editType" class="form-select">
                                 <option value="text">Text Only</option>
@@ -316,6 +444,7 @@
                                 <option value="document">Document Attachment</option>
                             </select>
                         </div>
+
                         <div class="col-12">
                             <label class="fw-bold mb-1">Reply Message Content <span class="text-danger">*</span></label>
                             <textarea name="reply_message" id="editMessage" rows="4" class="form-control" required></textarea>
@@ -390,6 +519,28 @@
     (function ($) {
         "use strict";
 
+        function handleTargetTypeToggle(selectElem) {
+            var val = $(selectElem).val();
+            var prefix = $(selectElem).data('prefix'); // 'create' or 'edit'
+
+            // Hide all conditional divs for this modal
+            $('#' + prefix + 'SpecificContactsDiv').addClass('d-none');
+            $('#' + prefix + 'SpecificGroupsDiv').addClass('d-none');
+            $('#' + prefix + 'ContactListDiv').addClass('d-none');
+
+            if (val === 'specific_contacts') {
+                $('#' + prefix + 'SpecificContactsDiv').removeClass('d-none');
+            } else if (val === 'specific_groups') {
+                $('#' + prefix + 'SpecificGroupsDiv').removeClass('d-none');
+            } else if (val === 'contact_list') {
+                $('#' + prefix + 'ContactListDiv').removeClass('d-none');
+            }
+        }
+
+        $('.targetTypeSelect').on('change', function () {
+            handleTargetTypeToggle(this);
+        });
+
         $('.btnEditBot').on('click', function () {
             var id = $(this).data('id');
             var name = $(this).data('name');
@@ -399,6 +550,10 @@
             var message = $(this).data('message');
             var media = $(this).data('media');
             var session = $(this).data('session');
+            var targetType = $(this).data('target-type') || 'all';
+            var targetContacts = $(this).data('target-contacts') || '';
+            var targetGroups = $(this).data('target-groups') || [];
+            var contactList = $(this).data('contact-list') || '';
             var seen = $(this).data('seen');
             var typing = $(this).data('typing');
             var delay = $(this).data('delay');
@@ -410,9 +565,19 @@
             $('#editMessage').val(message);
             $('#editMedia').val(media);
             $('#editSession').val(session);
+            $('#editTargetType').val(targetType);
+            $('#editTargetContacts').val(targetContacts);
+            $('#editContactListId').val(contactList);
+
+            if (Array.isArray(targetGroups)) {
+                $('#editTargetGroupIds').val(targetGroups);
+            }
+
             $('#editSeenDelay').val(seen !== undefined ? seen : 2);
             $('#editTypingDuration').val(typing !== undefined ? typing : 3);
             $('#editSendDelay').val(delay !== undefined ? delay : 2);
+
+            handleTargetTypeToggle($('#editTargetType'));
 
             var actionUrl = "{{ url('user/autoreply/update') }}/" + id;
             $('#editBotForm').attr('action', actionUrl);
