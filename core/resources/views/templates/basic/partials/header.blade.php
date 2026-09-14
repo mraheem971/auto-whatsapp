@@ -116,7 +116,12 @@
                                                 <span class="text"> @lang('Subscription Plans') </span>
                                             </a>
                                         </li>
-
+                                        <li class="user-info-dropdown__item">
+                                            <a class="{{menuActive('user.deposit.index')}} user-info-dropdown__link" href="{{ route('user.deposit.index') }}">
+                                                <span class="icon"> <i class="las la-coins"></i> </span>
+                                                <span class="text"> @lang('Deposit Funds') </span>
+                                            </a>
+                                        </li>
                                         <li class="user-info-dropdown__item">
                                             <a class="{{menuActive('ticket.index')}} user-info-dropdown__link" href="{{ route('ticket.index') }}">
                                                 <span class="icon"> <i class="las la-ticket-alt"></i> </span>
@@ -172,45 +177,45 @@
             </li>
       
             <li class="user-info-dropdown__item">
-                <a class="{{menuActive('user.whatsapp*')}} user-info-dropdown__link" href="{{ route('user.whatsapp.index') }}">
-                    <span class="icon"><i class="lab la-whatsapp"></i></span>
-                    <span class="text"> @lang('WhatsApp Accounts') </span>
+                <a class="{{menuActive('user.account.listing.index')}} user-info-dropdown__link" href="{{ route('user.account.listing.index') }}">
+                    <span class="icon"><i class="fas fa-list-ul"></i></span>
+                    <span class="text"> @lang('Account Listing') </span>
                 </a>
             </li>
             <li class="user-info-dropdown__item">
-                <a class="{{menuActive('user.autoreply*')}} user-info-dropdown__link" href="{{ route('user.autoreply.index') }}">
-                    <span class="icon"><i class="las la-robot"></i></span>
-                    <span class="text"> @lang('Auto-Reply Bots') </span>
+                <a class="{{menuActive('user.account.listing.my.bid')}} user-info-dropdown__link" href="{{ route('user.account.listing.my.bid') }}">
+                    <span class="icon"><i class="fas fa-gavel"></i></span>
+                    <span class="text"> @lang('My Bids') </span>
                 </a>
             </li>
             <li class="user-info-dropdown__item">
-                <a class="{{menuActive('user.templates*')}} user-info-dropdown__link" href="{{ route('user.templates.index') }}">
-                    <span class="icon"><i class="las la-envelope-open-text"></i></span>
-                    <span class="text"> @lang('Message Templates') </span>
+                <a class="{{menuActive('user.account.listing.purchase')}} user-info-dropdown__link" href="{{ route('user.account.listing.purchase') }}">
+                    <span class="icon"><i class="fas fa-shopping-basket"></i></span>
+                    <span class="text"> @lang('Purchase Account') </span>
                 </a>
             </li>
             <li class="user-info-dropdown__item">
-                <a class="{{menuActive('user.campaigns*')}} user-info-dropdown__link" href="{{ route('user.campaigns.index') }}">
-                    <span class="icon"><i class="las la-bullhorn"></i></span>
-                    <span class="text"> @lang('Run Campaigns') </span>
+                <a class="{{menuActive('user.deposit.index')}} user-info-dropdown__link" href="{{ route('user.deposit.index') }}">
+                    <span class="icon"> <i class="las la-coins"></i> </span>
+                    <span class="text"> @lang('Deposit') </span>
                 </a>
             </li>
             <li class="user-info-dropdown__item">
-                <a class="{{menuActive('user.contacts*')}} user-info-dropdown__link" href="{{ route('user.contacts.index') }}">
-                    <span class="icon"><i class="las la-address-book"></i></span>
-                    <span class="text"> @lang('Contacts & Lists') </span>
+                <a class="{{menuActive('user.deposit.history')}} user-info-dropdown__link" href="{{ route('user.deposit.history') }}">
+                    <span class="icon"> <i class="las la-file-invoice-dollar"></i> </span>
+                    <span class="text"> @lang('Deposit History') </span>
                 </a>
             </li>
             <li class="user-info-dropdown__item">
-                <a class="{{menuActive('user.settings.behavior*')}} user-info-dropdown__link" href="{{ route('user.settings.behavior.index') }}">
-                    <span class="icon"><i class="las la-user-shield"></i></span>
-                    <span class="text"> @lang('Anti-Ban Settings') </span>
+                <a class="{{menuActive('user.withdraw')}} user-info-dropdown__link" href="{{ route('user.withdraw') }}">
+                    <span class="icon"> <i class="las la-hand-holding-usd"></i> </span>
+                    <span class="text"> @lang('Withdraw') </span>
                 </a>
             </li>
             <li class="user-info-dropdown__item">
-                <a class="{{menuActive('user.plans*')}} user-info-dropdown__link" href="{{ route('user.plans.index') }}">
-                    <span class="icon"><i class="las la-crown"></i></span>
-                    <span class="text"> @lang('Subscription Plans') </span>
+                <a class="{{menuActive('user.withdraw.history')}} user-info-dropdown__link" href="{{ route('user.withdraw.history') }}">
+                    <span class="icon"> <i class="las la-file-invoice-dollar"></i></span>
+                    <span class="text"> @lang('Withdraw History') </span>
                 </a>
             </li>
             <li class="user-info-dropdown__item">

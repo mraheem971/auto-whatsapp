@@ -16,13 +16,24 @@ use App\Http\Controllers\Controller;
 
 class PaymentController extends Controller
 {
-    public function deposit()
+    public function deposit(Request $request)
     {
         $gatewayCurrency = GatewayCurrency::whereHas('method', function ($gate) {
             $gate->where('status', Status::ENABLE);
         })->with('method')->orderby('name')->get();
-        $pageTitle = 'Deposit Methods';
-        return view('Template::user.payment.deposit', compact('gatewayCurrency', 'pageTitle'));
+        $pageTitle = 'Deposit & Payment Gateways';
+
+        $selectedPlan = null;
+        if ($request->plan_id) {
+            $selectedPlan = \App\Models\Plan::active()->find($request->plan_id);
+            if ($selectedPlan) {
+                session()->put('plan_subscription_id', $selectedPlan->id);
+            }
+        } elseif (session()->get('plan_subscription_id')) {
+            $selectedPlan = \App\Models\Plan::active()->find(session()->get('plan_subscription_id'));
+        }
+
+        return view('Template::user.payment.deposit', compact('gatewayCurrency', 'pageTitle', 'selectedPlan'));
     }
 
     public function depositInsert(Request $request)
@@ -41,6 +52,16 @@ class PaymentController extends Controller
 
             $accountListingId = session()->get('accountListing');
             $requestType = session()->get('requestType');
+        }
+
+        // Plan Subscription Direct Checkout
+        if ($request->plan_id || session()->get('plan_subscription_id') || $request->request_type == 'plan_subscription') {
+            $planId = $request->plan_id ?? session()->get('plan_subscription_id');
+            $plan = \App\Models\Plan::active()->find($planId);
+            if ($plan) {
+                $accountListingId = $plan->id;
+                $requestType = 'plan_subscription';
+            }
         }
 
         $user = auth()->user();
@@ -75,7 +96,7 @@ class PaymentController extends Controller
         $data->btc_amount = 0;
         $data->btc_wallet = "";
         $data->trx = getTrx();
-        $data->success_url = urlPath('user.deposit.history');
+        $data->success_url = $requestType == 'plan_subscription' ? urlPath('user.plans.index') : urlPath('user.deposit.history');
         $data->failed_url = urlPath('user.deposit.history');
         $data->save();
         session()->put('Track', $data->trx);
@@ -150,6 +171,43 @@ class PaymentController extends Controller
                 $adminNotification->save();
             }
 
+            // Automatic Plan Subscription Activation
+            if ($deposit->request_type == 'plan_subscription' && $deposit->account_listing_id) {
+                $plan = \App\Models\Plan::find($deposit->account_listing_id);
+                if ($plan) {
+                    if ($user->balance >= $plan->price) {
+                        $user->balance -= $plan->price;
+                        $user->save();
+
+                        $subTrx = new Transaction();
+                        $subTrx->user_id      = $user->id;
+                        $subTrx->amount       = $plan->price;
+                        $subTrx->post_balance = $user->balance;
+                        $subTrx->charge       = 0;
+                        $subTrx->trx_type     = '-';
+                        $subTrx->details      = 'Subscribed to Plan: ' . $plan->name;
+                        $subTrx->trx          = $deposit->trx;
+                        $subTrx->remark       = 'plan_subscription';
+                        $subTrx->save();
+
+                        // Deactivate old active subscriptions
+                        \App\Models\UserSubscription::where('user_id', $user->id)->update(['status' => 0]);
+
+                        // Create new active subscription
+                        $sub = new \App\Models\UserSubscription();
+                        $sub->user_id     = $user->id;
+                        $sub->plan_id     = $plan->id;
+                        $sub->paid_amount = $plan->price;
+                        $sub->starts_at   = now();
+                        $sub->expires_at  = $plan->duration_days ? now()->addDays($plan->duration_days) : null;
+                        $sub->status      = 1;
+                        $sub->save();
+
+                        session()->forget('plan_subscription_id');
+                    }
+                }
+            }
+
             notify($user, $isManual ? 'DEPOSIT_APPROVE' : 'DEPOSIT_COMPLETE', [
                 'method_name' => $methodName,
                 'method_currency' => $deposit->method_currency,
@@ -161,50 +219,12 @@ class PaymentController extends Controller
                 'post_balance' => showAmount($user->balance)
             ]);
 
-            // for direct plan subscription
-            if ($deposit->request_type == 'plan_subscription' || @$deposit->detail->plan_id) {
-                $planId = @$deposit->detail->plan_id;
-                $plan = \App\Models\Plan::find($planId);
-                if ($plan) {
-                    // Deduct plan price from user's balance
-                    if ($user->balance >= $plan->price) {
-                        $user->balance -= $plan->price;
-                        $user->save();
-                    }
-
-                    // Record plan subscription transaction
-                    $trx = new Transaction();
-                    $trx->user_id      = $user->id;
-                    $trx->amount       = $plan->price;
-                    $trx->post_balance = $user->balance;
-                    $trx->charge       = 0;
-                    $trx->trx_type     = '-';
-                    $trx->details      = 'Direct Subscription to plan: ' . $plan->name;
-                    $trx->trx          = $deposit->trx;
-                    $trx->remark       = 'plan_subscription';
-                    $trx->save();
-
-                    // Cancel previous active subscriptions
-                    \App\Models\UserSubscription::where('user_id', $user->id)->update(['status' => 0]);
-
-                    // Create new subscription
-                    $sub = new \App\Models\UserSubscription();
-                    $sub->user_id      = $user->id;
-                    $sub->plan_id      = $plan->id;
-                    $sub->paid_amount  = $plan->price;
-                    $sub->starts_at    = now();
-                    $sub->expires_at   = $plan->duration_days ? now()->addDays($plan->duration_days) : null;
-                    $sub->status       = 1;
-                    $sub->save();
-                }
-            }
-
              //for account listing data
-             if ($deposit->account_listing_id) {
+             if ($deposit->account_listing_id && in_array($deposit->request_type, ['bid', 'buy'])) {
 
                 $accountListing = AccountListing::find($deposit->account_listing_id);
 
-                if ($accountListing->pricing_model == Status::AUCTION && $accountListing->status == Status::LISTING_ACTIVE) {
+                if ($accountListing && $accountListing->pricing_model == Status::AUCTION && $accountListing->status == Status::LISTING_ACTIVE) {
 
                     if ($deposit->request_type == 'bid') {
                         $biddingListing = BiddingListing::where('user_id', $user->id)->where('account_listing_id', $accountListing->id)->first();
