@@ -197,7 +197,7 @@
 <div class="modal fade" id="createBotModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #008069 0%, #128c7e 100%); border-bottom: none;">
                 <h5 class="modal-title text-white fw-bold"><i class="las la-plus-circle me-1"></i> New Keyword Auto-Reply Bot</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -359,7 +359,7 @@
 <div class="modal fade" id="editBotModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%); border-bottom: none;">
                 <h5 class="modal-title text-white fw-bold"><i class="las la-edit me-1"></i> Edit Keyword Bot</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
