@@ -155,11 +155,13 @@
                                 <i class="las la-crown fs-3"></i>
                             </div>
                         </div>
-                        <h3 class="fw-bold text-dark mb-1">{{ $plan->name ?? 'Free Tier' }}</h3>
+                        <h3 class="fw-bold text-dark mb-1 text-truncate" title="{{ $plan->name ?? 'Free Tier' }}" style="font-size: 1.35rem; line-height: 1.2;">{{ $plan->name ?? 'Free Tier' }}</h3>
                         <small class="text-warning"><i class="las la-shield-alt me-1"></i>Anti-Ban Protected</small>
                     </div>
                 </a>
             </div>
+        </div>
+
         <!-- ================= Analytics & Performance Engine ================= -->
         <div class="card custom--card border shadow-sm rounded-3 mb-4">
             <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
