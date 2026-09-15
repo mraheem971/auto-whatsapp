@@ -189,6 +189,25 @@
         background-color: #ffffff;
     }
 
+    .dashboard-welcome-banner {
+        background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        box-shadow: 0 10px 30px rgba(6, 78, 59, 0.2) !important;
+    }
+
+    .dashboard-welcome-banner h1,
+    .dashboard-welcome-banner h2,
+    .dashboard-welcome-banner h3,
+    .dashboard-welcome-banner h4,
+    .dashboard-welcome-banner h5 {
+        color: #ffffff !important;
+    }
+
+    .dashboard-welcome-banner p {
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+
     .card-header {
         background-color: #ffffff;
         border-bottom: 1px solid #e2e8f0;

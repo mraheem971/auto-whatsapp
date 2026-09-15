@@ -4,25 +4,29 @@
     <div class="container">
         
         <!-- Welcome & Plan Banner -->
-        <div class="card custom--card border-0 shadow-sm rounded-3 mb-4 bg--dark text-white p-4">
+        <div class="card custom--card border-0 shadow-sm rounded-3 mb-4 dashboard-welcome-banner p-4">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                 <div>
                     <div class="d-flex align-items-center gap-2 mb-2">
-                        <span class="badge bg-success text-white fw-bold px-3 py-1 text-uppercase">WhatsApp Bot Portal</span>
+                        <span class="badge bg-success bg-opacity-25 text-white border border-white border-opacity-25 fw-bold px-3 py-1 text-uppercase" style="backdrop-filter: blur(4px);">
+                            <i class="lab la-whatsapp me-1"></i> WhatsApp Bot Portal
+                        </span>
                         @if($plan)
-                            <span class="badge bg-primary text-white px-2 py-1"><i class="las la-crown me-1"></i>{{ $plan->name }}</span>
+                            <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25 px-2 py-1 fw-bold">
+                                <i class="las la-crown me-1 text-warning"></i>{{ $plan->name }}
+                            </span>
                         @endif
                     </div>
-                    <h3 class="text-white fw-bold mb-1">Welcome back, {{ $user->fullname }}!</h3>
-                    <p class="text-white text-opacity-75 mb-0">
+                    <h3 class="text-white fw-bold mb-1" style="letter-spacing: -0.3px;">Welcome back, {{ $user->fullname }}!</h3>
+                    <p class="text-white mb-0" style="font-size: 14px; max-width: 650px; opacity: 0.92;">
                         Manage your connected WhatsApp accounts, keyword bots, message templates, and marketing campaigns.
                     </p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="{{ route('user.whatsapp.create') }}" class="btn btn--base btn-sm px-3">
-                        <i class="lab la-whatsapp me-1"></i> Connect WhatsApp
+                    <a href="{{ route('user.whatsapp.create') }}" class="btn btn-light text-dark fw-bold btn-sm px-3 shadow-sm d-flex align-items-center">
+                        <i class="lab la-whatsapp text-success fs-5 me-1"></i> Connect WhatsApp
                     </a>
-                    <a href="{{ route('user.plans.index') }}" class="btn btn-outline-light btn-sm px-3">
+                    <a href="{{ route('user.plans.index') }}" class="btn btn-outline-light btn-sm px-3 fw-semibold d-flex align-items-center">
                         <i class="las la-rocket me-1"></i> Upgrade Plan
                     </a>
                 </div>
