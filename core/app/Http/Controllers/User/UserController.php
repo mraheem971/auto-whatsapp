@@ -50,6 +50,59 @@ class UserController extends Controller
         $recentCampaigns = \App\Models\Campaign::where('user_id', $userId)->latest()->take(5)->get();
         $recentBots      = \App\Models\AutoReply::where('user_id', $userId)->latest()->take(5)->get();
 
+        // Advanced Analytics & Performance Metrics
+        $totalBotHits        = (int)\App\Models\AutoReply::where('user_id', $userId)->sum('hit_count');
+        $activeBotsCount     = \App\Models\AutoReply::where('user_id', $userId)->where('status', 1)->count();
+        $totalContactLists   = \App\Models\ContactList::where('user_id', $userId)->count();
+
+        $totalCampaignSent   = (int)\App\Models\Campaign::where('user_id', $userId)->sum('sent_count');
+        $totalCampaignFailed = (int)\App\Models\Campaign::where('user_id', $userId)->sum('failed_count');
+        $totalCampaignTargets= (int)\App\Models\Campaign::where('user_id', $userId)->sum('total_targets');
+        $totalDeliveredAll   = $totalCampaignSent + $totalBotHits;
+        $deliveryRate        = ($totalCampaignSent + $totalCampaignFailed) > 0 
+            ? round(($totalCampaignSent / ($totalCampaignSent + $totalCampaignFailed)) * 100, 1) 
+            : 100;
+
+        // 7-Day Trend Chart Series
+        $chartDates            = [];
+        $chartCampaignMessages = [];
+        $chartBotHits          = [];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $dateObj = \Carbon\Carbon::today()->subDays($i);
+            $chartDates[] = $dateObj->format('M d');
+
+            // Campaign broadcast messages for date
+            $dayCampaignSent = \App\Models\Campaign::where('user_id', $userId)
+                ->whereDate('updated_at', $dateObj)
+                ->sum('sent_count');
+            $chartCampaignMessages[] = (int)$dayCampaignSent;
+
+            // Bot triggered hits for date
+            $dayBotHits = \App\Models\AutoReply::where('user_id', $userId)
+                ->whereDate('updated_at', $dateObj)
+                ->sum('hit_count');
+            // If today, ensure total current hits are reflected
+            if ($i === 0 && $dayBotHits == 0 && $totalBotHits > 0) {
+                $dayBotHits = $totalBotHits;
+            }
+            $chartBotHits[] = (int)$dayBotHits;
+        }
+
+        // Top 5 Performing Keyword Bots
+        $topBots = \App\Models\AutoReply::where('user_id', $userId)
+            ->orderBy('hit_count', 'desc')
+            ->take(5)
+            ->get();
+
+        // Match Type Distribution Stats
+        $matchTypeStats = [
+            'contains'    => \App\Models\AutoReply::where('user_id', $userId)->where('match_type', 'contains')->count(),
+            'exact'       => \App\Models\AutoReply::where('user_id', $userId)->where('match_type', 'exact')->count(),
+            'starts_with' => \App\Models\AutoReply::where('user_id', $userId)->where('match_type', 'starts_with')->count(),
+            'fallback'    => \App\Models\AutoReply::where('user_id', $userId)->where('match_type', 'fallback')->count(),
+        ];
+
         return view('Template::user.dashboard', compact(
             'pageTitle',
             'user',
@@ -67,7 +120,20 @@ class UserController extends Controller
             'activeSubscription',
             'plan',
             'recentCampaigns',
-            'recentBots'
+            'recentBots',
+            'totalBotHits',
+            'activeBotsCount',
+            'totalContactLists',
+            'totalCampaignSent',
+            'totalCampaignFailed',
+            'totalCampaignTargets',
+            'totalDeliveredAll',
+            'deliveryRate',
+            'chartDates',
+            'chartCampaignMessages',
+            'chartBotHits',
+            'topBots',
+            'matchTypeStats'
         ));
     }
 
