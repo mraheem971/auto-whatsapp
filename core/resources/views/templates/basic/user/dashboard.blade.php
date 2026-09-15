@@ -38,15 +38,17 @@
             <!-- Active Gateways -->
             <div class="col-xl-3 col-sm-6">
                 <a href="{{ route('user.whatsapp.index') }}" class="text-decoration-none">
-                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                    <div class="card custom--card p-3 border shadow-sm h-100 d-flex flex-column justify-content-between hover-shadow transition">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-bold small text-uppercase">Active Gateways</span>
-                            <div class="avatar avatar--sm bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="lab la-whatsapp fs-3"></i>
+                            <span class="text-muted fw-bold text-uppercase text-truncate me-2" style="font-size: 11.5px; letter-spacing: 0.5px;">Active Gateways</span>
+                            <div class="avatar avatar--sm bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                <i class="lab la-whatsapp fs-4"></i>
                             </div>
                         </div>
-                        <h3 class="fw-bold text-dark mb-1">{{ $activeGateways }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->account_limit ?? 1 }}</span></h3>
-                        <small class="{{ $activeGateways > 0 ? 'text-success' : 'text-muted' }}">
+                        <div class="my-1">
+                            <h3 class="fw-bold text-dark mb-1 fs-3">{{ $activeGateways }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->account_limit ?? 1 }}</span></h3>
+                        </div>
+                        <small class="text-truncate d-block {{ $activeGateways > 0 ? 'text-success' : 'text-muted' }}" style="font-size: 12px;">
                             <i class="las {{ $activeGateways > 0 ? 'la-check-circle' : 'la-info-circle' }} me-1"></i>
                             {{ $activeGateways > 0 ? 'Online & Active' : 'No active gateway' }}
                         </small>
@@ -57,15 +59,17 @@
             <!-- Total Contacts -->
             <div class="col-xl-3 col-sm-6">
                 <a href="{{ route('user.contacts.index') }}" class="text-decoration-none">
-                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                    <div class="card custom--card p-3 border shadow-sm h-100 d-flex flex-column justify-content-between hover-shadow transition">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-bold small text-uppercase">Total Contacts</span>
-                            <div class="avatar avatar--sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="las la-address-book fs-3"></i>
+                            <span class="text-muted fw-bold text-uppercase text-truncate me-2" style="font-size: 11.5px; letter-spacing: 0.5px;">Total Contacts</span>
+                            <div class="avatar avatar--sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                <i class="las la-address-book fs-4"></i>
                             </div>
                         </div>
-                        <h3 class="fw-bold text-dark mb-1">{{ number_format($totalContacts) }}</h3>
-                        <small class="text-primary"><i class="las la-user-friends me-1"></i>Synced Audience</small>
+                        <div class="my-1">
+                            <h3 class="fw-bold text-dark mb-1 fs-3">{{ number_format($totalContacts) }}</h3>
+                        </div>
+                        <small class="text-primary text-truncate d-block" style="font-size: 12px;"><i class="las la-user-friends me-1"></i>Synced Audience</small>
                     </div>
                 </a>
             </div>
@@ -73,15 +77,17 @@
             <!-- WhatsApp Groups -->
             <div class="col-xl-3 col-sm-6">
                 <a href="{{ route('user.contacts.index') }}" class="text-decoration-none">
-                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                    <div class="card custom--card p-3 border shadow-sm h-100 d-flex flex-column justify-content-between hover-shadow transition">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-bold small text-uppercase">WhatsApp Groups</span>
-                            <div class="avatar avatar--sm bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="las la-users fs-3"></i>
+                            <span class="text-muted fw-bold text-uppercase text-truncate me-2" style="font-size: 11.5px; letter-spacing: 0.5px;">WhatsApp Groups</span>
+                            <div class="avatar avatar--sm bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                <i class="las la-users fs-4"></i>
                             </div>
                         </div>
-                        <h3 class="fw-bold text-dark mb-1">{{ number_format($totalGroups) }}</h3>
-                        <small class="text-info"><i class="las la-comments me-1"></i>Community Groups</small>
+                        <div class="my-1">
+                            <h3 class="fw-bold text-dark mb-1 fs-3">{{ number_format($totalGroups) }}</h3>
+                        </div>
+                        <small class="text-info text-truncate d-block" style="font-size: 12px;"><i class="las la-comments me-1"></i>Community Groups</small>
                     </div>
                 </a>
             </div>
@@ -89,15 +95,17 @@
             <!-- Messages Today -->
             <div class="col-xl-3 col-sm-6">
                 <a href="{{ route('user.campaigns.index') }}" class="text-decoration-none">
-                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                    <div class="card custom--card p-3 border shadow-sm h-100 d-flex flex-column justify-content-between hover-shadow transition">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-bold small text-uppercase">Messages Today</span>
-                            <div class="avatar avatar--sm bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="las la-paper-plane fs-3"></i>
+                            <span class="text-muted fw-bold text-uppercase text-truncate me-2" style="font-size: 11.5px; letter-spacing: 0.5px;">Messages Today</span>
+                            <div class="avatar avatar--sm bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                <i class="las la-paper-plane fs-4"></i>
                             </div>
                         </div>
-                        <h3 class="fw-bold text-dark mb-1">{{ number_format($messagesToday) }}</h3>
-                        <small class="text-warning"><i class="las la-bolt me-1"></i>Delivered Today</small>
+                        <div class="my-1">
+                            <h3 class="fw-bold text-dark mb-1 fs-3">{{ number_format($messagesToday) }}</h3>
+                        </div>
+                        <small class="text-warning text-truncate d-block" style="font-size: 12px;"><i class="las la-bolt me-1"></i>Delivered Today</small>
                     </div>
                 </a>
             </div>
@@ -107,60 +115,68 @@
         <div class="row gy-3 mb-4">
             <div class="col-xl-3 col-sm-6">
                 <a href="{{ route('user.autoreply.index') }}" class="text-decoration-none">
-                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                    <div class="card custom--card p-3 border shadow-sm h-100 d-flex flex-column justify-content-between hover-shadow transition">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-bold small text-uppercase">Keyword Auto-Replies</span>
-                            <div class="avatar avatar--sm bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="las la-robot fs-3"></i>
+                            <span class="text-muted fw-bold text-uppercase text-truncate me-2" style="font-size: 11.5px; letter-spacing: 0.5px;">Auto-Replies</span>
+                            <div class="avatar avatar--sm bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                <i class="las la-robot fs-4"></i>
                             </div>
                         </div>
-                        <h3 class="fw-bold text-dark mb-1">{{ $totalAutoReplies }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->autoreply_limit ?? 5 }}</span></h3>
-                        <small class="text-danger"><i class="las la-magic me-1"></i>Active Bot Rules</small>
+                        <div class="my-1">
+                            <h3 class="fw-bold text-dark mb-1 fs-3">{{ $totalAutoReplies }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->autoreply_limit ?? 5 }}</span></h3>
+                        </div>
+                        <small class="text-danger text-truncate d-block" style="font-size: 12px;"><i class="las la-magic me-1"></i>Active Bot Rules</small>
                     </div>
                 </a>
             </div>
 
             <div class="col-xl-3 col-sm-6">
                 <a href="{{ route('user.templates.index') }}" class="text-decoration-none">
-                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                    <div class="card custom--card p-3 border shadow-sm h-100 d-flex flex-column justify-content-between hover-shadow transition">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-bold small text-uppercase">Message Templates</span>
-                            <div class="avatar avatar--sm bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="las la-envelope-open-text fs-3"></i>
+                            <span class="text-muted fw-bold text-uppercase text-truncate me-2" style="font-size: 11.5px; letter-spacing: 0.5px;">Templates</span>
+                            <div class="avatar avatar--sm bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                <i class="las la-envelope-open-text fs-4"></i>
                             </div>
                         </div>
-                        <h3 class="fw-bold text-dark mb-1">{{ $totalTemplates }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->template_limit ?? 5 }}</span></h3>
-                        <small class="text-secondary"><i class="las la-file-alt me-1"></i>Saved Templates</small>
+                        <div class="my-1">
+                            <h3 class="fw-bold text-dark mb-1 fs-3">{{ $totalTemplates }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->template_limit ?? 5 }}</span></h3>
+                        </div>
+                        <small class="text-secondary text-truncate d-block" style="font-size: 12px;"><i class="las la-file-alt me-1"></i>Saved Templates</small>
                     </div>
                 </a>
             </div>
 
             <div class="col-xl-3 col-sm-6">
                 <a href="{{ route('user.campaigns.index') }}" class="text-decoration-none">
-                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                    <div class="card custom--card p-3 border shadow-sm h-100 d-flex flex-column justify-content-between hover-shadow transition">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-bold small text-uppercase">Run Campaigns</span>
-                            <div class="avatar avatar--sm bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="las la-bullhorn fs-3"></i>
+                            <span class="text-muted fw-bold text-uppercase text-truncate me-2" style="font-size: 11.5px; letter-spacing: 0.5px;">Campaigns</span>
+                            <div class="avatar avatar--sm bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                <i class="las la-bullhorn fs-4"></i>
                             </div>
                         </div>
-                        <h3 class="fw-bold text-dark mb-1">{{ $totalCampaigns }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->campaign_limit ?? 2 }}</span></h3>
-                        <small class="text-success"><i class="las la-broadcast-tower me-1"></i>Marketing Broadcasts</small>
+                        <div class="my-1">
+                            <h3 class="fw-bold text-dark mb-1 fs-3">{{ $totalCampaigns }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->campaign_limit ?? 2 }}</span></h3>
+                        </div>
+                        <small class="text-success text-truncate d-block" style="font-size: 12px;"><i class="las la-broadcast-tower me-1"></i>Marketing Broadcasts</small>
                     </div>
                 </a>
             </div>
 
             <div class="col-xl-3 col-sm-6">
                 <a href="{{ route('user.plans.index') }}" class="text-decoration-none">
-                    <div class="card custom--card p-3 p-md-4 border shadow-sm h-100 hover-shadow transition">
+                    <div class="card custom--card p-3 border shadow-sm h-100 d-flex flex-column justify-content-between hover-shadow transition">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-bold small text-uppercase">Current Plan</span>
-                            <div class="avatar avatar--sm bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="las la-crown fs-3"></i>
+                            <span class="text-muted fw-bold text-uppercase text-truncate me-2" style="font-size: 11.5px; letter-spacing: 0.5px;">Current Plan</span>
+                            <div class="avatar avatar--sm bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                <i class="las la-crown fs-4"></i>
                             </div>
                         </div>
-                        <h3 class="fw-bold text-dark mb-1 text-truncate" title="{{ $plan->name ?? 'Free Tier' }}" style="font-size: 1.35rem; line-height: 1.2;">{{ $plan->name ?? 'Free Tier' }}</h3>
-                        <small class="text-warning"><i class="las la-shield-alt me-1"></i>Anti-Ban Protected</small>
+                        <div class="my-1">
+                            <h3 class="fw-bold text-dark mb-1 text-truncate" title="{{ $plan->name ?? 'Free Tier' }}" style="font-size: 1.25rem;">{{ $plan->name ?? 'Free Tier' }}</h3>
+                        </div>
+                        <small class="text-warning text-truncate d-block" style="font-size: 12px;"><i class="las la-shield-alt me-1"></i>Anti-Ban Protected</small>
                     </div>
                 </a>
             </div>
@@ -187,56 +203,65 @@
                 <!-- 4 Performance Pillar Cards -->
                 <div class="row g-3 mb-4">
                     <div class="col-xl-3 col-sm-6">
-                        <div class="p-3 rounded-3 border bg-light h-100">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="text-muted small fw-bold text-uppercase">@lang('Total Bot Hits')</span>
-                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
-                                    <i class="las la-bolt me-1"></i>{{ $activeBotsCount }} @lang('Active Bots')
+                        <div class="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                            <div class="d-flex align-items-center justify-content-between gap-1 mb-2">
+                                <span class="text-muted fw-bold text-uppercase text-truncate" style="font-size: 11.5px; letter-spacing: 0.5px;">@lang('Bot Hits')</span>
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 flex-shrink-0" style="font-size: 11px;">
+                                    <i class="las la-bolt me-1"></i>{{ $activeBotsCount }} @lang('Active')
                                 </span>
                             </div>
-                            <h3 class="fw-bold text-dark mb-1">{{ number_format($totalBotHits) }}</h3>
-                            <small class="text-muted">@lang('Automated responses triggered')</small>
+                            <div class="my-1">
+                                <h3 class="fw-bold text-dark mb-0 fs-3">{{ number_format($totalBotHits) }}</h3>
+                            </div>
+                            <small class="text-muted text-truncate d-block" style="font-size: 12px;">@lang('Automated bot triggers')</small>
                         </div>
                     </div>
 
                     <div class="col-xl-3 col-sm-6">
-                        <div class="p-3 rounded-3 border bg-light h-100">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="text-muted small fw-bold text-uppercase">@lang('Messages Dispatched')</span>
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                        <div class="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                            <div class="d-flex align-items-center justify-content-between gap-1 mb-2">
+                                <span class="text-muted fw-bold text-uppercase text-truncate" style="font-size: 11.5px; letter-spacing: 0.5px;">@lang('Dispatched')</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 flex-shrink-0" style="font-size: 11px;">
                                     <i class="las la-paper-plane me-1"></i>+{{ number_format($messagesToday) }} @lang('Today')
                                 </span>
                             </div>
-                            <h3 class="fw-bold text-dark mb-1">{{ number_format($totalDeliveredAll) }}</h3>
-                            <small class="text-muted">@lang('Broadcasts + Auto-replies combined')</small>
+                            <div class="my-1">
+                                <h3 class="fw-bold text-dark mb-0 fs-3">{{ number_format($totalDeliveredAll) }}</h3>
+                            </div>
+                            <small class="text-muted text-truncate d-block" style="font-size: 12px;">@lang('Broadcasts + bot replies')</small>
                         </div>
                     </div>
 
                     <div class="col-xl-3 col-sm-6">
-                        <div class="p-3 rounded-3 border bg-light h-100">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="text-muted small fw-bold text-uppercase">@lang('Audience Reach')</span>
-                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">
+                        <div class="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                            <div class="d-flex align-items-center justify-content-between gap-1 mb-2">
+                                <span class="text-muted fw-bold text-uppercase text-truncate" style="font-size: 11.5px; letter-spacing: 0.5px;">@lang('Audience Reach')</span>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 flex-shrink-0" style="font-size: 11px;">
                                     <i class="las la-users me-1"></i>{{ $totalContactLists }} @lang('Lists')
                                 </span>
                             </div>
-                            <h3 class="fw-bold text-dark mb-1">{{ number_format($totalContacts + $totalGroups) }}</h3>
-                            <small class="text-muted">{{ number_format($totalContacts) }} @lang('Contacts') &bull; {{ number_format($totalGroups) }} @lang('Groups')</small>
+                            <div class="my-1">
+                                <h3 class="fw-bold text-dark mb-0 fs-3">{{ number_format($totalContacts + $totalGroups) }}</h3>
+                            </div>
+                            <small class="text-muted text-truncate d-block" style="font-size: 12px;">{{ number_format($totalContacts) }} @lang('Contacts') &bull; {{ number_format($totalGroups) }} @lang('Groups')</small>
                         </div>
                     </div>
 
                     <div class="col-xl-3 col-sm-6">
-                        <div class="p-3 rounded-3 border bg-light h-100">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="text-muted small fw-bold text-uppercase">@lang('Delivery Success Rate')</span>
-                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+                        <div class="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                            <div class="d-flex align-items-center justify-content-between gap-1 mb-2">
+                                <span class="text-muted fw-bold text-uppercase text-truncate" style="font-size: 11.5px; letter-spacing: 0.5px;">@lang('Delivery Rate')</span>
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1 flex-shrink-0" style="font-size: 11px;">
                                     {{ $deliveryRate }}%
                                 </span>
                             </div>
-                            <h3 class="fw-bold text-dark mb-1">{{ $deliveryRate }}%</h3>
-                            <div class="progress mt-2" style="height: 6px;">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ $deliveryRate }}%;" aria-valuenow="{{ $deliveryRate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="my-1">
+                                <h3 class="fw-bold text-dark mb-0 fs-3">{{ $deliveryRate }}%</h3>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ $deliveryRate }}%;" aria-valuenow="{{ $deliveryRate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
                             </div>
+                            <small class="text-muted text-truncate d-block" style="font-size: 12px;">@lang('Successful delivery ratio')</small>
                         </div>
                     </div>
                 </div>
