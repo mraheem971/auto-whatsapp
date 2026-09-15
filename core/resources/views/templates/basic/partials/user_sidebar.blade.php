@@ -2,12 +2,12 @@
     <!-- Sidebar Header / Logo -->
     <div class="user-sidebar__header d-flex align-items-center justify-content-between p-3 border-bottom">
         <a href="{{ route('user.home') }}" class="user-sidebar__logo d-flex align-items-center text-decoration-none">
-            <div class="logo-icon bg--base text-white rounded-3 d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px;">
-                <i class="lab la-whatsapp fs-3"></i>
+            <div class="logo-icon me-2 d-flex align-items-center justify-content-center">
+                <img src="{{ siteFavicon() }}" alt="{{ gs('site_name') }}" class="rounded-2" style="width: 36px; height: 36px; object-fit: contain;">
             </div>
             <div class="logo-text">
-                <span class="fw-bold fs-5 text-white">{{ gs('site_name') }}</span>
-                <small class="d-block text-white-50" style="font-size: 11px; margin-top: -3px;">WhatsApp Bot SaaS</small>
+                <span class="fw-bold fs-5 text-white d-block lh-1">{{ gs('site_name') }}</span>
+                <small class="d-block text-white-50" style="font-size: 11px; margin-top: 3px;">{{ gs('site_name') }} SaaS</small>
             </div>
         </a>
         <button class="btn btn-sm text-white d-lg-none" id="closeSidebarBtn">
