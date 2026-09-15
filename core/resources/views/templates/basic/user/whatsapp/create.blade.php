@@ -34,17 +34,27 @@
 
                                 <div class="mb-3">
                                     <label class="fw-bold mb-2">Connection Method <span class="text-danger">*</span></label>
-                                    <div class="d-flex gap-3">
-                                        <div class="form-check custom-radio">
-                                            <input class="form-check-input" type="radio" name="pairing_method" id="methodQR" value="qr" checked>
-                                            <label class="form-check-label fw-bold" for="methodQR">
-                                                <i class="las la-qrcode text-primary me-1"></i> Scan QR Code
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="connection-method-card p-3 rounded-3 d-flex align-items-center gap-3 cursor-pointer w-100 mb-0 position-relative" for="methodQR" style="cursor: pointer;">
+                                                <input class="form-check-input mt-0 flex-shrink-0" type="radio" name="pairing_method" id="methodQR" value="qr" checked>
+                                                <div class="flex-grow-1">
+                                                    <div class="fw-bold text-dark d-flex align-items-center">
+                                                        <i class="las la-qrcode text-primary fs-4 me-2"></i> Scan QR Code
+                                                    </div>
+                                                    <small class="text-muted d-block mt-1">Instant linking via camera scan</small>
+                                                </div>
                                             </label>
                                         </div>
-                                        <div class="form-check custom-radio">
-                                            <input class="form-check-input" type="radio" name="pairing_method" id="methodCode" value="code">
-                                            <label class="form-check-label fw-bold" for="methodCode">
-                                                <i class="las la-key text-success me-1"></i> 8-Digit Pairing Code (Phone Number)
+                                        <div class="col-md-6">
+                                            <label class="connection-method-card p-3 rounded-3 d-flex align-items-center gap-3 cursor-pointer w-100 mb-0 position-relative" for="methodCode" style="cursor: pointer;">
+                                                <input class="form-check-input mt-0 flex-shrink-0" type="radio" name="pairing_method" id="methodCode" value="code">
+                                                <div class="flex-grow-1">
+                                                    <div class="fw-bold text-dark d-flex align-items-center">
+                                                        <i class="las la-key text-success fs-4 me-2"></i> 8-Digit Pairing Code
+                                                    </div>
+                                                    <small class="text-muted d-block mt-1">Connect using phone number</small>
+                                                </div>
                                             </label>
                                         </div>
                                     </div>

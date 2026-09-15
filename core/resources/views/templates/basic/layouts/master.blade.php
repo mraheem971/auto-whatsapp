@@ -78,12 +78,33 @@
     }
 
     /* Crisp, High-Contrast Labels & Form Elements */
-    label, .form-label, .form-group label {
+    label, .form-label, .form-group label, .form-check-label {
         color: #0f172a !important;
         font-weight: 700 !important;
         font-size: 13.5px;
         margin-bottom: 6px;
         letter-spacing: 0.1px;
+    }
+
+    .form-check-label {
+        margin-bottom: 0 !important;
+        cursor: pointer;
+    }
+
+    .connection-method-card {
+        background-color: #ffffff;
+        border: 1.5px solid #cbd5e1 !important;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .connection-method-card:hover {
+        border-color: #25d366 !important;
+        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.1);
+    }
+
+    .connection-method-card:has(input:checked) {
+        border-color: #25d366 !important;
+        background-color: rgba(37, 211, 102, 0.06) !important;
     }
 
     .form-control, .form-select, textarea {
@@ -247,9 +268,24 @@
 
     body.dark-mode label,
     body.dark-mode .form-label,
-    body.dark-mode .form-group label {
+    body.dark-mode .form-group label,
+    body.dark-mode .form-check-label {
         color: #e9edef !important;
         font-weight: 600 !important;
+    }
+
+    body.dark-mode .connection-method-card {
+        background-color: #202c33 !important;
+        border: 1.5px solid #2a3942 !important;
+    }
+
+    body.dark-mode .connection-method-card:hover {
+        border-color: #25d366 !important;
+    }
+
+    body.dark-mode .connection-method-card:has(input:checked) {
+        border-color: #25d366 !important;
+        background-color: rgba(37, 211, 102, 0.12) !important;
     }
 
     body.dark-mode .text-muted,
