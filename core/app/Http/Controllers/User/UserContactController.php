@@ -154,4 +154,146 @@ class UserContactController extends Controller
         $notify[] = ['success', 'Contact list deleted.'];
         return back()->withNotify($notify);
     }
+
+    public function importGroupsList(Request $request)
+    {
+        $request->validate([
+            'list_name' => 'required|string|max:150',
+        ]);
+
+        $groupsData = $request->groups;
+        if (is_string($groupsData)) {
+            $groupsData = json_decode($groupsData, true);
+        }
+
+        if (!is_array($groupsData) || empty($groupsData)) {
+            return response()->json(['success' => false, 'error' => 'No groups provided to import.'], 400);
+        }
+
+        $user = auth()->user();
+
+        $list = ContactList::firstOrCreate(
+            ['user_id' => $user->id, 'name' => trim($request->list_name)],
+            ['type' => 'groups', 'description' => 'Imported WhatsApp Groups']
+        );
+
+        $imported = 0;
+        $skipped = 0;
+
+        foreach ($groupsData as $g) {
+            $gData = is_string($g) ? json_decode($g, true) : $g;
+            if (!$gData) continue;
+
+            $groupId = $gData['id'] ?? '';
+            $groupName = $gData['subject'] ?? $gData['name'] ?? 'WhatsApp Group';
+
+            if (empty($groupId)) continue;
+
+            $exists = Contact::where('user_id', $user->id)
+                ->where('contact_list_id', $list->id)
+                ->where('group_id', $groupId)
+                ->exists();
+
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            $contact = new Contact();
+            $contact->user_id         = $user->id;
+            $contact->contact_list_id = $list->id;
+            $contact->type            = 'group';
+            $contact->name            = $groupName;
+            $contact->phone_number    = $groupId;
+            $contact->target_jid      = $groupId;
+            $contact->group_name      = $groupName;
+            $contact->group_id        = $groupId;
+            $contact->save();
+
+            $imported++;
+        }
+
+        return response()->json([
+            'success'  => true,
+            'list_id'  => $list->id,
+            'imported' => $imported,
+            'skipped'  => $skipped,
+            'message'  => "Saved {$imported} groups into Contact List \"{$list->name}\"" . ($skipped > 0 ? " ({$skipped} already existed)" : "")
+        ]);
+    }
+
+    public function extractGroupMembersToList(Request $request)
+    {
+        $request->validate([
+            'list_name'         => 'required|string|max:150',
+            'source_group_id'   => 'required|string',
+            'source_group_name' => 'nullable|string',
+        ]);
+
+        $participantsData = $request->participants;
+        if (is_string($participantsData)) {
+            $participantsData = json_decode($participantsData, true);
+        }
+
+        if (!is_array($participantsData) || empty($participantsData)) {
+            return response()->json(['success' => false, 'error' => 'No participants provided to extract.'], 400);
+        }
+
+        $user = auth()->user();
+        $sourceGroupName = $request->source_group_name ?: 'WhatsApp Group';
+        $sourceGroupId = $request->source_group_id;
+
+        $list = ContactList::firstOrCreate(
+            ['user_id' => $user->id, 'name' => trim($request->list_name)],
+            ['type' => 'contacts', 'description' => "Members extracted from group '{$sourceGroupName}'"]
+        );
+
+        $imported = 0;
+        $skipped = 0;
+
+        foreach ($participantsData as $p) {
+            $pData = is_string($p) ? json_decode($p, true) : $p;
+            if (!$pData) continue;
+
+            $phone = preg_replace('/[^0-9]/', '', $pData['phone'] ?? $pData['id'] ?? '');
+            if (empty($phone)) continue;
+
+            $name = !empty($pData['name']) && !str_starts_with($pData['name'], '+')
+                ? $pData['name']
+                : (!empty($pData['notify']) ? $pData['notify'] : "+{$phone}");
+
+            $targetJid = !empty($pData['id']) && str_contains($pData['id'], '@') ? $pData['id'] : "{$phone}@s.whatsapp.net";
+
+            $exists = Contact::where('user_id', $user->id)
+                ->where('contact_list_id', $list->id)
+                ->where('phone_number', $phone)
+                ->exists();
+
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            $contact = new Contact();
+            $contact->user_id         = $user->id;
+            $contact->contact_list_id = $list->id;
+            $contact->type            = 'contact';
+            $contact->name            = $name;
+            $contact->phone_number    = $phone;
+            $contact->target_jid      = $targetJid;
+            $contact->group_name      = $sourceGroupName;
+            $contact->group_id        = $sourceGroupId;
+            $contact->save();
+
+            $imported++;
+        }
+
+        return response()->json([
+            'success'  => true,
+            'list_id'  => $list->id,
+            'imported' => $imported,
+            'skipped'  => $skipped,
+            'message'  => "Extracted {$imported} members into Contact List \"{$list->name}\"" . ($skipped > 0 ? " ({$skipped} already existed)" : "")
+        ]);
+    }
 }

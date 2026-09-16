@@ -166,6 +166,8 @@ Route::middleware('auth')->name('user.')->group(function () {
                 Route::post('/lists/delete/{id}', 'listDelete')->name('lists.delete');
                 Route::post('/sync-whatsapp', 'syncWhatsApp')->name('sync.whatsapp');
                 Route::post('/delete/{id}', 'deleteContact')->name('delete');
+                Route::post('/import-groups-list', 'importGroupsList')->name('import.groups.list');
+                Route::post('/extract-group-members', 'extractGroupMembersToList')->name('extract.group.members.list');
             });
 
             // Settings Hub & System Preferences
