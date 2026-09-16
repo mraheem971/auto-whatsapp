@@ -539,7 +539,7 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
-        browser: Browsers.windows('Desktop'),
+        browser: Browsers.ubuntu('Chrome'),
         generateHighQualityLinkPreview: true,
         syncFullHistory: false,
         connectTimeoutMs: 60000,

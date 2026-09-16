@@ -144,33 +144,45 @@ class UserWhatsAppController extends Controller
     public function sessionStatus($sessionId)
     {
         $user = auth()->user();
-        $account = WhatsappAccount::where('user_id', $user->id)->where('session_id', $sessionId)->firstOrFail();
+        $account = WhatsappAccount::where('user_id', $user->id)->where('session_id', $sessionId)->first();
 
-        $res = BaileysClient::get("api/sessions/status/{$sessionId}", 5);
-
-        if ($res && isset($res['status'])) {
-            if ($res['status'] === 'connected') {
-                $account->status = 1;
-                if (!empty($res['user']['phone'])) {
-                    $account->phone_number = $res['user']['phone'];
-                }
-                if (!empty($res['user']['name'])) {
-                    $account->account_name = $res['user']['name'];
-                }
-                $account->save();
-            }
-
-            return response()->json([
-                'status'        => $res['status'],
-                'qr'            => $res['qr'] ?? null,
-                'qrImage'       => $res['qrImage'] ?? null,
-                'pairingCode'   => $res['pairingCode'] ?? null,
-                'pairingMethod' => $res['pairingMethod'] ?? null,
-                'user'          => $res['user'] ?? null,
-            ]);
+        if (!$account) {
+            return response()->json(['status' => 'not_found'], 404);
         }
 
-        return response()->json(['status' => 'waiting']);
+        try {
+            $res = BaileysClient::get("api/sessions/status/{$sessionId}", [], 8);
+
+            if ($res && $res->successful()) {
+                $data = $res->json();
+                $status = $data['status'] ?? 'waiting';
+
+                if ($status === 'connected') {
+                    $userData = $data['user'] ?? [];
+                    $account->status = 1;
+                    $account->phone_number = $userData['phone'] ?? $account->phone_number;
+                    $account->jid = $userData['id'] ?? $account->jid;
+                    $account->profile_name = $userData['name'] ?? $account->profile_name;
+                    $account->last_connected_at = now();
+                    $account->save();
+                }
+
+                return response()->json([
+                    'status'        => $status,
+                    'sessionId'     => $sessionId,
+                    'pairingMethod' => $data['pairingMethod'] ?? 'qr',
+                    'pairingCode'   => $data['pairingCode'] ?? null,
+                    'pairingError'  => $data['pairingError'] ?? null,
+                    'qr'            => $data['qr'] ?? null,
+                    'qrImage'       => $data['qrImage'] ?? null,
+                    'user'          => $data['user'] ?? null,
+                ]);
+            }
+
+            return response()->json(['status' => 'waiting']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'waiting']);
+        }
     }
 
     public function testSendMessage(Request $request)

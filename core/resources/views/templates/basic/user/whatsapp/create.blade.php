@@ -204,10 +204,18 @@
                             notify('success', 'WhatsApp account connected successfully!');
                         } else if (res.status === 'qr_ready' && res.qrImage) {
                             $('#qrImage').attr('src', res.qrImage);
+                            $('#qrContainer').removeClass('d-none');
+                            $('#pairingCodeContainer').addClass('d-none');
+                        } else if (res.status === 'pairing_code_ready' && res.pairingCode) {
+                            $('#pairingCodeText').text(res.pairingCode);
+                            $('#pairingCodeContainer').removeClass('d-none');
+                            $('#qrContainer').addClass('d-none');
+                        } else if (res.status === 'pairing_error') {
+                            $('#connectionStatusText').html('<span class="text-danger fw-bold"><i class="las la-exclamation-triangle me-1"></i>' + (res.pairingError || 'Pairing error. Verify your phone number.') + '</span>');
                         }
                     }
                 });
-            }, 3000);
+            }, 2000);
         }
 
         $('#btnCancelSession').on('click', function () {
