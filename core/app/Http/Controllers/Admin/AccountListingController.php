@@ -13,21 +13,21 @@ class AccountListingController extends Controller
     public function index(Request $request)
     {
         $pageTitle = 'All WhatsApp Accounts';
-        $accounts  = WhatsappAccount::latest()->paginate(getPaginate());
+        $accounts  = WhatsappAccount::with('user')->searchable(['account_name', 'phone_number', 'session_id', 'profile_name'])->latest()->paginate(getPaginate());
         return view('admin.account_listing.index', compact('pageTitle', 'accounts'));
     }
 
     public function active(Request $request)
     {
         $pageTitle = 'Active WhatsApp Accounts';
-        $accounts  = WhatsappAccount::active()->latest()->paginate(getPaginate());
+        $accounts  = WhatsappAccount::with('user')->active()->searchable(['account_name', 'phone_number', 'session_id', 'profile_name'])->latest()->paginate(getPaginate());
         return view('admin.account_listing.index', compact('pageTitle', 'accounts'));
     }
 
     public function pending(Request $request)
     {
         $pageTitle = 'Pending WhatsApp Accounts';
-        $accounts  = WhatsappAccount::pending()->latest()->paginate(getPaginate());
+        $accounts  = WhatsappAccount::with('user')->pending()->searchable(['account_name', 'phone_number', 'session_id', 'profile_name'])->latest()->paginate(getPaginate());
         return view('admin.account_listing.index', compact('pageTitle', 'accounts'));
     }
 

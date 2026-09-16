@@ -411,23 +411,9 @@
         border-bottom: 1.5px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    body.dark-mode .table tbody td,
-    body.dark-mode .table td,
-    body.dark-mode .table td *,
-    body.dark-mode .table tbody td span:not(.badge),
-    body.dark-mode .table tbody td div {
-        color: #e9edef !important;
-    }
-
-    body.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > *,
-    body.dark-mode .table-striped > tbody > tr:nth-of-type(even) > * {
-        background-color: #111b21 !important;
-        color: #e9edef !important;
-    }
-
-    body.dark-mode .table-hover > tbody > tr:hover > * {
-        background-color: #182229 !important;
-        color: #ffffff !important;
+    body.dark-mode .table td {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        color: #d1d7db !important;
     }
 
     body.dark-mode .bg-white {

@@ -8,9 +8,12 @@
                 <h5 class="card-title text-white mb-0 d-flex align-items-center">
                     <i class="lab la-whatsapp me-2 fs-4 text--success"></i> @lang('Connected WhatsApp Accounts')
                 </h5>
-                <a href="{{ route('admin.account.listing.create') }}" class="btn btn-sm btn--primary">
-                    <i class="las la-plus me-1"></i>@lang('Add New WhatsApp Account')
-                </a>
+                <div class="d-flex align-items-center gap-2">
+                    <x-search-form placeholder="Search accounts, users..." />
+                    <a href="{{ route('admin.account.listing.create') }}" class="btn btn-sm btn--primary">
+                        <i class="las la-plus me-1"></i>@lang('Add WhatsApp Account')
+                    </a>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive--lg table-responsive">
@@ -18,6 +21,7 @@
                         <thead>
                             <tr>
                                 <th>@lang('Account Name')</th>
+                                <th>@lang('User / Owner')</th>
                                 <th>@lang('Phone Number')</th>
                                 <th>@lang('Status')</th>
                                 <th>@lang('Connected At')</th>
@@ -32,12 +36,32 @@
                                             <div class="thumb me-2">
                                                 <i class="lab la-whatsapp text--success" style="font-size: 26px;"></i>
                                             </div>
-                                            <span class="name fw-bold">{{ __($account->account_name) }}</span>
+                                            <div>
+                                                <span class="name fw-bold d-block">{{ __($account->account_name) }}</span>
+                                                <small class="text-muted font-monospace">{{ $account->session_id }}</small>
+                                            </div>
                                         </div>
+                                    </td>
+                                    <td>
+                                        @if($account->user)
+                                            <span class="fw-bold d-block">
+                                                <a href="{{ appendQuery('search', $account->user->username) }}" class="text--primary">
+                                                    {{ $account->user->fullname }}
+                                                </a>
+                                            </span>
+                                            <small class="text-muted">
+                                                <a href="{{ route('admin.users.detail', $account->user_id) }}"><span>@</span>{{ $account->user->username }}</a>
+                                            </small>
+                                        @else
+                                            <span class="badge badge--dark"><i class="las la-user-shield me-1"></i>@lang('Admin System')</span>
+                                        @endif
                                     </td>
                                     <td>
                                         @if($account->phone_number)
                                             <span class="badge badge--info fs-6">+{{ $account->phone_number }}</span>
+                                            @if($account->profile_name)
+                                                <small class="text-muted d-block mt-1">{{ $account->profile_name }}</small>
+                                            @endif
                                         @else
                                             <span class="text-muted">@lang('Not Connected')</span>
                                         @endif

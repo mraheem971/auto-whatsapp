@@ -114,8 +114,6 @@ Route::middleware('auth')->name('user.')->group(function () {
                 Route::get('/session-status/{sessionId}', 'sessionStatus')->name('session.status');
                 Route::post('/test-message', 'testSendMessage')->name('test.message');
                 Route::get('/extract-groups/{sessionId}', 'extractGroups')->name('extract.groups');
-                Route::post('/extract-contacts/{sessionId}', 'extractContacts')->name('extract.contacts');
-                Route::post('/save-extracted-group', 'saveExtractedGroupToList')->name('save.extracted.group');
                 Route::post('/delete/{id}', 'delete')->name('delete');
             });
 
