@@ -16,19 +16,19 @@ class BaileysClient
     {
         try {
             $res = Http::timeout(2)->get(self::$baseUrl . '/health');
-            if ($res->successful()) {
+            if ($res && $res->successful()) {
                 return true;
             }
-        } catch (\Throwable $e) {
-            self::spawnNodeService();
-        }
+        } catch (\Throwable $e) {}
 
-        // Wait up to 4 seconds for service to answer health check
-        for ($i = 0; $i < 8; $i++) {
+        self::spawnNodeService();
+
+        // Wait up to 5 seconds for service to answer health check
+        for ($i = 0; $i < 10; $i++) {
             usleep(500000); // 500ms
             try {
                 $res = Http::timeout(2)->get(self::$baseUrl . '/health');
-                if ($res->successful()) {
+                if ($res && $res->successful()) {
                     return true;
                 }
             } catch (\Throwable $e) {}

@@ -208,6 +208,26 @@
         color: rgba(255, 255, 255, 0.9) !important;
     }
 
+    .dashboard-welcome-banner .btn-connect-whatsapp,
+    body.dark-mode .dashboard-welcome-banner .btn-connect-whatsapp,
+    body.dark-mode .dashboard-welcome-banner a.btn-connect-whatsapp {
+        background-color: #ffffff !important;
+        color: #064e3b !important;
+        border: 1px solid #ffffff !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .dashboard-welcome-banner .btn-connect-whatsapp:hover,
+    body.dark-mode .dashboard-welcome-banner .btn-connect-whatsapp:hover {
+        background-color: #f0fdf4 !important;
+        color: #047857 !important;
+    }
+
+    .dashboard-welcome-banner .btn-connect-whatsapp i {
+        color: #25d366 !important;
+    }
+
     .card-header {
         background-color: #ffffff;
         border-bottom: 1px solid #e2e8f0;

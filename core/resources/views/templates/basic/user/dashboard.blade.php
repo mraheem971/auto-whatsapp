@@ -23,8 +23,8 @@
                     </p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="{{ route('user.whatsapp.create') }}" class="btn btn-light text-dark fw-bold btn-sm px-3 shadow-sm d-flex align-items-center">
-                        <i class="lab la-whatsapp text-success fs-5 me-1"></i> Connect WhatsApp
+                    <a href="{{ route('user.whatsapp.create') }}" class="btn btn-connect-whatsapp btn-sm px-3 shadow-sm d-flex align-items-center" style="background-color: #ffffff !important; color: #064e3b !important; font-weight: 700;">
+                        <i class="lab la-whatsapp fs-5 me-1" style="color: #25d366 !important;"></i> Connect WhatsApp
                     </a>
                     <a href="{{ route('user.plans.index') }}" class="btn btn-outline-light btn-sm px-3 fw-semibold d-flex align-items-center">
                         <i class="las la-rocket me-1"></i> Upgrade Plan

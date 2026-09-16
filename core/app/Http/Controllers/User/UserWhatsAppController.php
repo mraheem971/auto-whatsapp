@@ -95,31 +95,50 @@ class UserWhatsAppController extends Controller
             'sessionId'     => $sessionId,
             'accountName'   => $accountName,
             'pairingMethod' => $pairingMethod,
+            'fresh'         => true,
         ];
         if ($phoneNumber) {
             $payload['phoneNumber'] = $phoneNumber;
         }
 
-        $res = BaileysClient::post('api/sessions/create', $payload, 15);
+        try {
+            $res = BaileysClient::post('api/sessions/start', $payload, 20);
 
-        if (!$res || empty($res['status']) || $res['status'] !== 'success') {
+            if ($res && $res->successful()) {
+                $data = $res->json();
+                if (!empty($data['error']) || (isset($data['status']) && $data['status'] === 'error')) {
+                    $account->delete();
+                    return response()->json([
+                        'status' => 'error',
+                        'error'  => $data['error'] ?? 'WhatsApp microservice returned an error.',
+                    ], 400);
+                }
+
+                return response()->json([
+                    'status'        => 'success',
+                    'sessionId'     => $sessionId,
+                    'accountName'   => $accountName,
+                    'pairingMethod' => $pairingMethod,
+                    'pairingCode'   => $data['pairingCode'] ?? null,
+                    'qr'            => $data['qr'] ?? null,
+                    'qrImage'       => $data['qrImage'] ?? null,
+                    'message'       => $pairingMethod === 'code' ? 'Enter the pairing code in WhatsApp on your phone' : 'Scan the QR code with WhatsApp',
+                ]);
+            } else {
+                $account->delete();
+                $err = $res ? ($res->json('error') ?: 'Server returned code ' . $res->status()) : 'Failed to connect to WhatsApp microservice. Please check node server status.';
+                return response()->json([
+                    'status' => 'error',
+                    'error'  => $err,
+                ], 500);
+            }
+        } catch (\Exception $e) {
             $account->delete();
             return response()->json([
                 'status' => 'error',
-                'error'  => $res['error'] ?? 'Failed to initialize WhatsApp microservice. Please check node server status.',
+                'error'  => 'Microservice connection failed: ' . $e->getMessage(),
             ], 500);
         }
-
-        return response()->json([
-            'status'        => 'success',
-            'sessionId'     => $sessionId,
-            'accountName'   => $accountName,
-            'pairingMethod' => $pairingMethod,
-            'pairingCode'   => $res['pairingCode'] ?? null,
-            'qr'            => $res['qr'] ?? null,
-            'qrImage'       => $res['qrImage'] ?? null,
-            'message'       => $pairingMethod === 'code' ? 'Enter the pairing code in WhatsApp on your phone' : 'Scan the QR code with WhatsApp',
-        ]);
     }
 
     public function sessionStatus($sessionId)

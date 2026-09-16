@@ -805,12 +805,12 @@ app.get('/health', (req, res) => {
 });
 
 // Start or retrieve a session and generate QR or 8-digit Pairing Code
-app.post('/api/sessions/start', async (req, res) => {
+const handleStartSession = async (req, res) => {
     try {
         const { sessionId, accountName, pairingMethod, phoneNumber } = req.body;
 
         if (!sessionId) {
-            return res.status(400).json({ error: 'sessionId is required' });
+            return res.status(400).json({ error: 'sessionId is required', status: 'error' });
         }
 
         const usePairingCode = (pairingMethod === 'code' || Boolean(phoneNumber));
@@ -822,6 +822,7 @@ app.post('/api/sessions/start', async (req, res) => {
 
         if (session && session.status === 'connected') {
             return res.json({
+                success: true,
                 sessionId,
                 status: 'connected',
                 user: session.user
@@ -859,19 +860,24 @@ app.post('/api/sessions/start', async (req, res) => {
         }
 
         res.json({
+            success: true,
             sessionId,
             status: session.status,
             pairingMethod: session.pairingMethod,
             pairingCode: session.pairingCode,
             pairingError: session.pairingError,
+            qr: session.qr,
             qrImage: session.qrImage,
             user: session.user
         });
     } catch (error) {
         console.error('Error starting session:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message, status: 'error' });
     }
-});
+};
+
+app.post('/api/sessions/start', handleStartSession);
+app.post('/api/sessions/create', handleStartSession);
 
 // Check session status
 app.get('/api/sessions/status/:sessionId', (req, res) => {
