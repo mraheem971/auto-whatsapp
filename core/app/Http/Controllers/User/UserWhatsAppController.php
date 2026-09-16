@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Contact;
+use App\Models\ContactList;
 use App\Models\WhatsappAccount;
 use App\Services\BaileysClient;
 use Illuminate\Http\Request;
@@ -17,8 +19,9 @@ class UserWhatsAppController extends Controller
         $accounts = WhatsappAccount::where('user_id', $user->id)->latest()->paginate(getPaginate());
         $activeCount = WhatsappAccount::where('user_id', $user->id)->active()->count();
         $plan = $user->currentPlan();
+        $contactLists = ContactList::where('user_id', $user->id)->latest()->get();
 
-        return view('Template::user.whatsapp.index', compact('pageTitle', 'accounts', 'activeCount', 'plan'));
+        return view('Template::user.whatsapp.index', compact('pageTitle', 'accounts', 'activeCount', 'plan', 'contactLists'));
     }
 
     public function create()
@@ -207,6 +210,165 @@ class UserWhatsAppController extends Controller
         }
 
         return response()->json(['success' => false, 'message' => $res['error'] ?? 'Failed to send message.'], 400);
+    }
+
+    public function extractGroups($sessionId)
+    {
+        $user = auth()->user();
+        $account = WhatsappAccount::where('user_id', $user->id)->where('session_id', $sessionId)->first();
+        if (!$account) {
+            return response()->json(['success' => false, 'error' => 'WhatsApp account session not found.'], 404);
+        }
+
+        if ($account->status != 1) {
+            return response()->json([
+                'success' => false,
+                'error'   => "WhatsApp account '{$account->account_name}' is not currently connected. Please ensure it is online."
+            ], 400);
+        }
+
+        try {
+            $response = BaileysClient::get("api/groups/{$sessionId}", [], 25);
+
+            if ($response && $response->successful()) {
+                $data = $response->json();
+                return response()->json($data);
+            }
+
+            $errMsg = $response ? ($response->json()['error'] ?? 'WhatsApp service could not fetch groups.') : 'Baileys microservice is unreachable.';
+            return response()->json(['success' => false, 'error' => $errMsg], 400);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Failed to extract WhatsApp groups: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function extractContacts(Request $request, $sessionId)
+    {
+        $user = auth()->user();
+        $account = WhatsappAccount::where('user_id', $user->id)->where('session_id', $sessionId)->first();
+        if (!$account) {
+            return response()->json(['success' => false, 'error' => 'WhatsApp account session not found.'], 404);
+        }
+
+        if ($account->status != 1) {
+            return response()->json([
+                'success' => false,
+                'error'   => "WhatsApp account is not connected. Please connect first."
+            ], 400);
+        }
+
+        try {
+            $response = BaileysClient::get("api/contacts/{$sessionId}", ['mode' => 'contacts_only'], 25);
+
+            if ($response && $response->successful()) {
+                $data = $response->json();
+                $contacts = $data['contacts'] ?? [];
+
+                $listId = $request->contact_list_id;
+                if ($request->new_list_name) {
+                    $newList = new ContactList();
+                    $newList->user_id = $user->id;
+                    $newList->name = $request->new_list_name;
+                    $newList->save();
+                    $listId = $newList->id;
+                }
+
+                $savedCount = 0;
+                foreach ($contacts as $c) {
+                    $phone = $c['phone'] ?? '';
+                    if (!$phone) continue;
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+
+                    Contact::updateOrCreate(
+                        [
+                            'user_id'      => $user->id,
+                            'phone_number' => $cleanPhone,
+                        ],
+                        [
+                            'name'            => $c['name'] ?? "+{$cleanPhone}",
+                            'target_jid'      => "{$cleanPhone}@s.whatsapp.net",
+                            'type'            => 'contact',
+                            'contact_list_id' => $listId,
+                        ]
+                    );
+                    $savedCount++;
+                }
+
+                return response()->json([
+                    'success'    => true,
+                    'message'    => "Successfully extracted and saved {$savedCount} contacts!",
+                    'savedCount' => $savedCount
+                ]);
+            }
+
+            return response()->json(['success' => false, 'error' => 'Could not fetch contacts from WhatsApp.'], 400);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function saveExtractedGroupToList(Request $request)
+    {
+        $request->validate([
+            'session_id' => 'required|string',
+            'group_jid'  => 'required|string',
+        ]);
+
+        $user = auth()->user();
+        $account = WhatsappAccount::where('user_id', $user->id)->where('session_id', $request->session_id)->firstOrFail();
+
+        $listName = $request->list_name ?: ($request->group_name ?: 'Extracted WhatsApp Group');
+        $list = new ContactList();
+        $list->user_id     = $user->id;
+        $list->name        = $listName;
+        $list->description = 'Extracted from group ' . ($request->group_name ?: $request->group_jid) . ' via ' . $account->account_name;
+        $list->save();
+
+        Contact::updateOrCreate(
+            [
+                'user_id'    => $user->id,
+                'target_jid' => $request->group_jid,
+            ],
+            [
+                'name'            => $request->group_name ?: 'WhatsApp Group',
+                'phone_number'    => preg_replace('/[^0-9]/', '', explode('@', $request->group_jid)[0]),
+                'type'            => 'group',
+                'contact_list_id' => $list->id,
+            ]
+        );
+
+        $savedMembers = 0;
+        $members = json_decode($request->members_json, true) ?: [];
+
+        foreach ($members as $m) {
+            $phone = $m['phone'] ?? (isset($m['id']) ? preg_replace('/[^0-9]/', '', explode('@', $m['id'])[0]) : null);
+            if (!$phone) continue;
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+
+            Contact::updateOrCreate(
+                [
+                    'user_id'         => $user->id,
+                    'phone_number'    => $cleanPhone,
+                    'contact_list_id' => $list->id,
+                ],
+                [
+                    'name'       => $m['name'] ?? "+{$cleanPhone}",
+                    'target_jid' => "{$cleanPhone}@s.whatsapp.net",
+                    'type'       => 'contact',
+                ]
+            );
+            $savedMembers++;
+        }
+
+        return response()->json([
+            'success'      => true,
+            'message'      => "Saved group and {$savedMembers} member(s) to Contact List '{$listName}'!",
+            'list_id'      => $list->id,
+            'savedMembers' => $savedMembers
+        ]);
     }
 
     public function delete($id)
