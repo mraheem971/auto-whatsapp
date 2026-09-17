@@ -45,19 +45,24 @@ let discoveredLaravelUrl = process.env.LARAVEL_URL || null;
 async function probeLaravelUrl() {
     if (discoveredLaravelUrl) return discoveredLaravelUrl;
     const candidates = [
+        process.env.LARAVEL_URL,
         'http://127.0.0.1:8000',
-        'http://127.0.0.1:8001',
         'http://localhost:8000',
-        'http://localhost:8001',
-        'http://127.0.0.1',
-        'http://localhost'
-    ];
+        'http://127.0.0.1:8001',
+        'http://localhost:8001'
+    ].filter(Boolean);
+
     for (const url of candidates) {
         try {
-            const res = await fetch(`${url}/api/autoreply/rules/ping`, { signal: AbortSignal.timeout(800) });
-            discoveredLaravelUrl = url;
-            console.log(`[Baileys AutoReply] 🔗 Connected to Laravel backend at ${url}`);
-            return url;
+            const res = await fetch(`${url}/api/autoreply/ping`, { signal: AbortSignal.timeout(1000) });
+            if (res.ok) {
+                const data = await res.json().catch(() => null);
+                if (data && data.success && data.service === 'auto-whatsapp-laravel') {
+                    discoveredLaravelUrl = url;
+                    console.log(`[Baileys AutoReply] 🔗 Verified connection to Laravel backend at ${url}`);
+                    return url;
+                }
+            }
         } catch (e) {}
     }
     return 'http://127.0.0.1:8000';
@@ -66,19 +71,19 @@ async function probeLaravelUrl() {
 async function getActiveAutoReplies(sessionId) {
     const cached = autoReplyRuleCache.get(sessionId);
     const now = Date.now();
-    if (cached && (now - cached.lastFetched < 10000)) { // 10s memory cache for ultra-fast instant matching
+    if (cached && (now - cached.lastFetched < 5000)) { // 5s memory cache for ultra-fast instant matching
         return cached.rules;
     }
 
     const baseUrl = await probeLaravelUrl();
-    const candidateUrls = [baseUrl, 'http://127.0.0.1:8000', 'http://127.0.0.1:8001', 'http://localhost:8000', 'http://127.0.0.1'];
+    const candidateUrls = [baseUrl, 'http://127.0.0.1:8000', 'http://localhost:8000', 'http://127.0.0.1:8001'];
     
     for (const url of candidateUrls) {
         try {
             const res = await fetch(`${url}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2000) });
             if (res.ok) {
-                const data = await res.json();
-                if (data.success && Array.isArray(data.rules)) {
+                const data = await res.json().catch(() => null);
+                if (data && data.success && Array.isArray(data.rules)) {
                     discoveredLaravelUrl = url;
                     autoReplyRuleCache.set(sessionId, { rules: data.rules, lastFetched: now });
                     return data.rules;
@@ -436,17 +441,31 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
             await new Promise(r => setTimeout(r, replyDelayMs));
         }
 
-        // Step 4: Dispatch the automated reply message
+        // Step 4: Dispatch the automated reply message (text, image, video, document)
         try {
             const isGroup = remoteJid.endsWith('@g.us');
-            if (isGroup && msg.key) {
-                await sock.sendMessage(remoteJid, { text: processedText }, { quoted: msg });
+            const replyType = targetRule.reply_type || 'text';
+            const mediaUrl = targetRule.media_url;
+
+            let sendPayload = null;
+            if (replyType === 'image' && mediaUrl) {
+                sendPayload = { image: { url: mediaUrl }, caption: processedText };
+            } else if (replyType === 'video' && mediaUrl) {
+                sendPayload = { video: { url: mediaUrl }, caption: processedText };
+            } else if (replyType === 'document' && mediaUrl) {
+                sendPayload = { document: { url: mediaUrl }, mimetype: 'application/pdf', fileName: 'Attachment.pdf', caption: processedText };
             } else {
-                await sock.sendMessage(remoteJid, { text: processedText });
+                sendPayload = { text: processedText };
             }
-            console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Automated reply delivered to ${remoteJid}: "${processedText}"`);
+
+            if (isGroup && msg.key) {
+                await sock.sendMessage(remoteJid, sendPayload, { quoted: msg });
+            } else {
+                await sock.sendMessage(remoteJid, sendPayload);
+            }
+            console.log(`[AutoReply Flow] 🚀 Step 4: ✅ Automated reply (${replyType}) delivered to ${remoteJid}: "${processedText}"`);
         } catch (sendErr) {
-            console.error('[AutoReply Flow Send Error, retrying direct]:', sendErr?.message || sendErr);
+            console.error('[AutoReply Flow Send Error, retrying text]:', sendErr?.message || sendErr);
             await sock.sendMessage(remoteJid, { text: processedText }).catch(e => {
                 console.error('[AutoReply Flow Final Send Failure]:', e?.message || e);
             });

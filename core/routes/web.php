@@ -10,6 +10,7 @@ Route::get('/clear', function(){
 Route::get('cron', 'CronController@cron')->name('cron');
 
 // Auto-Reply Engine API (Baileys Integration)
+Route::get('api/autoreply/ping', 'Admin\AutoReplyController@apiPing')->name('api.autoreply.ping');
 Route::get('api/autoreply/rules/{sessionId}', 'Admin\AutoReplyController@apiFetchRules')->name('api.autoreply.rules');
 Route::match(['GET', 'POST'], 'api/autoreply/log-hit/{id}', 'Admin\AutoReplyController@apiLogHit')->name('api.autoreply.log_hit');
 

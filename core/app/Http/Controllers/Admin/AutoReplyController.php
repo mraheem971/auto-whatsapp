@@ -238,6 +238,18 @@ class AutoReplyController extends Controller
     }
 
     /**
+     * API: Health Ping for Baileys Microservice
+     */
+    public function apiPing()
+    {
+        return response()->json([
+            'success' => true,
+            'service' => 'auto-whatsapp-laravel',
+            'time'    => now()->toDateTimeString()
+        ]);
+    }
+
+    /**
      * API: Get Active Rules for Baileys Engine with full response flow configs
      */
     public function apiFetchRules($sessionId)
