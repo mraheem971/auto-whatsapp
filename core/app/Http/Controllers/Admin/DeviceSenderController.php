@@ -20,13 +20,14 @@ class DeviceSenderController extends Controller
     public function index()
     {
         $pageTitle = 'Device Messenger - Send from Android Device';
-        $connectedAccounts = WhatsappAccount::active()->latest()->get();
-        $primaryAccount = WhatsappAccount::active()->latest()->first();
+        $connectedAccounts = WhatsappAccount::adminOnly()->active()->latest()->get();
+        $primaryAccount = WhatsappAccount::adminOnly()->active()->latest()->first();
         $templates = MessageTemplate::latest()->get();
-        $contactLists = ContactList::withCount('contacts')->latest()->get();
+        $contactLists = ContactList::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->withCount('contacts')->latest()->get();
         
         // Fetch groups
-        $groups = Contact::where('type', 'group')
+        $groups = Contact::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })
+            ->where('type', 'group')
             ->whereNotNull('group_id')
             ->where('group_id', '!=', '')
             ->selectRaw('group_name, group_id')
@@ -98,16 +99,22 @@ class DeviceSenderController extends Controller
         // Determine account
         $account = null;
         if ($request->session_id) {
-            $account = WhatsappAccount::where('session_id', $request->session_id)->first();
+            $account = WhatsappAccount::adminOnly()->where('session_id', $request->session_id)->first();
+            if (!$account) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permission denied: Admin cannot use user WhatsApp accounts.'
+                ], 403);
+            }
         }
         if (!$account) {
-            $account = WhatsappAccount::active()->latest()->first();
+            $account = WhatsappAccount::adminOnly()->active()->latest()->first();
         }
 
         if (!$account || empty($account->session_id)) {
             return response()->json([
                 'success' => false,
-                'message' => 'No active connected WhatsApp device found. Please scan the QR code in WhatsApp Accounts first.'
+                'message' => 'No active connected admin WhatsApp device found. Please scan the QR code in WhatsApp Accounts first.'
             ], 400);
         }
 

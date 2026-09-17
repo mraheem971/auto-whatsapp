@@ -26,7 +26,7 @@ class ContactController extends Controller
         }
 
         $lists = $query->latest()->paginate(getPaginate());
-        $connectedAccounts = WhatsappAccount::active()->latest()->get();
+        $connectedAccounts = WhatsappAccount::adminOnly()->active()->latest()->get();
 
         return view('admin.contact.lists.index', compact('pageTitle', 'lists', 'connectedAccounts'));
     }
@@ -55,7 +55,7 @@ class ContactController extends Controller
         }
 
         $contacts = $query->latest()->paginate(getPaginate());
-        $connectedAccounts = WhatsappAccount::active()->latest()->get();
+        $connectedAccounts = WhatsappAccount::adminOnly()->active()->latest()->get();
 
         return view('admin.contact.lists.show', compact('pageTitle', 'list', 'contacts', 'connectedAccounts'));
     }
@@ -506,14 +506,19 @@ class ContactController extends Controller
     public function sync()
     {
         $pageTitle = 'Sync Contacts & Groups from WhatsApp';
-        $connectedAccounts = WhatsappAccount::active()->latest()->get();
-        $lists = ContactList::latest()->get();
+        $connectedAccounts = WhatsappAccount::adminOnly()->active()->latest()->get();
+        $lists = ContactList::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->latest()->get();
         return view('admin.contact.sync', compact('pageTitle', 'connectedAccounts', 'lists'));
     }
 
     // 14. Fetch WhatsApp Contacts / Groups API
     public function fetchWhatsAppContacts($sessionId)
     {
+        $account = WhatsappAccount::adminOnly()->where('session_id', $sessionId)->first();
+        if (!$account) {
+            return response()->json(['success' => false, 'error' => 'Permission denied: Admin cannot fetch contacts from user WhatsApp accounts.'], 403);
+        }
+
         try {
             $mode = request('mode', 'all');
             $response = \App\Services\BaileysClient::get("api/contacts/{$sessionId}?mode={$mode}", [], 25);

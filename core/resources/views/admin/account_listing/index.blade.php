@@ -73,31 +73,45 @@
                                         {{ $account->last_connected_at ? showDateTime($account->last_connected_at) : 'N/A' }}
                                     </td>
                                     <td class="text-end pe-4">
-                                        <div class="d-inline-flex gap-2">
-                                            <button type="button" class="btn btn-sm btn-outline--primary btnExtractGroups"
-                                                data-session_id="{{ $account->session_id }}"
-                                                data-name="{{ $account->account_name }}"
-                                                data-bs-toggle="tooltip"
-                                                title="@lang('Extract WhatsApp Groups & Create Lists')">
-                                                <i class="las la-users-cog fs-6"></i>
-                                            </button>
+                                        <div class="d-inline-flex gap-2 align-items-center">
+                                            @if($account->user_id > 0)
+                                                <span class="badge badge--warning px-2 py-1" data-bs-toggle="tooltip" title="@lang('User-owned WhatsApp account: Message sending and group extraction are private to the user.')">
+                                                    <i class="las la-user-lock me-1"></i>@lang('User Bot (Private)')
+                                                </span>
 
-                                            <button type="button" class="btn btn-sm btn-outline--success btnTestMessage"
-                                                data-session_id="{{ $account->session_id }}"
-                                                data-name="{{ $account->account_name }}"
-                                                data-phone="{{ $account->phone_number }}"
-                                                data-bs-toggle="tooltip"
-                                                title="@lang('Send Direct Test Message')">
-                                                <i class="las la-paper-plane fs-6"></i>
-                                            </button>
+                                                <button type="button" class="btn btn-sm btn-outline--danger confirmationBtn" 
+                                                    data-action="{{ route('admin.account.listing.delete', $account->id) }}"
+                                                    data-question="@lang('Are you sure you want to remove and disconnect this WhatsApp account?')"
+                                                    data-bs-toggle="tooltip"
+                                                    title="@lang('Delete / Disconnect Account')">
+                                                    <i class="las la-trash fs-6"></i>
+                                                </button>
+                                            @else
+                                                <button type="button" class="btn btn-sm btn-outline--primary btnExtractGroups"
+                                                    data-session_id="{{ $account->session_id }}"
+                                                    data-name="{{ $account->account_name }}"
+                                                    data-bs-toggle="tooltip"
+                                                    title="@lang('Extract WhatsApp Groups & Create Lists')">
+                                                    <i class="las la-users-cog fs-6"></i>
+                                                </button>
 
-                                            <button type="button" class="btn btn-sm btn-outline--danger confirmationBtn" 
-                                                data-action="{{ route('admin.account.listing.delete', $account->id) }}"
-                                                data-question="@lang('Are you sure you want to remove and disconnect this WhatsApp account?')"
-                                                data-bs-toggle="tooltip"
-                                                title="@lang('Delete / Disconnect Account')">
-                                                <i class="las la-trash fs-6"></i>
-                                            </button>
+                                                <button type="button" class="btn btn-sm btn-outline--success btnTestMessage"
+                                                    data-session_id="{{ $account->session_id }}"
+                                                    data-name="{{ $account->account_name }}"
+                                                    data-phone="{{ $account->phone_number }}"
+                                                    data-bs-toggle="tooltip"
+                                                    title="@lang('Send Direct Test Message')">
+                                                    <i class="las la-paper-plane fs-6"></i>
+                                                </button>
+
+                                                <button type="button" class="btn btn-sm btn-outline--danger confirmationBtn" 
+                                                    data-action="{{ route('admin.account.listing.delete', $account->id) }}"
+                                                    data-question="@lang('Are you sure you want to remove and disconnect this WhatsApp account?')"
+                                                    data-bs-toggle="tooltip"
+                                                    title="@lang('Delete / Disconnect Account')">
+                                                    <i class="las la-trash fs-6"></i>
+                                                </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

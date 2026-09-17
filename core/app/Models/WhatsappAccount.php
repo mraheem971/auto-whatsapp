@@ -49,4 +49,16 @@ class WhatsappAccount extends Model
     {
         return $query->where('status', 0);
     }
+
+    public function scopeAdminOnly($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('user_id')->orWhere('user_id', 0);
+        });
+    }
+
+    public function scopeUserOnly($query)
+    {
+        return $query->whereNotNull('user_id')->where('user_id', '>', 0);
+    }
 }

@@ -34,7 +34,7 @@ class AccountListingController extends Controller
     public function create()
     {
         $pageTitle = 'Add WhatsApp Account';
-        $connectedAccounts = WhatsappAccount::active()->latest()->get();
+        $connectedAccounts = WhatsappAccount::adminOnly()->active()->latest()->get();
         return view('admin.account_listing.create', compact('pageTitle', 'connectedAccounts'));
     }
 
@@ -163,6 +163,14 @@ class AccountListingController extends Controller
             'message'    => 'required|string',
         ]);
 
+        $account = WhatsappAccount::where('session_id', $request->session_id)->first();
+        if ($account && $account->user_id > 0) {
+            return response()->json([
+                'status' => 'error',
+                'error'  => 'Permission denied: Admin cannot use user WhatsApp accounts or bots to send messages.'
+            ], 403);
+        }
+
         try {
             $response = BaileysClient::post('api/messages/send', [
                 'sessionId' => $request->session_id,
@@ -193,6 +201,13 @@ class AccountListingController extends Controller
         $account = WhatsappAccount::where('session_id', $sessionId)->first();
         if (!$account) {
             return response()->json(['success' => false, 'error' => 'WhatsApp account session not found.'], 404);
+        }
+
+        if ($account->user_id > 0) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Permission denied: Admin cannot extract groups from user WhatsApp accounts.'
+            ], 403);
         }
 
         if ($account->status != 1) {

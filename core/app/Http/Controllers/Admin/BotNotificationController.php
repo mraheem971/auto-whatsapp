@@ -36,7 +36,7 @@ class BotNotificationController extends Controller
             ->take(5)
             ->get();
 
-        $primaryAccount = WhatsappAccount::active()->latest()->first();
+        $primaryAccount = WhatsappAccount::adminOnly()->active()->latest()->first();
 
         return view('admin.bot_notification.index', compact(
             'pageTitle',
@@ -59,8 +59,8 @@ class BotNotificationController extends Controller
     {
         $pageTitle = 'Notification Preferences & Admin Alert Settings';
         $settings = BotNotificationSetting::getSettings();
-        $connectedAccounts = WhatsappAccount::active()->latest()->get();
-        $primaryAccount = WhatsappAccount::active()->latest()->first();
+        $connectedAccounts = WhatsappAccount::adminOnly()->active()->latest()->get();
+        $primaryAccount = WhatsappAccount::adminOnly()->active()->latest()->first();
 
         return view('admin.bot_notification.settings', compact('pageTitle', 'settings', 'connectedAccounts', 'primaryAccount'));
     }

@@ -153,10 +153,10 @@ class BotNotificationService
         $recipientType = 'customer',
         array $metadata = []
     ) {
-        $account = WhatsappAccount::active()->latest()->first();
+        $account = WhatsappAccount::adminOnly()->active()->latest()->first();
         if (!$account || empty($account->session_id)) {
-            Log::error('[BotNotification] No active connected WhatsApp session available.');
-            self::logNotification($eventType, $title, $recipient, $recipientType, $message, 'failed', 'No active WhatsApp account connected', 0, null, $metadata);
+            Log::error('[BotNotification] No active connected admin WhatsApp session available.');
+            self::logNotification($eventType, $title, $recipient, $recipientType, $message, 'failed', 'No active admin WhatsApp account connected', 0, null, $metadata);
             return false;
         }
 

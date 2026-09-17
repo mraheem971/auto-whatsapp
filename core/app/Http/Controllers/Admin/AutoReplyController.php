@@ -14,17 +14,19 @@ class AutoReplyController extends Controller
     public function index(Request $request)
     {
         $pageTitle = 'Auto-Reply & Keyword Bots';
-        $connectedAccounts = WhatsappAccount::active()->latest()->get();
-        $contactLists = ContactList::withCount('contacts')->latest()->get();
+        $connectedAccounts = WhatsappAccount::adminOnly()->active()->latest()->get();
+        $contactLists = ContactList::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->withCount('contacts')->latest()->get();
         
-        $contacts = Contact::where('type', 'contact')->latest()->get();
-        $groups = Contact::whereNotNull('group_id')
+        $contacts = Contact::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->where('type', 'contact')->latest()->get();
+        $groups = Contact::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })
+            ->whereNotNull('group_id')
             ->where('group_id', '!=', '')
             ->selectRaw('group_name, group_id')
             ->groupBy('group_name', 'group_id')
             ->get();
 
-        $query = AutoReply::with(['account', 'contactList'])->latest();
+        $query = AutoReply::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })
+            ->with(['account', 'contactList'])->latest();
 
         if ($request->search) {
             $search = trim($request->search);
@@ -52,9 +54,9 @@ class AutoReplyController extends Controller
         $botRules = $query->paginate(getPaginate());
 
         // Stats
-        $totalBots = AutoReply::count();
-        $activeBots = AutoReply::where('status', 1)->count();
-        $totalHits = AutoReply::sum('hit_count');
+        $totalBots = AutoReply::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->count();
+        $activeBots = AutoReply::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->where('status', 1)->count();
+        $totalHits = AutoReply::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->sum('hit_count');
 
         return view('admin.autoreply.index', compact(
             'pageTitle',
@@ -87,6 +89,14 @@ class AutoReplyController extends Controller
             'reply_delay_seconds'     => 'nullable|integer|min:0|max:3600',
         ]);
 
+        if (!empty($request->session_id)) {
+            $adminAccount = WhatsappAccount::adminOnly()->where('session_id', $request->session_id)->first();
+            if (!$adminAccount) {
+                $notify[] = ['error', 'Permission denied: Admin cannot assign auto-reply bots to user WhatsApp accounts.'];
+                return back()->withInput()->withNotify($notify);
+            }
+        }
+
         if ($request->match_type !== 'fallback' && empty(trim($request->keywords))) {
             $notify[] = ['error', 'Please provide at least one keyword for this match type.'];
             return back()->withInput()->withNotify($notify);
@@ -112,6 +122,7 @@ class AutoReplyController extends Controller
 
         $bot = new AutoReply();
         $bot->admin_id                = auth('admin')->id() ?? 1;
+        $bot->user_id                 = 0;
         $bot->session_id              = !empty($request->session_id) ? $request->session_id : null;
         $bot->name                    = $request->name;
         $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : 'individual';
@@ -135,7 +146,7 @@ class AutoReplyController extends Controller
 
     public function update(Request $request, $id)
     {
-        $bot = AutoReply::findOrFail($id);
+        $bot = AutoReply::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->findOrFail($id);
 
         $request->validate([
             'name'                    => 'required|string|max:150',
@@ -153,6 +164,14 @@ class AutoReplyController extends Controller
             'reply_delay_seconds'     => 'nullable|integer|min:0|max:3600',
             'status'                  => 'nullable|boolean',
         ]);
+
+        if (!empty($request->session_id)) {
+            $adminAccount = WhatsappAccount::adminOnly()->where('session_id', $request->session_id)->first();
+            if (!$adminAccount) {
+                $notify[] = ['error', 'Permission denied: Admin cannot assign auto-reply bots to user WhatsApp accounts.'];
+                return back()->withInput()->withNotify($notify);
+            }
+        }
 
         if ($request->match_type !== 'fallback' && empty(trim($request->keywords))) {
             $notify[] = ['error', 'Please provide at least one keyword for this match type.'];
@@ -198,7 +217,7 @@ class AutoReplyController extends Controller
 
     public function delete($id)
     {
-        $bot = AutoReply::findOrFail($id);
+        $bot = AutoReply::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->findOrFail($id);
         $bot->delete();
 
         $notify[] = ['success', 'Bot rule deleted successfully!'];
@@ -207,7 +226,7 @@ class AutoReplyController extends Controller
 
     public function statusToggle($id)
     {
-        $bot = AutoReply::findOrFail($id);
+        $bot = AutoReply::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->findOrFail($id);
         $bot->status = !$bot->status;
         $bot->save();
 

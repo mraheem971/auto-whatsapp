@@ -36,13 +36,25 @@ class AutoReply extends Model
         return $query->where('status', 1);
     }
 
+    public function scopeAdminOnly($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('user_id')->orWhere('user_id', 0);
+        });
+    }
+
+    public function scopeUserOnly($query)
+    {
+        return $query->whereNotNull('user_id')->where('user_id', '>', 0);
+    }
+
     public function scopeForSession($query, $sessionId)
     {
         return $query->where(function ($q) use ($sessionId) {
             $account = !empty($sessionId) ? WhatsappAccount::where('session_id', $sessionId)->first() : null;
 
-            if ($account && $account->user_id) {
-                // User account: match user's rules for all their accounts or specific session
+            if ($account && $account->user_id > 0) {
+                // User account: ONLY match this specific user's rules
                 $q->where('user_id', $account->user_id)
                   ->where(function ($sq) use ($sessionId) {
                       $sq->whereNull('session_id')
@@ -50,25 +62,14 @@ class AutoReply extends Model
                          ->orWhere('session_id', $sessionId);
                   });
             } else {
-                // Admin or Global account: match admin rules
-                $q->where(function ($sq) use ($sessionId) {
-                    $sq->whereNull('user_id')
-                       ->where(function ($ssq) use ($sessionId) {
-                           $ssq->whereNull('session_id')
-                              ->orWhere('session_id', '')
-                              ->orWhere('session_id', $sessionId);
-                       });
-                })->orWhere('session_id', $sessionId);
-            }
-
-            if ($account && $account->phone_number) {
-                $otherSessionIds = WhatsappAccount::where('phone_number', $account->phone_number)
-                    ->pluck('session_id')
-                    ->filter()
-                    ->toArray();
-                if (!empty($otherSessionIds)) {
-                    $q->orWhereIn('session_id', $otherSessionIds);
-                }
+                // Admin account: ONLY match admin rules (user_id is null or 0)
+                $q->where(function ($adminQ) {
+                    $adminQ->whereNull('user_id')->orWhere('user_id', 0);
+                })->where(function ($sq) use ($sessionId) {
+                    $sq->whereNull('session_id')
+                       ->orWhere('session_id', '')
+                       ->orWhere('session_id', $sessionId);
+                });
             }
         });
     }

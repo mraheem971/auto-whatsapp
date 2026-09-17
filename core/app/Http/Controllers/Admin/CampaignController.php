@@ -33,18 +33,19 @@ class CampaignController extends Controller
     public function create()
     {
         $pageTitle = 'Create New Campaign';
-        $connectedAccounts = WhatsappAccount::active()->latest()->get();
+        $connectedAccounts = WhatsappAccount::adminOnly()->active()->latest()->get();
         $templates = MessageTemplate::latest()->get();
-        $contactLists = ContactList::withCount('contacts')->latest()->get();
+        $contactLists = ContactList::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->withCount('contacts')->latest()->get();
         
         // Distinct groups from contacts table
-        $groups = Contact::whereNotNull('group_id')
+        $groups = Contact::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })
+            ->whereNotNull('group_id')
             ->where('group_id', '!=', '')
             ->selectRaw('group_name, group_id, count(*) as member_count')
             ->groupBy('group_name', 'group_id')
             ->get();
 
-        $totalContacts = Contact::where('type', 'contact')->count();
+        $totalContacts = Contact::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->where('type', 'contact')->count();
         $totalGroups = $groups->count();
 
         return view('admin.campaign.create', compact('pageTitle', 'connectedAccounts', 'templates', 'contactLists', 'groups', 'totalContacts', 'totalGroups'));
@@ -78,6 +79,13 @@ class CampaignController extends Controller
             'min_delay'        => 'nullable|integer|min:1|max:120',
             'max_delay'        => 'nullable|integer|min:1|max:120',
         ]);
+
+        // Security check: Admin cannot use user WhatsApp accounts/bots
+        $adminAccount = WhatsappAccount::adminOnly()->where('session_id', $request->session_id)->first();
+        if (!$adminAccount) {
+            $notify[] = ['error', 'Permission denied: Admin cannot use user WhatsApp bots to send campaigns.'];
+            return back()->withInput()->withNotify($notify);
+        }
 
         // Calculate recipients list based on target type
         $recipients = [];
