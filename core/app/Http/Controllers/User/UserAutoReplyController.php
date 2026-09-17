@@ -103,13 +103,22 @@ class UserAutoReplyController extends Controller
             $contactsFormatted = json_encode($cArray);
         }
 
+        // Format keywords into clean array, collapsing multiple spaces
+        $keywordsFormatted = null;
+        if (!empty($request->keywords)) {
+            $kwArray = array_values(array_filter(array_map(function($kw) {
+                return preg_replace('/\s+/', ' ', trim($kw));
+            }, explode(',', $request->keywords))));
+            $keywordsFormatted = json_encode($kwArray);
+        }
+
         $bot = new AutoReply();
         $bot->user_id                 = $user->id;
         $bot->admin_id                = 0;
         $bot->name                    = $request->name;
         $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : 'individual';
         $bot->match_type              = $request->match_type;
-        $bot->keywords                = $request->keywords;
+        $bot->keywords                = $keywordsFormatted;
         $bot->reply_type              = $request->reply_type ?: 'text';
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
@@ -165,10 +174,19 @@ class UserAutoReplyController extends Controller
             $contactsFormatted = json_encode($cArray);
         }
 
+        // Format keywords into clean array, collapsing multiple spaces
+        $keywordsFormatted = null;
+        if (!empty($request->keywords)) {
+            $kwArray = array_values(array_filter(array_map(function($kw) {
+                return preg_replace('/\s+/', ' ', trim($kw));
+            }, explode(',', $request->keywords))));
+            $keywordsFormatted = json_encode($kwArray);
+        }
+
         $bot->name                    = $request->name;
         $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : 'individual';
         $bot->match_type              = $request->match_type;
-        $bot->keywords                = $request->keywords;
+        $bot->keywords                = $keywordsFormatted;
         $bot->reply_type              = $request->reply_type ?: 'text';
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;

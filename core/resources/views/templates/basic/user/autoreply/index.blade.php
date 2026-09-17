@@ -2,15 +2,47 @@
 @section('content')
 @push('style')
 <style>
-    .custom--autoreply-table th {
-        white-space: nowrap;
-        font-weight: 600;
-        font-size: 13px;
-        letter-spacing: 0.3px;
+    .custom--autoreply-table {
+        table-layout: auto !important;
+        border-collapse: collapse !important;
+        width: 100% !important;
+        min-width: 950px !important;
     }
-    .custom--autoreply-table td {
-        vertical-align: middle;
-        font-size: 13.5px;
+    .custom--autoreply-table thead tr th {
+        max-width: none !important;
+        width: auto !important;
+        white-space: nowrap !important;
+        font-weight: 700 !important;
+        font-size: 12px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        padding: 12px 14px !important;
+        vertical-align: middle !important;
+        background-color: #f8fafc !important;
+        color: #334155 !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-radius: 0 !important;
+        text-align: left !important;
+    }
+    .custom--autoreply-table thead tr th.text-center {
+        text-align: center !important;
+    }
+    .custom--autoreply-table thead tr th.text-end {
+        text-align: right !important;
+    }
+    .custom--autoreply-table tbody tr td {
+        max-width: none !important;
+        padding: 12px 14px !important;
+        vertical-align: middle !important;
+        font-size: 13.5px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        background-color: transparent !important;
     }
     .custom--keyword-badge {
         background-color: #f1f5f9;
@@ -34,6 +66,19 @@
     }
 
     /* Dark Theme Support */
+    [data-theme="dark"] .custom--autoreply-table thead tr th,
+    .dark-theme .custom--autoreply-table thead tr th,
+    body.dark-mode .custom--autoreply-table thead tr th {
+        background-color: #1e293b !important;
+        color: #94a3b8 !important;
+        border-bottom: 2px solid #334155 !important;
+    }
+    [data-theme="dark"] .custom--autoreply-table tbody tr td,
+    .dark-theme .custom--autoreply-table tbody tr td,
+    body.dark-mode .custom--autoreply-table tbody tr td {
+        border-bottom: 1px solid #1e293b !important;
+        color: #f8fafc !important;
+    }
     [data-theme="dark"] .custom--keyword-badge,
     .dark-theme .custom--keyword-badge,
     body.dark-mode .custom--keyword-badge {
@@ -152,14 +197,14 @@
                     <table class="table table-hover align-middle mb-0 custom--autoreply-table">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3 py-3" style="min-width: 190px;">Bot Name & Account</th>
-                                <th class="py-3" style="min-width: 160px;">Target Audience</th>
-                                <th class="py-3" style="min-width: 220px;">Match Type & Trigger Keywords</th>
-                                <th class="py-3" style="min-width: 160px;">Human Behavior</th>
-                                <th class="py-3" style="min-width: 230px; max-width: 280px;">Reply Message Preview</th>
-                                <th class="py-3 text-center" style="min-width: 80px;">Hits</th>
-                                <th class="py-3 text-center" style="min-width: 110px;">Status</th>
-                                <th class="text-end pe-3 py-3" style="min-width: 110px;">Actions</th>
+                                <th class="ps-3 py-3">Bot Name & Account</th>
+                                <th class="py-3">Target Audience</th>
+                                <th class="py-3">Keywords & Match</th>
+                                <th class="py-3">Human Delays</th>
+                                <th class="py-3">Reply Message</th>
+                                <th class="py-3 text-center">Hits</th>
+                                <th class="py-3 text-center">Status</th>
+                                <th class="text-end pe-3 py-3">Action</th>
                             </tr>
                         </thead>
                         <tbody>
