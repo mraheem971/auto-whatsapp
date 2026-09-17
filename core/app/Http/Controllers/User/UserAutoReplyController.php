@@ -80,8 +80,9 @@ class UserAutoReplyController extends Controller
             'name'                    => 'required|string|max:150',
             'match_type'              => 'required|in:exact,contains,starts_with,regex,fallback',
             'keywords'                => 'nullable|string',
-            'reply_type'              => 'required|in:text,image,video,document,flow',
+            'reply_type'              => 'nullable|string|in:text,image,video,document,flow',
             'reply_message'           => 'required|string',
+            'media_url'               => 'nullable|url|max:2000',
             'session_id'              => 'nullable|string',
             'target_type'             => 'required|in:all,all_individual,all_group,saved_contacts,unsaved_contacts,specific_contacts,specific_groups,contact_list',
             'target_contacts'         => 'nullable|string',
@@ -104,12 +105,15 @@ class UserAutoReplyController extends Controller
 
         $bot = new AutoReply();
         $bot->user_id                 = $user->id;
+        $bot->admin_id                = 0;
         $bot->name                    = $request->name;
+        $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : 'individual';
         $bot->match_type              = $request->match_type;
         $bot->keywords                = $request->keywords;
-        $bot->reply_type              = $request->reply_type;
+        $bot->reply_type              = $request->reply_type ?: 'text';
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
+        $bot->reply_destination       = 'same_chat';
         $bot->session_id              = $request->session_id;
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;
@@ -118,7 +122,8 @@ class UserAutoReplyController extends Controller
         $bot->read_delay_seconds      = $request->filled('read_delay_seconds') ? (int)$request->read_delay_seconds : 2;
         $bot->typing_duration_seconds = $request->filled('typing_duration_seconds') ? (int)$request->typing_duration_seconds : 3;
         $bot->reply_delay_seconds     = $request->filled('reply_delay_seconds') ? (int)$request->reply_delay_seconds : ($request->delay_seconds ?: 2);
-        $bot->cooldown_minutes        = $request->cooldown_minutes ?: 0;
+        $bot->cooldown_minutes        = (int) ($request->cooldown_minutes ?: 0);
+        $bot->cooldown_seconds        = (int) ($request->cooldown_minutes ?: 0) * 60;
         $bot->status                  = 1;
         $bot->save();
 
@@ -139,8 +144,9 @@ class UserAutoReplyController extends Controller
             'name'                    => 'required|string|max:150',
             'match_type'              => 'required|in:exact,contains,starts_with,regex,fallback',
             'keywords'                => 'nullable|string',
-            'reply_type'              => 'required|in:text,image,video,document,flow',
+            'reply_type'              => 'nullable|string|in:text,image,video,document,flow',
             'reply_message'           => 'required|string',
+            'media_url'               => 'nullable|url|max:2000',
             'target_type'             => 'required|in:all,all_individual,all_group,saved_contacts,unsaved_contacts,specific_contacts,specific_groups,contact_list',
             'target_contacts'         => 'nullable|string',
             'target_group_ids'        => 'nullable|array',
@@ -148,6 +154,7 @@ class UserAutoReplyController extends Controller
             'read_delay_seconds'      => 'nullable|integer|min:0|max:60',
             'typing_duration_seconds' => 'nullable|integer|min:0|max:60',
             'reply_delay_seconds'     => 'nullable|integer|min:0|max:60',
+            'cooldown_minutes'        => 'nullable|integer|min:0|max:1440',
         ]);
 
         $contactsFormatted = null;
@@ -159,9 +166,10 @@ class UserAutoReplyController extends Controller
         }
 
         $bot->name                    = $request->name;
+        $bot->chat_scope              = in_array($request->target_type, ['all_group', 'specific_groups']) ? 'group' : 'individual';
         $bot->match_type              = $request->match_type;
         $bot->keywords                = $request->keywords;
-        $bot->reply_type              = $request->reply_type;
+        $bot->reply_type              = $request->reply_type ?: 'text';
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
         $bot->session_id              = $request->session_id;
@@ -172,7 +180,8 @@ class UserAutoReplyController extends Controller
         $bot->read_delay_seconds      = $request->filled('read_delay_seconds') ? (int)$request->read_delay_seconds : 0;
         $bot->typing_duration_seconds = $request->filled('typing_duration_seconds') ? (int)$request->typing_duration_seconds : 0;
         $bot->reply_delay_seconds     = $request->filled('reply_delay_seconds') ? (int)$request->reply_delay_seconds : ($request->delay_seconds ?: 0);
-        $bot->cooldown_minutes        = $request->cooldown_minutes ?: 0;
+        $bot->cooldown_minutes        = (int) ($request->cooldown_minutes ?: 0);
+        $bot->cooldown_seconds        = (int) ($request->cooldown_minutes ?: 0) * 60;
         $bot->save();
 
         try {

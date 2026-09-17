@@ -276,6 +276,8 @@ class AutoReplyController extends Controller
                 'match_type'              => $r->match_type,
                 'keywords'                => $r->keywords_array,
                 'reply_message'           => $r->reply_message,
+                'reply_type'              => $r->reply_type ?: 'text',
+                'media_url'               => $r->media_url,
                 'reply_destination'       => $r->reply_destination ?: 'same_chat',
                 'read_delay_seconds'      => (int) ($r->read_delay_seconds ?? 0),
                 'typing_duration_seconds' => (int) ($r->typing_duration_seconds ?? 0),
