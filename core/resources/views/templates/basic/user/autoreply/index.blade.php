@@ -3,28 +3,29 @@
 @push('style')
 <style>
     .custom--autoreply-table {
-        table-layout: auto !important;
-        border-collapse: collapse !important;
         width: 100% !important;
-        min-width: 950px !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        margin-bottom: 0 !important;
     }
     .custom--autoreply-table thead tr th {
         max-width: none !important;
-        width: auto !important;
-        white-space: nowrap !important;
         font-weight: 700 !important;
-        font-size: 12px !important;
+        font-size: 11.5px !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        padding: 12px 14px !important;
+        letter-spacing: 0.3px !important;
+        padding: 10px 8px !important;
         vertical-align: middle !important;
         background-color: #f8fafc !important;
-        color: #334155 !important;
+        color: #475569 !important;
         border-bottom: 2px solid #e2e8f0 !important;
         border-top: none !important;
         border-left: none !important;
         border-right: none !important;
         border-radius: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
         text-align: left !important;
     }
     .custom--autoreply-table thead tr th.text-center {
@@ -35,31 +36,39 @@
     }
     .custom--autoreply-table tbody tr td {
         max-width: none !important;
-        padding: 12px 14px !important;
+        padding: 10px 8px !important;
         vertical-align: middle !important;
-        font-size: 13.5px !important;
+        font-size: 12.5px !important;
         border-bottom: 1px solid #f1f5f9 !important;
         border-top: none !important;
         border-left: none !important;
         border-right: none !important;
         background-color: transparent !important;
+        word-break: break-word;
     }
     .custom--keyword-badge {
         background-color: #f1f5f9;
         color: #334155;
         border: 1px solid #cbd5e1;
-        font-size: 11.5px;
+        font-size: 10.5px;
         font-weight: 600;
         letter-spacing: 0.2px;
         display: inline-block;
         white-space: nowrap;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .custom--preview-box {
         background-color: #f8fafc;
         border-color: #e2e8f0 !important;
         color: #1e293b;
-        max-width: 260px;
-        line-height: 1.4;
+        width: 100%;
+        line-height: 1.3;
+        font-size: 11.5px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     .text-dark-mode-high {
         color: #0f172a;
@@ -101,15 +110,15 @@
 </style>
 @endpush
 <div class="dashboard-section py-60">
-    <div class="container">
+    <div class="container-fluid px-lg-4">
         
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
             <div>
                 <h4 class="mb-1 fw-bold text-dark-mode-high">Auto-Reply & Keyword Bots</h4>
-                <p class="text-muted mb-0">Create smart bots that automatically respond to your customers on WhatsApp 24/7.</p>
+                <p class="text-muted mb-0 small">Create smart bots that automatically respond to your customers on WhatsApp 24/7.</p>
             </div>
             <div>
-                <button type="button" class="btn btn--base fw-bold px-3 py-2" data-bs-toggle="modal" data-bs-target="#createBotModal">
+                <button type="button" class="btn btn--base fw-bold px-3 py-2 btn-sm" data-bs-toggle="modal" data-bs-target="#createBotModal">
                     <i class="las la-plus-circle me-1"></i> Add Keyword Bot
                 </button>
             </div>
@@ -124,7 +133,7 @@
                             <span class="text-muted small fw-bold text-uppercase d-block mb-1">Total Bot Rules</span>
                             <h3 class="fw-bold text-dark-mode-high mb-0">{{ $totalBots }} <span class="text-muted fs-6 fw-normal">/ {{ $plan->autoreply_limit ?? 10 }}</span></h3>
                         </div>
-                        <div class="card-icon bg-primary bg-opacity-10 text-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                        <div class="card-icon bg-primary bg-opacity-10 text-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
                             <i class="las la-robot fs-4"></i>
                         </div>
                     </div>
@@ -137,7 +146,7 @@
                             <span class="text-muted small fw-bold text-uppercase d-block mb-1">Active Rules</span>
                             <h3 class="fw-bold text-success mb-0">{{ $activeBots }}</h3>
                         </div>
-                        <div class="card-icon bg-success bg-opacity-10 text-success rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                        <div class="card-icon bg-success bg-opacity-10 text-success rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
                             <i class="las la-check-circle fs-4"></i>
                         </div>
                     </div>
@@ -147,10 +156,10 @@
                 <div class="card custom--card p-3 border shadow-sm rounded-3">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <span class="text-muted small fw-bold text-uppercase d-block mb-1">Total Responses Dispatched</span>
+                            <span class="text-muted small fw-bold text-uppercase d-block mb-1">Total Dispatched</span>
                             <h3 class="fw-bold text-primary mb-0">{{ $totalHits }}</h3>
                         </div>
-                        <div class="card-icon bg-info bg-opacity-10 text-info rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                        <div class="card-icon bg-info bg-opacity-10 text-info rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
                             <i class="las la-paper-plane fs-4"></i>
                         </div>
                     </div>
@@ -161,12 +170,12 @@
         <!-- Main List Card -->
         <div class="card custom--card border shadow-sm rounded-3 overflow-hidden">
             <!-- Filter Header -->
-            <div class="card-header bg-white py-3 border-bottom">
+            <div class="card-header bg-white py-2 px-3 border-bottom">
                 <form action="" method="GET">
                     <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
                         <div class="d-flex flex-wrap gap-2 align-items-center">
                             <!-- Account Filter -->
-                            <select name="session_id" class="form-select form-select-sm" onchange="this.form.submit()" style="max-width: 230px;">
+                            <select name="session_id" class="form-select form-select-sm" onchange="this.form.submit()" style="max-width: 200px;">
                                 <option value="">🌐 All My Accounts</option>
                                 @foreach($connectedAccounts as $acc)
                                     <option value="{{ $acc->session_id }}" {{ request('session_id') == $acc->session_id ? 'selected' : '' }}>
@@ -176,7 +185,7 @@
                             </select>
 
                             <!-- Status Filter -->
-                            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" style="max-width: 140px;">
+                            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" style="max-width: 120px;">
                                 <option value="">All Status</option>
                                 <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active</option>
                                 <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Disabled</option>
@@ -184,8 +193,8 @@
                         </div>
 
                         <!-- Search -->
-                        <div class="input-group input-group-sm" style="max-width: 280px;">
-                            <input type="text" name="search" class="form-control" placeholder="Search keyword or rule..." value="{{ request('search') }}">
+                        <div class="input-group input-group-sm" style="max-width: 240px;">
+                            <input type="text" name="search" class="form-control" placeholder="Search bot/keyword..." value="{{ request('search') }}">
                             <button class="btn btn--base" type="submit"><i class="las la-search"></i></button>
                         </div>
                     </div>
@@ -193,87 +202,87 @@
             </div>
 
             <div class="card-body p-0">
-                <div class="table-responsive">
+                <div class="table-responsive" style="overflow-x: auto;">
                     <table class="table table-hover align-middle mb-0 custom--autoreply-table">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3 py-3">Bot Name & Account</th>
-                                <th class="py-3">Target Audience</th>
-                                <th class="py-3">Keywords & Match</th>
-                                <th class="py-3">Human Delays</th>
-                                <th class="py-3">Reply Message</th>
-                                <th class="py-3 text-center">Hits</th>
-                                <th class="py-3 text-center">Status</th>
-                                <th class="text-end pe-3 py-3">Action</th>
+                                <th class="ps-3 py-2" style="width: 18%;">Bot & Account</th>
+                                <th class="py-2" style="width: 14%;">Audience</th>
+                                <th class="py-2" style="width: 22%;">Keywords & Match</th>
+                                <th class="py-2" style="width: 13%;">Human Delays</th>
+                                <th class="py-2" style="width: 17%;">Reply Preview</th>
+                                <th class="py-2 text-center" style="width: 5%;">Hits</th>
+                                <th class="py-2 text-center" style="width: 5%;">Status</th>
+                                <th class="text-end pe-3 py-2" style="width: 6%;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($botRules as $rule)
                                 <tr>
-                                    <td class="ps-3 py-3">
-                                        <div class="fw-bold text-dark-mode-high mb-1">{{ $rule->name }}</div>
-                                        <div class="text-muted small text-nowrap">
+                                    <td class="ps-3 py-2">
+                                        <div class="fw-bold text-dark-mode-high text-truncate mb-0.5" title="{{ $rule->name }}">{{ $rule->name }}</div>
+                                        <div class="text-muted small text-nowrap" style="font-size: 11px;">
                                             @if($rule->account)
-                                                <i class="lab la-whatsapp text-success me-1"></i>{{ $rule->account->account_name }} ({{ $rule->account->phone_number ? '+' . $rule->account->phone_number : 'Active' }})
+                                                <i class="lab la-whatsapp text-success me-1"></i>{{ $rule->account->account_name }}
                                             @else
-                                                <i class="las la-globe text-primary me-1"></i>All My Accounts
+                                                <i class="las la-globe text-primary me-1"></i>All Accounts
                                             @endif
                                         </div>
                                     </td>
-                                    <td class="py-3">
+                                    <td class="py-2">
                                         @if($rule->target_type == 'all_individual')
-                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-user me-1"></i> Direct Chats Only
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10.5px;">
+                                                <i class="las la-user me-0.5"></i> Direct Chats
                                             </span>
                                         @elseif($rule->target_type == 'all_group')
-                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-users me-1"></i> Groups Only
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10.5px;">
+                                                <i class="las la-users me-0.5"></i> Groups
                                             </span>
                                         @elseif($rule->target_type == 'saved_contacts')
-                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-user-check me-1"></i> Saved Contacts
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10.5px;">
+                                                <i class="las la-user-check me-0.5"></i> Saved Contacts
                                             </span>
                                         @elseif($rule->target_type == 'unsaved_contacts')
-                                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-user-plus me-1"></i> Unsaved Numbers
+                                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10.5px;">
+                                                <i class="las la-user-plus me-0.5"></i> Unsaved
                                             </span>
                                         @elseif($rule->target_type == 'specific_contacts')
-                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-phone me-1"></i> {{ count($rule->target_contacts_array) }} Specific Numbers
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10.5px;">
+                                                <i class="las la-phone me-0.5"></i> {{ count($rule->target_contacts_array) }} Numbers
                                             </span>
                                         @elseif($rule->target_type == 'specific_groups')
-                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-comments me-1"></i> {{ count($rule->target_group_ids_array) }} Specific Groups
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10.5px;">
+                                                <i class="las la-comments me-0.5"></i> {{ count($rule->target_group_ids_array) }} Groups
                                             </span>
                                         @elseif($rule->target_type == 'contact_list')
-                                            <span class="badge bg-dark bg-opacity-10 text-dark border border-dark border-opacity-25 px-2 py-1 text-nowrap">
-                                                <i class="las la-list me-1"></i> List: {{ $rule->contactList ? $rule->contactList->name : 'Audience' }}
+                                            <span class="badge bg-dark bg-opacity-10 text-dark border border-dark border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10.5px;">
+                                                <i class="las la-list me-0.5"></i> List
                                             </span>
                                         @else
-                                            <span class="badge bg-light text-dark border px-2 py-1 text-nowrap">
-                                                <i class="las la-globe me-1"></i> All Chats
+                                            <span class="badge bg-light text-dark border px-1.5 py-0.5 text-nowrap" style="font-size: 10.5px;">
+                                                <i class="las la-globe me-0.5"></i> All Chats
                                             </span>
                                         @endif
                                     </td>
-                                    <td class="py-3">
-                                        <div class="mb-2">
+                                    <td class="py-2">
+                                        <div class="mb-1">
                                             @if($rule->match_type === 'exact')
-                                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 text-nowrap">Exact Match</span>
+                                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10px;">Exact Match</span>
                                             @elseif($rule->match_type === 'contains')
-                                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 text-nowrap">Contains Keyword</span>
+                                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10px;">Contains Keyword</span>
                                             @elseif($rule->match_type === 'starts_with')
-                                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1 text-nowrap">Starts With</span>
+                                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10px;">Starts With</span>
                                             @elseif($rule->match_type === 'ends_with')
-                                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1 text-nowrap">Ends With</span>
+                                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10px;">Ends With</span>
                                             @elseif($rule->match_type === 'fallback')
-                                                <span class="badge bg-dark bg-opacity-10 text-dark border border-dark border-opacity-25 px-2 py-1 text-nowrap">Fallback (Default)</span>
+                                                <span class="badge bg-dark bg-opacity-10 text-dark border border-dark border-opacity-25 px-1.5 py-0.5 text-nowrap" style="font-size: 10px;">Fallback (Default)</span>
                                             @else
-                                                <span class="badge bg-secondary bg-opacity-10 text-secondary border px-2 py-1 text-nowrap text-uppercase">{{ $rule->match_type }}</span>
+                                                <span class="badge bg-secondary bg-opacity-10 text-secondary border px-1.5 py-0.5 text-nowrap text-uppercase" style="font-size: 10px;">{{ $rule->match_type }}</span>
                                             @endif
                                         </div>
 
                                         @if($rule->match_type !== 'fallback')
-                                            <div class="d-flex gap-1 flex-wrap">
+                                            <div class="d-flex gap-1 flex-wrap align-items-center">
                                                 @php
                                                     $kwList = [];
                                                     if (!empty($rule->keywords)) {
@@ -284,47 +293,51 @@
                                                             $kwList = array_values(array_filter(array_map('trim', explode(',', $rule->keywords))));
                                                         }
                                                     }
+                                                    $topKws = array_slice($kwList, 0, 3);
+                                                    $extraCount = count($kwList) - 3;
                                                 @endphp
-                                                @forelse($kwList as $kw)
-                                                    <span class="badge custom--keyword-badge font-monospace px-2 py-1">{{ $kw }}</span>
+                                                @forelse($topKws as $kw)
+                                                    <span class="badge custom--keyword-badge font-monospace px-1.5 py-0.5" title="{{ $kw }}">{{ $kw }}</span>
                                                 @empty
-                                                    <span class="text-muted small">No keywords set</span>
+                                                    <span class="text-muted small" style="font-size: 10.5px;">No keywords</span>
                                                 @endforelse
+                                                @if($extraCount > 0)
+                                                    <span class="badge bg-secondary bg-opacity-25 text-secondary px-1.5 py-0.5" title="{{ implode(', ', array_slice($kwList, 3)) }}" style="font-size: 10px; cursor: help;">+{{ $extraCount }} more</span>
+                                                @endif
                                             </div>
                                         @else
-                                            <small class="text-muted fst-italic">Triggered when no other keyword matches</small>
+                                            <small class="text-muted fst-italic" style="font-size: 10.5px;">Default fallback rule</small>
                                         @endif
                                     </td>
-                                    <td class="py-3">
-                                        <div class="d-flex flex-column gap-1 small">
-                                            <div class="text-nowrap"><i class="las la-eye text-primary me-1"></i><strong>Seen:</strong> {{ $rule->read_delay_seconds ? $rule->read_delay_seconds . 's' : 'Instant' }}</div>
-                                            <div class="text-nowrap"><i class="las la-keyboard text-success me-1"></i><strong>Typing:</strong> {{ $rule->typing_duration_seconds ? $rule->typing_duration_seconds . 's' : 'None' }}</div>
-                                            <div class="text-nowrap"><i class="las la-hourglass-half text-warning me-1"></i><strong>Send Delay:</strong> {{ $rule->reply_delay_seconds ? $rule->reply_delay_seconds . 's' : ($rule->delay_seconds ? $rule->delay_seconds . 's' : 'Instant') }}</div>
+                                    <td class="py-2">
+                                        <div class="d-flex flex-column gap-0.5" style="font-size: 11px; line-height: 1.3;">
+                                            <div class="text-nowrap"><i class="las la-eye text-primary me-0.5"></i>Seen: <strong>{{ $rule->read_delay_seconds ? $rule->read_delay_seconds . 's' : '0s' }}</strong></div>
+                                            <div class="text-nowrap"><i class="las la-keyboard text-success me-0.5"></i>Type: <strong>{{ $rule->typing_duration_seconds ? $rule->typing_duration_seconds . 's' : '0s' }}</strong></div>
+                                            <div class="text-nowrap"><i class="las la-hourglass-half text-warning me-0.5"></i>Delay: <strong>{{ $rule->reply_delay_seconds ? $rule->reply_delay_seconds . 's' : ($rule->delay_seconds ? $rule->delay_seconds . 's' : '0s') }}</strong></div>
                                         </div>
                                     </td>
-                                    <td class="py-3" style="max-width: 250px;">
-                                        <div class="custom--preview-box text-truncate p-2 rounded border small font-monospace" title="{{ $rule->reply_message }}">
+                                    <td class="py-2">
+                                        <div class="custom--preview-box p-1.5 rounded border" title="{{ $rule->reply_message }}">
                                             @if($rule->reply_type && $rule->reply_type !== 'text')
-                                                <span class="badge bg-secondary me-1 text-uppercase">{{ $rule->reply_type }}</span>
+                                                <span class="badge bg-secondary me-1 text-uppercase" style="font-size: 9px;">{{ $rule->reply_type }}</span>
                                             @endif
                                             {{ $rule->reply_message }}
                                         </div>
                                     </td>
-                                    <td class="py-3 text-center">
-                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">{{ $rule->hit_count }} hits</span>
+                                    <td class="py-2 text-center">
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-1.5 py-0.5" style="font-size: 11px;">{{ $rule->hit_count }}</span>
                                     </td>
-                                    <td class="py-3 text-center text-nowrap">
+                                    <td class="py-2 text-center">
                                         <form action="{{ route('user.autoreply.status', $rule->id) }}" method="POST" class="d-inline">
                                             @csrf
-                                            <button type="submit" class="btn btn-sm btn-outline-{{ $rule->status == 1 ? 'success' : 'secondary' }} py-1 px-2" title="Toggle Status">
-                                                <i class="las la-{{ $rule->status == 1 ? 'check-circle' : 'ban' }} me-1"></i>
-                                                {{ $rule->status == 1 ? 'Active' : 'Disabled' }}
+                                            <button type="submit" class="btn btn-sm btn-outline-{{ $rule->status == 1 ? 'success' : 'secondary' }} p-1" style="line-height: 1; font-size: 13px;" title="{{ $rule->status == 1 ? 'Active (Click to disable)' : 'Disabled (Click to enable)' }}">
+                                                <i class="las la-{{ $rule->status == 1 ? 'check-circle' : 'ban' }}"></i>
                                             </button>
                                         </form>
                                     </td>
-                                    <td class="text-end pe-3 py-3 text-nowrap">
+                                    <td class="text-end pe-3 py-2">
                                         <div class="d-inline-flex gap-1">
-                                            <button type="button" class="btn btn-outline-primary btn-sm btnEditBot py-1 px-2" 
+                                            <button type="button" class="btn btn-outline-primary btn-sm btnEditBot p-1" style="line-height: 1;"
                                                     data-id="{{ $rule->id }}"
                                                     data-name="{{ $rule->name }}"
                                                     data-match="{{ $rule->match_type }}"
@@ -346,7 +359,7 @@
 
                                             <form action="{{ route('user.autoreply.delete', $rule->id) }}" method="POST" onsubmit="return confirm('Delete this auto-reply bot?')" class="d-inline">
                                                 @csrf
-                                                <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2" title="Delete">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm p-1" style="line-height: 1;" title="Delete">
                                                     <i class="las la-trash"></i>
                                                 </button>
                                             </form>
