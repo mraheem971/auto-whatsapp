@@ -123,7 +123,7 @@ class UserAutoReplyController extends Controller
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
         $bot->reply_destination       = 'same_chat';
-        $bot->session_id              = $request->session_id;
+        $bot->session_id              = !empty($request->session_id) ? $request->session_id : null;
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;
         $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
@@ -190,7 +190,7 @@ class UserAutoReplyController extends Controller
         $bot->reply_type              = $request->reply_type ?: 'text';
         $bot->reply_message           = $request->reply_message;
         $bot->media_url               = $request->media_url;
-        $bot->session_id              = $request->session_id;
+        $bot->session_id              = !empty($request->session_id) ? $request->session_id : null;
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;
         $bot->target_group_ids        = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;

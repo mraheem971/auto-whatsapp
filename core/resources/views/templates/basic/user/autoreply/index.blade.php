@@ -34,16 +34,21 @@
     .custom--autoreply-table thead tr th.text-end {
         text-align: right !important;
     }
+    .custom--autoreply-table tbody,
+    .custom--autoreply-table tbody tr,
+    .custom--autoreply-table tbody tr td {
+        background-color: #ffffff !important;
+    }
     .custom--autoreply-table tbody tr td {
         max-width: none !important;
         padding: 10px 8px !important;
         vertical-align: middle !important;
         font-size: 12.5px !important;
+        color: #1e293b !important;
         border-bottom: 1px solid #f1f5f9 !important;
         border-top: none !important;
         border-left: none !important;
         border-right: none !important;
-        background-color: transparent !important;
         word-break: break-word;
     }
     .custom--keyword-badge {
@@ -82,11 +87,18 @@
         color: #94a3b8 !important;
         border-bottom: 2px solid #334155 !important;
     }
+    [data-theme="dark"] .custom--autoreply-table tbody,
+    .dark-theme .custom--autoreply-table tbody,
+    body.dark-mode .custom--autoreply-table tbody,
+    [data-theme="dark"] .custom--autoreply-table tbody tr,
+    .dark-theme .custom--autoreply-table tbody tr,
+    body.dark-mode .custom--autoreply-table tbody tr,
     [data-theme="dark"] .custom--autoreply-table tbody tr td,
     .dark-theme .custom--autoreply-table tbody tr td,
     body.dark-mode .custom--autoreply-table tbody tr td {
-        border-bottom: 1px solid #1e293b !important;
+        background-color: #0b1424 !important;
         color: #f8fafc !important;
+        border-bottom: 1px solid #1e293b !important;
     }
     [data-theme="dark"] .custom--keyword-badge,
     .dark-theme .custom--keyword-badge,
