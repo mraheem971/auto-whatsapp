@@ -355,65 +355,7 @@
                     </div>
                 </div>
 
-                <!-- Top Triggered Bots Leaderboard -->
-                @if($topBots->count() > 0)
-                    <div class="mt-4 pt-3 border-top">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <h6 class="fw-bold text-dark mb-0">
-                                <i class="las la-trophy text-warning me-1 fs-5"></i> @lang('Top Triggered Keyword Bots')
-                            </h6>
-                            <a href="{{ route('user.autoreply.index') }}" class="text--base small fw-bold text-decoration-none">
-                                @lang('View All') <i class="las la-arrow-right"></i>
-                            </a>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>@lang('Bot Name')</th>
-                                        <th>@lang('Match Type')</th>
-                                        <th>@lang('Trigger Keywords')</th>
-                                        <th>@lang('Triggered Hits')</th>
-                                        <th>@lang('Status')</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($topBots as $b)
-                                        <tr>
-                                            <td>
-                                                <div class="fw-bold text-dark">{{ $b->name }}</div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-secondary text-uppercase">{{ $b->match_type }}</span>
-                                            </td>
-                                            <td>
-                                                @if($b->match_type === 'fallback')
-                                                    <span class="badge bg-dark">@lang('Fallback / Unmatched')</span>
-                                                @else
-                                                    <span class="fw-semibold text-primary small">{{ $b->keywords ?: '-' }}</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-light text-dark border px-2 py-1 fw-bold">
-                                                    <i class="las la-fire text-danger me-1"></i>{{ $b->hit_count }} @lang('hits')
-                                                </span>
-                                            </td>
-                                            <td>
-                                                @if($b->status == 1)
-                                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
-                                                        <i class="las la-check-circle me-1"></i>@lang('Active')
-                                                    </span>
-                                                @else
-                                                    <span class="badge bg-secondary">@lang('Disabled')</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                @endif
+
 
             </div>
         </div>
