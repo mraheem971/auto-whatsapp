@@ -476,10 +476,13 @@
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    body.dark-mode .card.bg-light {
-        background-color: #182229 !important;
-        color: #e9edef !important;
-        border-color: rgba(255, 255, 255, 0.1) !important;
+    /* Hide Debugbar/Ignition floating badges that overlap the layout */
+    #phpdebugbar, .phpdebugbar, .phpdebugbar-open-handler, [class*="phpdebugbar"], 
+    .ignition-badge, #ignition-badge, [id*="ignition"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
     }
 
     .user-layout {
@@ -496,9 +499,37 @@
         top: 0;
         left: 0;
         bottom: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
         z-index: 1040;
         transition: all 0.3s ease-in-out;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        box-shadow: 2px 0 10px rgba(0,0,0,0.15);
+    }
+
+    .user-sidebar__header {
+        flex-shrink: 0;
+    }
+
+    .user-sidebar__menu {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    /* Sleek slim scrollbar for sidebar */
+    .user-sidebar__menu::-webkit-scrollbar {
+        width: 4px;
+    }
+    .user-sidebar__menu::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .user-sidebar__menu::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+    }
+    .user-sidebar__menu::-webkit-scrollbar-thumb:hover {
+        background: rgba(37, 211, 102, 0.5);
     }
 
     .user-sidebar .nav-link {

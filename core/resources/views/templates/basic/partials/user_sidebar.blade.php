@@ -17,8 +17,8 @@
 
 
     <!-- Navigation Menu -->
-    <div class="user-sidebar__menu p-2" style="overflow-y: auto; max-height: calc(100vh - 160px);">
-        <ul class="nav flex-column gap-1">
+    <div class="user-sidebar__menu p-2">
+        <ul class="nav flex-column gap-1 pb-4">
             
             <li class="nav-item">
                 <a class="nav-link text-white {{ menuActive('user.home') }}" href="{{ route('user.home') }}">

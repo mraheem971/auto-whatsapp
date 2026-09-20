@@ -205,3 +205,14 @@ body.dark-mode .badge.bg-secondary {
     background-color: #2a3942 !important;
     color: #cbd5e1 !important;
 }
+
+/* --------------------------------------------------------------------------
+   4. SUPPRESS DEBUG OVERLAYS & FLOATING BADGES
+   -------------------------------------------------------------------------- */
+#phpdebugbar, .phpdebugbar, .phpdebugbar-open-handler, [class*="phpdebugbar"], 
+.ignition-badge, #ignition-badge, [id*="ignition"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
