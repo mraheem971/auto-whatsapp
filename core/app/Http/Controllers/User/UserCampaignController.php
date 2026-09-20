@@ -24,6 +24,17 @@ class UserCampaignController extends Controller
 
         $query = Campaign::where('user_id', $user->id);
 
+        if ($request->status === 'active' || $request->status === 'running') {
+            $query->whereIn('status', ['running', 'ready']);
+            $pageTitle = 'Active & Running Campaigns';
+        } elseif ($request->status === 'pending' || $request->status === 'ready') {
+            $query->where('status', 'ready');
+            $pageTitle = 'Pending & Scheduled Campaigns';
+        } elseif ($request->status === 'completed') {
+            $query->where('status', 'completed');
+            $pageTitle = 'Completed Campaigns';
+        }
+
         if ($request->search) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {

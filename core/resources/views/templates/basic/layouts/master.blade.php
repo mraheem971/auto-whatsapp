@@ -555,6 +555,63 @@
         font-weight: 600;
     }
 
+    /* Sidebar Dropdowns & Submenus */
+    .user-sidebar .user-dropdown-toggle {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        cursor: pointer;
+    }
+
+    .user-sidebar .dropdown-chevron {
+        font-size: 11px;
+        transition: transform 0.25s ease;
+        margin-left: auto;
+        color: #8696a0;
+    }
+
+    .user-sidebar .user-sidebar-dropdown.open > .user-dropdown-toggle .dropdown-chevron {
+        transform: rotate(180deg);
+        color: #25d366;
+    }
+
+    .user-sidebar .user-submenu {
+        display: none;
+        padding-left: 6px;
+        margin-top: 2px;
+        margin-bottom: 4px;
+        border-left: 2px solid rgba(37, 211, 102, 0.25);
+        margin-left: 20px;
+    }
+
+    .user-sidebar .user-sidebar-dropdown.open > .user-submenu {
+        display: block;
+    }
+
+    .user-sidebar .submenu-link {
+        font-size: 13px !important;
+        padding: 6px 10px !important;
+        color: #aebac1 !important;
+        border-radius: 6px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        transition: all 0.15s ease;
+        text-decoration: none;
+    }
+
+    .user-sidebar .submenu-link:hover {
+        color: #ffffff !important;
+        background-color: rgba(255, 255, 255, 0.06);
+        padding-left: 13px !important;
+    }
+
+    .user-sidebar .submenu-link.active {
+        color: #25d366 !important;
+        font-weight: 600 !important;
+        background-color: rgba(37, 211, 102, 0.12);
+    }
+
     /* Main Content Wrapper */
     .user-main-wrapper {
         flex: 1;
@@ -619,6 +676,30 @@
 
         $('#closeSidebarBtn, #userSidebarBackdrop').on('click', function() {
             $('#userLayout').removeClass('mobile-sidebar-open');
+        });
+
+        // Sidebar Submenu Dropdowns Toggle
+        $(document).on('click', '.user-dropdown-toggle', function (e) {
+            e.preventDefault();
+            var $parent = $(this).closest('.user-sidebar-dropdown');
+            var $submenu = $parent.find('.user-submenu');
+            
+            if ($parent.hasClass('open')) {
+                $submenu.slideUp(180, function() {
+                    $parent.removeClass('open');
+                });
+            } else {
+                $parent.addClass('open');
+                $submenu.slideDown(180);
+            }
+        });
+
+        // Auto open active dropdowns on page load
+        $('.user-sidebar-dropdown').each(function() {
+            if ($(this).find('.submenu-link.active, .nav-link.active').length > 0) {
+                $(this).addClass('open');
+                $(this).find('.user-submenu').show();
+            }
         });
 
         // Theme Toggle (Dark / Light) with LocalStorage persistence

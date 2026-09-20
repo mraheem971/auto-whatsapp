@@ -10,11 +10,21 @@ use Illuminate\Support\Str;
 
 class UserWhatsAppController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $pageTitle = 'My WhatsApp Accounts';
         $user = auth()->user();
-        $accounts = WhatsappAccount::where('user_id', $user->id)->latest()->paginate(getPaginate());
+        $query = WhatsappAccount::where('user_id', $user->id);
+
+        if ($request->status === 'active' || $request->status === '1') {
+            $query->where('status', 1);
+            $pageTitle = 'Active WhatsApp Accounts';
+        } elseif ($request->status === 'pending' || $request->status === '0') {
+            $query->where('status', 0);
+            $pageTitle = 'Pending WhatsApp Accounts';
+        }
+
+        $accounts = $query->latest()->paginate(getPaginate());
         $activeCount = WhatsappAccount::where('user_id', $user->id)->active()->count();
         $plan = $user->currentPlan();
 
