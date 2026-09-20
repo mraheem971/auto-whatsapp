@@ -232,6 +232,7 @@ Route::middleware('admin')->group(function () {
         Route::post('store', 'store')->name('store');
         Route::get('edit/{id}', 'edit')->name('edit');
         Route::post('update/{id}', 'update')->name('update');
+        Route::post('delete/{id}', 'delete')->name('delete');
         Route::get('list/json', 'listJson')->name('list.json');
     });
 

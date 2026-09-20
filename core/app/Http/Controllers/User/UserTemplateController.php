@@ -14,9 +14,24 @@ class UserTemplateController extends Controller
         $user = auth()->user();
         $query = MessageTemplate::where('user_id', $user->id);
 
-        if ($request->type) {
-            $query->where('type', $request->type);
-            $pageTitle = ucfirst($request->type) . ' Templates';
+        if ($request->category || $request->type) {
+            $cat = $request->category ?: $request->type;
+            if ($cat === 'media') {
+                $query->whereIn('category', ['image', 'video', 'document', 'media']);
+                $pageTitle = 'Media Templates';
+            } else {
+                $query->where('category', $cat);
+                $pageTitle = ucfirst($cat) . ' Templates';
+            }
+        }
+
+        if ($request->search) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'LIKE', "%$search%")
+                  ->orWhere('message', 'LIKE', "%$search%")
+                  ->orWhere('category', 'LIKE', "%$search%");
+            });
         }
 
         $templates = $query->latest()->paginate(getPaginate());
@@ -37,17 +52,21 @@ class UserTemplateController extends Controller
         }
 
         $request->validate([
-            'name'    => 'required|string|max:150',
-            'type'    => 'required|in:text,image,video,document,template_button',
-            'message' => 'required|string',
+            'name'     => 'nullable|string|max:150',
+            'title'    => 'nullable|string|max:150',
+            'type'     => 'nullable|string',
+            'category' => 'nullable|string|max:100',
+            'message'  => 'required|string',
         ]);
 
+        $title = $request->name ?: ($request->title ?: 'Untitled Template');
+        $category = $request->category ?: ($request->type ?: 'text');
+
         $template = new MessageTemplate();
-        $template->user_id   = $user->id;
-        $template->name      = $request->name;
-        $template->type      = $request->type;
-        $template->message   = $request->message;
-        $template->media_url = $request->media_url;
+        $template->user_id  = $user->id;
+        $template->title    = $title;
+        $template->category = $category;
+        $template->message  = $request->message;
         $template->save();
 
         $notify[] = ['success', 'Message template created successfully!'];
@@ -60,15 +79,19 @@ class UserTemplateController extends Controller
         $template = MessageTemplate::where('user_id', $user->id)->findOrFail($id);
 
         $request->validate([
-            'name'    => 'required|string|max:150',
-            'type'    => 'required|in:text,image,video,document,template_button',
-            'message' => 'required|string',
+            'name'     => 'nullable|string|max:150',
+            'title'    => 'nullable|string|max:150',
+            'type'     => 'nullable|string',
+            'category' => 'nullable|string|max:100',
+            'message'  => 'required|string',
         ]);
 
-        $template->name      = $request->name;
-        $template->type      = $request->type;
-        $template->message   = $request->message;
-        $template->media_url = $request->media_url;
+        $title = $request->name ?: ($request->title ?: $template->title);
+        $category = $request->category ?: ($request->type ?: $template->category);
+
+        $template->title    = $title;
+        $template->category = $category;
+        $template->message  = $request->message;
         $template->save();
 
         $notify[] = ['success', 'Message template updated successfully!'];
