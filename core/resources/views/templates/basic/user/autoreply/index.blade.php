@@ -793,6 +793,10 @@
             $('#editBotModal').modal('show');
         });
 
+        if (window.location.hash === '#createBotModal' || window.location.hash === '#create') {
+            $('#createBotModal').modal('show');
+        }
+
     })(jQuery);
 </script>
 @endpush

@@ -8,11 +8,18 @@ use Illuminate\Http\Request;
 
 class UserTemplateController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $pageTitle = 'My Message Templates';
         $user = auth()->user();
-        $templates = MessageTemplate::where('user_id', $user->id)->latest()->paginate(getPaginate());
+        $query = MessageTemplate::where('user_id', $user->id);
+
+        if ($request->type) {
+            $query->where('type', $request->type);
+            $pageTitle = ucfirst($request->type) . ' Templates';
+        }
+
+        $templates = $query->latest()->paginate(getPaginate());
         $plan = $user->currentPlan();
 
         return view('Template::user.templates.index', compact('pageTitle', 'templates', 'plan'));

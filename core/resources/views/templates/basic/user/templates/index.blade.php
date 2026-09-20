@@ -204,6 +204,10 @@
             $('#editTemplateModal').modal('show');
         });
 
+        if (window.location.hash === '#createTemplateModal' || window.location.hash === '#create') {
+            $('#createTemplateModal').modal('show');
+        }
+
     })(jQuery);
 </script>
 @endpush

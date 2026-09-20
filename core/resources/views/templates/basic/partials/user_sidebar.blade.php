@@ -189,12 +189,41 @@
                 </a>
             </li>
 
-            <!-- Message Templates (Single Item) -->
-            <li class="nav-item">
-                <a class="nav-link text-white {{ menuActive('user.templates*') }}" href="{{ route('user.templates.index') }}">
+            <!-- Message Templates (With Submenu: Add, Text, Media, All) -->
+            <li class="nav-item user-sidebar-dropdown {{ menuActive('user.templates*') ? 'open' : '' }}">
+                <a class="nav-link text-white user-dropdown-toggle {{ menuActive('user.templates*') }}" href="javascript:void(0);">
                     <i class="las la-envelope-open-text me-2 fs-5 text-secondary"></i>
                     <span>@lang('Message Templates')</span>
+                    <i class="las la-angle-down ms-auto dropdown-chevron"></i>
                 </a>
+                <div class="user-submenu" style="{{ menuActive('user.templates*') ? 'display: block;' : '' }}">
+                    <ul class="nav flex-column ps-2 py-1">
+                        <li class="nav-item">
+                            <a class="submenu-link" href="{{ route('user.templates.index') }}#createTemplateModal">
+                                <i class="las la-plus-circle me-2 text-primary"></i>
+                                <span>@lang('Add Template')</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="submenu-link {{ request()->routeIs('user.templates.index') && request('type') === 'text' ? 'active' : '' }}" href="{{ route('user.templates.index', ['type' => 'text']) }}">
+                                <i class="las la-file-alt me-2 text-info"></i>
+                                <span>@lang('Text Templates')</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="submenu-link {{ request()->routeIs('user.templates.index') && in_array(request('type'), ['image', 'video', 'document']) ? 'active' : '' }}" href="{{ route('user.templates.index', ['type' => 'image']) }}">
+                                <i class="las la-photo-video me-2 text-warning"></i>
+                                <span>@lang('Media Templates')</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="submenu-link {{ request()->routeIs('user.templates.index') && !request('type') ? 'active' : '' }}" href="{{ route('user.templates.index') }}">
+                                <i class="las la-list me-2"></i>
+                                <span>@lang('All Templates')</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
 
             <!-- Anti-Ban Settings (Single Item) -->
