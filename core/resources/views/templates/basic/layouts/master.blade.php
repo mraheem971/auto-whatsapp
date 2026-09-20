@@ -236,7 +236,16 @@
     }
 
     .table {
-        color: #0f172a;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+    }
+
+    .table tbody {
+        background-color: #ffffff !important;
+    }
+
+    .table tbody tr {
+        background-color: #ffffff !important;
     }
 
     .table thead th,
@@ -251,6 +260,7 @@
     }
 
     .table tbody td {
+        background-color: #ffffff !important;
         vertical-align: middle;
         border-bottom: 1px solid #e2e8f0 !important;
         color: #1e293b !important;
@@ -401,6 +411,7 @@
 
     /* Dark Mode Tables */
     body.dark-mode .table {
+        background-color: #111b21 !important;
         color: #e9edef !important;
         border-color: rgba(255, 255, 255, 0.08) !important;
     }
@@ -411,7 +422,21 @@
         border-bottom: 1.5px solid rgba(255, 255, 255, 0.1) !important;
     }
 
+    body.dark-mode .table tbody {
+        background-color: #111b21 !important;
+    }
+
+    body.dark-mode .table tbody tr {
+        background-color: #111b21 !important;
+    }
+
+    body.dark-mode .table tbody tr:hover {
+        background-color: #1a2730 !important;
+    }
+
+    body.dark-mode .table tbody td,
     body.dark-mode .table td {
+        background-color: #111b21 !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
         color: #d1d7db !important;
     }

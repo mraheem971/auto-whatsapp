@@ -1,0 +1,207 @@
+/* ==========================================================================
+   GLOBAL THEME & CONTRAST ENHANCEMENTS FOR SOCIALMATE USER PORTAL
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. BASE / LIGHT MODE TABLES & TYPOGRAPHY
+   -------------------------------------------------------------------------- */
+.table {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table thead,
+.table thead tr,
+.table thead th {
+    background-color: #f8fafc !important;
+    color: #334155 !important;
+    font-weight: 700 !important;
+    font-size: 12px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 12px 14px !important;
+    vertical-align: middle !important;
+}
+
+.table tbody {
+    background-color: #ffffff !important;
+    border: none !important;
+}
+
+.table tbody tr {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    transition: background-color 0.15s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8fafc !important;
+}
+
+.table tbody tr td {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 12px 14px !important;
+    vertical-align: middle !important;
+    font-size: 13.5px !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #fcfdfe !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) td {
+    background-color: #fcfdfe !important;
+}
+
+/* Light mode text contrast overrides */
+.text-dark {
+    color: #0f172a !important;
+}
+
+.text-muted {
+    color: #64748b !important;
+}
+
+.dashboard-section h4,
+.dashboard-section h5,
+.dashboard-section h6 {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   2. DARK MODE TABLES & TYPOGRAPHY
+   -------------------------------------------------------------------------- */
+body.dark-mode {
+    background-color: #0c1317 !important;
+    color: #e9edef !important;
+}
+
+body.dark-mode .dashboard-section h4,
+body.dark-mode .dashboard-section h5,
+body.dark-mode .dashboard-section h6,
+body.dark-mode .fw-bold {
+    color: #ffffff !important;
+}
+
+body.dark-mode .text-dark {
+    color: #f8fafc !important;
+}
+
+body.dark-mode .text-muted {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .card,
+body.dark-mode .custom--card {
+    background-color: #111b21 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #e9edef !important;
+}
+
+body.dark-mode .card-header,
+body.dark-mode .card-footer {
+    background-color: #182229 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #e9edef !important;
+}
+
+body.dark-mode .table {
+    background-color: #111b21 !important;
+    color: #e9edef !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-mode .table thead,
+body.dark-mode .table thead tr,
+body.dark-mode .table thead th {
+    background-color: #182229 !important;
+    color: #94a3b8 !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+}
+
+body.dark-mode .table tbody {
+    background-color: #111b21 !important;
+}
+
+body.dark-mode .table tbody tr {
+    background-color: #111b21 !important;
+    color: #e9edef !important;
+}
+
+body.dark-mode .table tbody tr:hover {
+    background-color: #1a2730 !important;
+}
+
+body.dark-mode .table tbody tr td {
+    background-color: #111b21 !important;
+    color: #e9edef !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+    background-color: #142028 !important;
+}
+
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) td {
+    background-color: #142028 !important;
+}
+
+body.dark-mode code,
+body.dark-mode pre {
+    background-color: #182229 !important;
+    color: #25d366 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: #111b21 !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #e9edef !important;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: #182229 !important;
+    border-color: #25d366 !important;
+    color: #ffffff !important;
+}
+
+body.dark-mode .modal-content {
+    background-color: #111b21 !important;
+    color: #e9edef !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. BADGES & INTERACTIVE CONTROLS
+   -------------------------------------------------------------------------- */
+.badge {
+    letter-spacing: 0.2px;
+}
+
+body.dark-mode .badge.bg-light {
+    background-color: #202c33 !important;
+    color: #e9edef !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+body.dark-mode .badge.bg-secondary {
+    background-color: #2a3942 !important;
+    color: #cbd5e1 !important;
+}
