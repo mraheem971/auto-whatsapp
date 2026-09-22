@@ -203,6 +203,11 @@
         }
 
         $('#btnStartCampaign').on('click', function () {
+            if (total === 0) {
+                notify('warning', 'No targets in queue. Please extract or sync WhatsApp contacts first.');
+                log('⚠ No targets found in this audience. Please extract groups/contacts into a list first.', 'error');
+                return;
+            }
             isRunning = true;
             $('#campaignStatusBadge').removeClass('bg-secondary bg-warning').addClass('bg-primary').text('RUNNING');
             $('#btnStartCampaign').addClass('d-none');

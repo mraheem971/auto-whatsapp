@@ -107,7 +107,7 @@
                             </tr>
                         </thead>
                         <tbody id="broadcastTableBody">
-                            @foreach($targets as $index => $t)
+                            @forelse($targets as $index => $t)
                                 <tr id="target_row_{{ $index }}" data-index="{{ $index }}">
                                     <td>{{ $index + 1 }}</td>
                                     <td>
@@ -127,7 +127,25 @@
                                         <span class="badge bg-secondary">@lang('Queued')</span>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-5">
+                                        <div class="py-4">
+                                            <i class="las la-users-slash text-muted" style="font-size: 54px;"></i>
+                                            <h5 class="text-dark fw-bold mt-2">@lang('No Target Contacts in Queue')</h5>
+                                            <p class="text-muted mb-3">@lang('Please sync or extract WhatsApp groups and contacts to populate this broadcast queue.')</p>
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <a href="{{ route('admin.contacts.sync.page') }}" class="btn btn-sm btn--primary">
+                                                    <i class="las la-sync me-1"></i> @lang('Extract Groups & Contacts')
+                                                </a>
+                                                <a href="{{ route('admin.contacts.lists.index') }}" class="btn btn-sm btn-outline--dark">
+                                                    <i class="las la-list me-1"></i> @lang('Manage Contact Lists')
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>

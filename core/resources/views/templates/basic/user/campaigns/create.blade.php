@@ -48,10 +48,20 @@
                                 <div class="col-md-6">
                                     <label class="fw-bold mb-1">Target Audience <span class="text-danger">*</span></label>
                                     <select name="target_type" id="targetType" class="form-select" required>
-                                        <option value="contacts">All Saved Contacts ({{ $totalContacts }} contacts)</option>
-                                        @foreach($contactLists as $list)
-                                            <option value="list_{{ $list->id }}">Contact List: {{ $list->name }} ({{ $list->contacts_count }} contacts)</option>
-                                        @endforeach
+                                        <option value="all">All Contacts & Groups ({{ $totalAll ?? ($totalContacts + ($totalGroups ?? 0)) }} total)</option>
+                                        @if(($totalContacts ?? 0) > 0)
+                                            <option value="contacts">Individual Contacts Only ({{ $totalContacts }} contacts)</option>
+                                        @endif
+                                        @if(($totalGroups ?? 0) > 0)
+                                            <option value="groups">WhatsApp Groups Only ({{ $totalGroups }} groups)</option>
+                                        @endif
+                                        @if(isset($contactLists) && $contactLists->count() > 0)
+                                            <optgroup label="My Contact Lists">
+                                                @foreach($contactLists as $list)
+                                                    <option value="list_{{ $list->id }}">📁 {{ $list->name }} ({{ $list->contacts_count }} {{ $list->type === 'groups' ? 'Groups' : 'Contacts' }})</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
                                     </select>
                                 </div>
 

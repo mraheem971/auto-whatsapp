@@ -63,6 +63,8 @@ class UserCampaignController extends Controller
         $templates = MessageTemplate::where('user_id', $user->id)->latest()->get();
         $contactLists = ContactList::where('user_id', $user->id)->withCount('contacts')->latest()->get();
         $totalContacts = Contact::where('user_id', $user->id)->where('type', 'contact')->count();
+        $totalGroups = Contact::where('user_id', $user->id)->where('type', 'group')->count();
+        $totalAll = Contact::where('user_id', $user->id)->count();
         $botSettings = UserBotSetting::getSettingsForUser($user->id);
 
         return view('Template::user.campaigns.create', compact(
@@ -71,6 +73,8 @@ class UserCampaignController extends Controller
             'templates',
             'contactLists',
             'totalContacts',
+            'totalGroups',
+            'totalAll',
             'botSettings',
             'plan'
         ));
@@ -112,8 +116,16 @@ class UserCampaignController extends Controller
         $recipientsCount = 0;
         if ($targetType === 'contact_list' && $listId) {
             $recipientsCount = Contact::where('user_id', $user->id)->where('contact_list_id', $listId)->count();
-        } else {
+        } elseif ($targetType === 'groups') {
+            $recipientsCount = Contact::where('user_id', $user->id)->where('type', 'group')->count();
+        } elseif ($targetType === 'contacts') {
             $recipientsCount = Contact::where('user_id', $user->id)->where('type', 'contact')->count();
+        } else {
+            $recipientsCount = Contact::where('user_id', $user->id)->count();
+        }
+
+        if ($recipientsCount === 0) {
+            $recipientsCount = Contact::where('user_id', $user->id)->count();
         }
 
         $campaign = new Campaign();
@@ -126,8 +138,9 @@ class UserCampaignController extends Controller
         $campaign->message           = $request->message;
         $campaign->media_url         = $request->media_url;
         $campaign->media_type        = $request->media_type ?: 'text';
-        $campaign->min_delay_seconds = $minDelay;
-        $campaign->max_delay_seconds = $maxDelay;
+        $campaign->min_delay         = $minDelay;
+        $campaign->max_delay         = $maxDelay;
+        $campaign->delay_seconds     = $minDelay;
         $campaign->status            = 'ready';
         $campaign->total_targets     = $recipientsCount;
         $campaign->sent_count        = 0;
@@ -146,26 +159,92 @@ class UserCampaignController extends Controller
         $campaign = Campaign::where('user_id', $user->id)->findOrFail($id);
 
         $targets = [];
-        if ($campaign->target_type === 'contact_list' && $campaign->contact_list_id) {
-            $contacts = Contact::where('user_id', $user->id)->where('contact_list_id', $campaign->contact_list_id)->get();
+        $targetType = $campaign->target_type;
+        $listId = $campaign->contact_list_id;
+
+        if ($targetType === 'contact_list' || str_starts_with($targetType ?? '', 'list_') || $listId) {
+            $effectiveListId = $listId ?: ((str_starts_with($targetType ?? '', 'list_')) ? (int) str_replace('list_', '', $targetType) : null);
+            $contacts = Contact::where('user_id', $user->id)->where('contact_list_id', $effectiveListId)->get();
+
+            if ($contacts->isEmpty()) {
+                $fallbackList = ContactList::where('user_id', $user->id)->first();
+                if ($fallbackList) {
+                    $contacts = Contact::where('user_id', $user->id)->where('contact_list_id', $fallbackList->id)->get();
+                }
+                if ($contacts->isEmpty()) {
+                    $contacts = Contact::where('user_id', $user->id)->get();
+                }
+            }
+
             foreach ($contacts as $c) {
+                $targetJid = $c->target_jid ?: ($c->type === 'group' ? ($c->group_id ?: $c->phone_number) : "{$c->phone_number}@s.whatsapp.net");
+                $targets[] = [
+                    'type'       => $c->type ?: ($c->group_id ? 'group' : 'contact'),
+                    'name'       => $c->name ?: ($c->group_name ?: "+{$c->phone_number}"),
+                    'target_jid' => $targetJid,
+                    'phone'      => $c->phone_number,
+                    'group_name' => $c->group_name,
+                ];
+            }
+        } elseif ($targetType === 'groups') {
+            $groups = Contact::where('user_id', $user->id)->where('type', 'group')->get();
+            if ($groups->isEmpty()) {
+                $groups = Contact::where('user_id', $user->id)->whereNotNull('group_id')->where('group_id', '!=', '')->get();
+            }
+            foreach ($groups as $g) {
+                $targetJid = $g->group_id ?: $g->target_jid ?: $g->phone_number;
+                $targets[] = [
+                    'type'       => 'group',
+                    'name'       => $g->name ?: ($g->group_name ?: 'WhatsApp Group'),
+                    'target_jid' => $targetJid,
+                    'phone'      => $g->phone_number ?: $g->group_id,
+                    'group_name' => $g->group_name,
+                ];
+            }
+        } elseif ($targetType === 'contacts') {
+            $contacts = Contact::where('user_id', $user->id)->where('type', 'contact')->get();
+            if ($contacts->isEmpty()) {
+                $contacts = Contact::where('user_id', $user->id)->get();
+            }
+            foreach ($contacts as $c) {
+                $targetJid = $c->target_jid ?: "{$c->phone_number}@s.whatsapp.net";
                 $targets[] = [
                     'type'       => 'contact',
-                    'name'       => $c->name,
-                    'target_jid' => $c->target_jid ?: "{$c->phone_number}@s.whatsapp.net",
+                    'name'       => $c->name ?: "+{$c->phone_number}",
+                    'target_jid' => $targetJid,
                     'phone'      => $c->phone_number,
+                    'group_name' => $c->group_name,
                 ];
             }
         } else {
-            $contacts = Contact::where('user_id', $user->id)->where('type', 'contact')->get();
+            // All contacts & groups
+            $contacts = Contact::where('user_id', $user->id)->get();
             foreach ($contacts as $c) {
+                $targetJid = $c->target_jid ?: ($c->type === 'group' ? ($c->group_id ?: $c->phone_number) : "{$c->phone_number}@s.whatsapp.net");
                 $targets[] = [
-                    'type'       => 'contact',
-                    'name'       => $c->name,
-                    'target_jid' => $c->target_jid ?: "{$c->phone_number}@s.whatsapp.net",
+                    'type'       => $c->type ?: ($c->group_id ? 'group' : 'contact'),
+                    'name'       => $c->name ?: ($c->group_name ?: "+{$c->phone_number}"),
+                    'target_jid' => $targetJid,
                     'phone'      => $c->phone_number,
+                    'group_name' => $c->group_name,
                 ];
             }
+        }
+
+        // Deduplicate targets by target_jid
+        $uniqueTargets = [];
+        $seenJids = [];
+        foreach ($targets as $t) {
+            if (!empty($t['target_jid']) && !isset($seenJids[$t['target_jid']])) {
+                $seenJids[$t['target_jid']] = true;
+                $uniqueTargets[] = $t;
+            }
+        }
+        $targets = $uniqueTargets;
+
+        if ($campaign->total_targets != count($targets) && count($targets) > 0) {
+            $campaign->total_targets = count($targets);
+            $campaign->save();
         }
 
         $botSettings = UserBotSetting::getSettingsForUser($user->id);
@@ -181,6 +260,7 @@ class UserCampaignController extends Controller
         $targetJid = $request->target_jid;
         $targetName = $request->name ?: '';
         $targetPhone = $request->phone ?: '';
+        $groupName = $request->group_name ?: '';
 
         if (!$targetJid) {
             return response()->json(['success' => false, 'error' => 'Missing target JID'], 400);
@@ -188,15 +268,19 @@ class UserCampaignController extends Controller
 
         // Replace personalization tags
         $personalizedMessage = str_replace(
-            ['{{name}}', '{{phone}}', '@name', '@phone'],
-            [$targetName, $targetPhone, $targetName, $targetPhone],
+            ['{{name}}', '{{phone}}', '@name', '@phone', '{name}', '{phone}', '{group_name}'],
+            [$targetName, $targetPhone, $targetName, $targetPhone, $targetName, $targetPhone, $groupName],
             $campaign->message
         );
 
+        $isGroup = ($request->type === 'group' || str_ends_with($targetJid, '@g.us')) ? 1 : 0;
+
         $payload = [
             'sessionId' => $campaign->session_id,
+            'receiver'  => $targetJid,
             'recipient' => $targetJid,
             'message'   => $personalizedMessage,
+            'isGroup'   => $isGroup,
         ];
 
         if ($campaign->media_url && $campaign->media_type !== 'text') {
@@ -205,10 +289,10 @@ class UserCampaignController extends Controller
         }
 
         try {
-            $res = Http::timeout(25)->post("{$this->baileysUrl}/api/messages/send", $payload);
-            $json = $res->json();
+            $res = \App\Services\BaileysClient::post('api/messages/send', $payload, 25);
+            $json = $res ? $res->json() : [];
 
-            $isSuccess = ($res->successful() && isset($json['status']) && $json['status'] === 'success');
+            $isSuccess = ($res && $res->successful() && (!empty($json['success']) || (isset($json['status']) && $json['status'] === 'success')));
 
             if ($isSuccess) {
                 $campaign->increment('sent_count');
@@ -222,6 +306,7 @@ class UserCampaignController extends Controller
 
             return response()->json([
                 'success'      => $isSuccess,
+                'status'       => $isSuccess ? 'success' : 'failed',
                 'sent_count'   => $campaign->fresh()->sent_count,
                 'failed_count' => $campaign->fresh()->failed_count,
                 'error'        => $isSuccess ? null : ($json['error'] ?? 'Baileys dispatch failed'),
@@ -230,6 +315,7 @@ class UserCampaignController extends Controller
             $campaign->increment('failed_count');
             return response()->json([
                 'success'      => false,
+                'status'       => 'failed',
                 'sent_count'   => $campaign->fresh()->sent_count,
                 'failed_count' => $campaign->fresh()->failed_count,
                 'error'        => $e->getMessage(),

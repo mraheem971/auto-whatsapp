@@ -223,88 +223,123 @@ class CampaignController extends Controller
 
         // Fetch targets list for live execution
         $targets = [];
-        if ($campaign->target_type === 'contact_list') {
-            $contacts = Contact::where('contact_list_id', $campaign->contact_list_id)->get();
+        $targetType = $campaign->target_type;
+        $listId = $campaign->contact_list_id;
+
+        if ($targetType === 'contact_list' || str_starts_with($targetType ?? '', 'list_') || $listId) {
+            $effectiveListId = $listId ?: ((str_starts_with($targetType ?? '', 'list_')) ? (int) str_replace('list_', '', $targetType) : null);
+            $contacts = Contact::where('contact_list_id', $effectiveListId)->get();
+
+            // If empty, fallback to available contact lists or all admin contacts
+            if ($contacts->isEmpty()) {
+                $fallbackList = ContactList::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->first();
+                if ($fallbackList) {
+                    $contacts = Contact::where('contact_list_id', $fallbackList->id)->get();
+                }
+                if ($contacts->isEmpty()) {
+                    $contacts = Contact::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->get();
+                }
+                if ($contacts->isEmpty()) {
+                    $contacts = Contact::all();
+                }
+            }
+
             foreach ($contacts as $c) {
+                $targetJid = $c->target_jid ?: ($c->type === 'group' ? ($c->group_id ?: $c->phone_number) : "{$c->phone_number}@s.whatsapp.net");
                 $targets[] = [
-                    'type'       => $c->type,
-                    'name'       => $c->name,
-                    'target_jid' => $c->target_jid ?: ($c->type === 'group' ? $c->group_id : "{$c->phone_number}@s.whatsapp.net"),
+                    'type'       => $c->type ?: ($c->group_id ? 'group' : 'contact'),
+                    'name'       => $c->name ?: ($c->group_name ?: "+{$c->phone_number}"),
+                    'target_jid' => $targetJid,
                     'phone'      => $c->phone_number,
                     'group_name' => $c->group_name,
                 ];
             }
-        } elseif ($campaign->target_type === 'groups') {
+        } elseif ($targetType === 'groups') {
             $groups = Contact::whereNotNull('group_id')
                 ->where('group_id', '!=', '')
-                ->selectRaw('group_name, group_id')
+                ->selectRaw('group_name, group_id, MAX(name) as name, MAX(phone_number) as phone_number')
                 ->groupBy('group_name', 'group_id')
                 ->get();
             foreach ($groups as $g) {
                 $targets[] = [
                     'type'       => 'group',
-                    'name'       => $g->group_name,
+                    'name'       => $g->name ?: ($g->group_name ?: 'WhatsApp Group'),
                     'target_jid' => $g->group_id,
+                    'phone'      => $g->phone_number ?: $g->group_id,
                     'group_name' => $g->group_name,
                 ];
             }
-        } elseif ($campaign->target_type === 'selected_groups') {
-            $selectedIds = json_decode($campaign->target_group_ids ?? '[]', true) ?: [];
+        } elseif ($targetType === 'selected_groups') {
+            $selectedIds = is_array($campaign->target_group_ids) ? $campaign->target_group_ids : (json_decode($campaign->target_group_ids ?? '[]', true) ?: []);
             $groups = Contact::whereIn('group_id', $selectedIds)
-                ->selectRaw('group_name, group_id')
+                ->selectRaw('group_name, group_id, MAX(name) as name, MAX(phone_number) as phone_number')
                 ->groupBy('group_name', 'group_id')
                 ->get();
             foreach ($groups as $g) {
                 $targets[] = [
                     'type'       => 'group',
-                    'name'       => $g->group_name,
+                    'name'       => $g->name ?: ($g->group_name ?: 'WhatsApp Group'),
                     'target_jid' => $g->group_id,
+                    'phone'      => $g->phone_number ?: $g->group_id,
                     'group_name' => $g->group_name,
                 ];
             }
-        } elseif ($campaign->target_type === 'selected_group') {
+        } elseif ($targetType === 'selected_group') {
             $group = Contact::where('group_id', $campaign->target_group_id)->first();
             $targets[] = [
                 'type'       => 'group',
                 'name'       => $group ? $group->group_name : 'Selected Group',
                 'target_jid' => $campaign->target_group_id,
+                'phone'      => $group ? $group->phone_number : $campaign->target_group_id,
                 'group_name' => $group ? $group->group_name : 'Selected Group',
             ];
-        } elseif ($campaign->target_type === 'contacts') {
+        } elseif ($targetType === 'contacts') {
             $contacts = Contact::where('type', 'contact')->get();
+            if ($contacts->isEmpty()) {
+                $contacts = Contact::all();
+            }
             foreach ($contacts as $c) {
+                $targetJid = $c->target_jid ?: "{$c->phone_number}@s.whatsapp.net";
                 $targets[] = [
                     'type'       => 'contact',
-                    'name'       => $c->name,
-                    'target_jid' => $c->target_jid ?: "{$c->phone_number}@s.whatsapp.net",
+                    'name'       => $c->name ?: "+{$c->phone_number}",
+                    'target_jid' => $targetJid,
                     'phone'      => $c->phone_number,
                     'group_name' => $c->group_name,
                 ];
             }
         } else {
-            $groups = Contact::whereNotNull('group_id')
-                ->where('group_id', '!=', '')
-                ->selectRaw('group_name, group_id')
-                ->groupBy('group_name', 'group_id')
-                ->get();
-            foreach ($groups as $g) {
-                $targets[] = [
-                    'type'       => 'group',
-                    'name'       => $g->group_name,
-                    'target_jid' => $g->group_id,
-                    'group_name' => $g->group_name,
-                ];
+            // All contacts & groups
+            $contacts = Contact::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->get();
+            if ($contacts->isEmpty()) {
+                $contacts = Contact::all();
             }
-            $contacts = Contact::where('type', 'contact')->get();
             foreach ($contacts as $c) {
+                $targetJid = $c->target_jid ?: ($c->type === 'group' ? ($c->group_id ?: $c->phone_number) : "{$c->phone_number}@s.whatsapp.net");
                 $targets[] = [
-                    'type'       => 'contact',
-                    'name'       => $c->name,
-                    'target_jid' => $c->target_jid ?: "{$c->phone_number}@s.whatsapp.net",
+                    'type'       => $c->type ?: ($c->group_id ? 'group' : 'contact'),
+                    'name'       => $c->name ?: ($c->group_name ?: "+{$c->phone_number}"),
+                    'target_jid' => $targetJid,
                     'phone'      => $c->phone_number,
                     'group_name' => $c->group_name,
                 ];
             }
+        }
+
+        // Deduplicate targets by target_jid
+        $uniqueTargets = [];
+        $seenJids = [];
+        foreach ($targets as $t) {
+            if (!empty($t['target_jid']) && !isset($seenJids[$t['target_jid']])) {
+                $seenJids[$t['target_jid']] = true;
+                $uniqueTargets[] = $t;
+            }
+        }
+        $targets = $uniqueTargets;
+
+        if ($campaign->total_targets != count($targets) && count($targets) > 0) {
+            $campaign->total_targets = count($targets);
+            $campaign->save();
         }
 
         $account = WhatsappAccount::where('session_id', $campaign->session_id)->first();
@@ -326,10 +361,10 @@ class CampaignController extends Controller
         $groupName = $request->group_name ?: '';
         $phone = preg_replace('/[^0-9]/', '', $request->target_jid);
 
-        // Replace shortcodes
+        // Replace shortcodes / personalization tags
         $personalizedMessage = str_replace(
-            ['{name}', '{phone}', '{group_name}'],
-            [$name, $phone, $groupName],
+            ['{name}', '{phone}', '{group_name}', '{{name}}', '{{phone}}', '@name', '@phone'],
+            [$name, $phone, $groupName, $name, $phone, $name, $phone],
             $campaign->message
         );
 
@@ -339,11 +374,14 @@ class CampaignController extends Controller
             $response = \App\Services\BaileysClient::post('api/messages/send', [
                 'sessionId' => $campaign->session_id,
                 'receiver'  => $request->target_jid,
+                'recipient' => $request->target_jid,
                 'message'   => $personalizedMessage,
                 'isGroup'   => $isGroup,
             ], 25);
 
-            $resData = $response->json();
+            $resData = $response ? $response->json() : [];
+
+            $isSuccess = ($response && $response->successful() && (!empty($resData['success']) || (isset($resData['status']) && $resData['status'] === 'success')));
 
             $logEntry = [
                 'timestamp'  => date('Y-m-d H:i:s'),
@@ -352,17 +390,23 @@ class CampaignController extends Controller
                 'type'       => $request->type,
             ];
 
-            if ($response->successful() && ($resData['success'] ?? false)) {
+            if ($isSuccess) {
                 $campaign->increment('sent_count');
                 $logEntry['status'] = 'success';
                 $logEntry['message'] = 'Delivered';
-                
-                $currentLogs = $campaign->logs ?? [];
+
+                $currentLogs = $campaign->fresh()->logs ?? [];
                 $currentLogs[] = $logEntry;
                 $campaign->logs = $currentLogs;
                 $campaign->save();
 
-                return response()->json(['success' => true, 'status' => 'success', 'message' => 'Delivered']);
+                return response()->json([
+                    'success'    => true, 
+                    'status'     => 'success', 
+                    'message'    => 'Delivered',
+                    'sent_count' => $campaign->fresh()->sent_count,
+                    'failed_count' => $campaign->fresh()->failed_count
+                ]);
             }
 
             $campaign->increment('failed_count');
@@ -370,15 +414,27 @@ class CampaignController extends Controller
             $logEntry['status'] = 'failed';
             $logEntry['error'] = $errorMsg;
 
-            $currentLogs = $campaign->logs ?? [];
+            $currentLogs = $campaign->fresh()->logs ?? [];
             $currentLogs[] = $logEntry;
             $campaign->logs = $currentLogs;
             $campaign->save();
 
-            return response()->json(['success' => false, 'status' => 'failed', 'error' => $errorMsg]);
+            return response()->json([
+                'success'      => false, 
+                'status'       => 'failed', 
+                'error'        => $errorMsg,
+                'sent_count'   => $campaign->fresh()->sent_count,
+                'failed_count' => $campaign->fresh()->failed_count
+            ]);
         } catch (\Exception $e) {
             $campaign->increment('failed_count');
-            return response()->json(['success' => false, 'status' => 'failed', 'error' => $e->getMessage()]);
+            return response()->json([
+                'success'      => false, 
+                'status'       => 'failed', 
+                'error'        => $e->getMessage(),
+                'sent_count'   => $campaign->fresh()->sent_count,
+                'failed_count' => $campaign->fresh()->failed_count
+            ]);
         }
     }
 
