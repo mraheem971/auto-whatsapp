@@ -87,22 +87,24 @@
                                                     <i class="las la-trash fs-6"></i>
                                                 </button>
                                             @else
-                                                <button type="button" class="btn btn-sm btn-outline--primary btnExtractGroups"
-                                                    data-session_id="{{ $account->session_id }}"
-                                                    data-name="{{ $account->account_name }}"
-                                                    data-bs-toggle="tooltip"
-                                                    title="@lang('Extract WhatsApp Groups & Create Lists')">
-                                                    <i class="las la-users-cog fs-6"></i>
-                                                </button>
+                                                @if($account->status == 1)
+                                                    <button type="button" class="btn btn-sm btn-outline--primary btnExtractGroups"
+                                                        data-session_id="{{ $account->session_id }}"
+                                                        data-name="{{ $account->account_name }}"
+                                                        data-bs-toggle="tooltip"
+                                                        title="@lang('Extract WhatsApp Groups & Create Lists')">
+                                                        <i class="las la-users-cog fs-6"></i>
+                                                    </button>
 
-                                                <button type="button" class="btn btn-sm btn-outline--success btnTestMessage"
-                                                    data-session_id="{{ $account->session_id }}"
-                                                    data-name="{{ $account->account_name }}"
-                                                    data-phone="{{ $account->phone_number }}"
-                                                    data-bs-toggle="tooltip"
-                                                    title="@lang('Send Direct Test Message')">
-                                                    <i class="las la-paper-plane fs-6"></i>
-                                                </button>
+                                                    <button type="button" class="btn btn-sm btn-outline--success btnTestMessage"
+                                                        data-session_id="{{ $account->session_id }}"
+                                                        data-name="{{ $account->account_name }}"
+                                                        data-phone="{{ $account->phone_number }}"
+                                                        data-bs-toggle="tooltip"
+                                                        title="@lang('Send Direct Test Message')">
+                                                        <i class="las la-paper-plane fs-6"></i>
+                                                    </button>
+                                                @endif
 
                                                 <button type="button" class="btn btn-sm btn-outline--danger confirmationBtn" 
                                                     data-action="{{ route('admin.account.listing.delete', $account->id) }}"

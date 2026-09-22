@@ -204,7 +204,15 @@ class UserWhatsAppController extends Controller
         ]);
 
         $user = auth()->user();
-        $account = WhatsappAccount::where('user_id', $user->id)->where('session_id', $request->session_id)->firstOrFail();
+        $account = WhatsappAccount::where('user_id', $user->id)->where('session_id', $request->session_id)->first();
+
+        if (!$account) {
+            return response()->json(['success' => false, 'message' => 'WhatsApp account not found or was removed.'], 404);
+        }
+
+        if ($account->status != 1) {
+            return response()->json(['success' => false, 'message' => "WhatsApp account '{$account->account_name}' is not connected. Please connect it first."], 400);
+        }
 
         $res = BaileysClient::post('api/messages/send', [
             'sessionId' => $account->session_id,
@@ -217,6 +225,9 @@ class UserWhatsAppController extends Controller
         }
 
         $err = $res ? ($res->json('error') ?: 'Failed to send message.') : 'Failed to reach WhatsApp service.';
+        if (str_contains(strtolower($err), 'not connected') || str_contains(strtolower($err), 'scan the qr')) {
+            $account->update(['status' => 0]);
+        }
         return response()->json(['success' => false, 'message' => $err], 400);
     }
 

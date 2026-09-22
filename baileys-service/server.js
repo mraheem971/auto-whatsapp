@@ -745,6 +745,14 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
             console.log(`[Baileys] WhatsApp User: +${phone} (${accName})`);
             console.log(`========================================================\n`);
 
+            // Notify Laravel backend that session is connected & online
+            dispatchNotificationEvent('session_connected', {
+                session_id: sessionId,
+                phone_number: phone,
+                profile_name: accName,
+                jid: userJid
+            });
+
             // Start presence updates after connection has settled (5 seconds delay)
             setTimeout(async () => {
                 if (sessionData.status === 'connected' && sock.ws?.isOpen) {
@@ -983,7 +991,7 @@ app.post('/api/sessions/delete/:sessionId', handleDeleteSession);
 app.delete('/api/sessions/delete/:sessionId', handleDeleteSession);
 
 // Send Message (Direct Contact, Group, Text, or Media)
-app.post('/api/messages/send', async (req, res) => {
+const handleSendMessage = async (req, res) => {
     try {
         let { sessionId, receiver, to, phone, number, message, text, caption, isGroup, mediaUrl, mediaType, filename } = req.body;
 
@@ -1014,22 +1022,36 @@ app.post('/api/messages/send', async (req, res) => {
 
         let session = sessions.get(sessionId);
 
-        // If session not in memory but directory exists, initialize it
-        if (!session) {
+        // If session not in memory or not connected, check if valid credentials exist on disk to auto-reconnect
+        if (!session || !session.socket || session.status !== 'connected') {
             const sessionPath = path.join(SESSIONS_DIR, sessionId);
-            if (fs.existsSync(sessionPath)) {
-                session = await initBaileysSession(sessionId);
-                let waitAttempts = 0;
-                while (session.status !== 'connected' && waitAttempts < 20) {
-                    await new Promise(r => setTimeout(r, 250));
-                    waitAttempts++;
-                }
+            const credsPath = path.join(sessionPath, 'creds.json');
+            if (fs.existsSync(credsPath)) {
+                try {
+                    const creds = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
+                    if (creds && creds.me && creds.me.id) {
+                        console.log(`[Baileys] 🔄 Auto-reconnecting saved session before sending message: ${sessionId}`);
+                        session = await initBaileysSession(sessionId);
+                        let waitAttempts = 0;
+                        while (session.status !== 'connected' && waitAttempts < 30) {
+                            await new Promise(r => setTimeout(r, 250));
+                            waitAttempts++;
+                        }
+                    }
+                } catch (e) {}
             }
         }
 
         if (!session || !session.socket || session.status !== 'connected') {
+            // Notify Laravel to immediately sync DB status to 0 (Disconnected)
+            dispatchNotificationEvent('session_disconnect', {
+                session_id: sessionId,
+                title: `WhatsApp Session "${sessionId}" Offline`,
+                details: `Session is not connected or was disconnected.`
+            });
+
             return res.status(400).json({ 
-                error: 'WhatsApp session is not connected. Please scan the QR code first.' 
+                error: 'WhatsApp session is not connected. Please scan the QR code or reconnect your account.' 
             });
         }
 
@@ -1113,7 +1135,11 @@ app.post('/api/messages/send', async (req, res) => {
 
         res.status(400).json({ error: errMsg, originalError: error.message });
     }
-});
+};
+
+app.post('/api/messages/send', handleSendMessage);
+app.post('/api/send-message', handleSendMessage);
+app.post('/api/v1/send-message', handleSendMessage);
 
 // Extract Groups
 app.get('/api/groups/:sessionId', async (req, res) => {

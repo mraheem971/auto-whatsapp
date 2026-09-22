@@ -66,7 +66,17 @@ class UserMessageController extends Controller
         ]);
 
         $user = auth()->user();
-        $account = WhatsappAccount::where('user_id', $user->id)->where('session_id', $request->session_id)->firstOrFail();
+        $account = WhatsappAccount::where('user_id', $user->id)->where('session_id', $request->session_id)->first();
+
+        if (!$account) {
+            $notify[] = ['error', 'WhatsApp account session not found or was removed.'];
+            return back()->withNotify($notify);
+        }
+
+        if ($account->status != 1) {
+            $notify[] = ['error', "WhatsApp account '{$account->account_name}' is not connected. Please connect or link the account first."];
+            return back()->withNotify($notify);
+        }
 
         $cleanPhone = preg_replace('/[^0-9]/', '', $request->receiver);
         $payload = [
@@ -80,7 +90,7 @@ class UserMessageController extends Controller
             $payload['mediaType'] = $request->media_type ?: 'image';
         }
 
-        $res = BaileysClient::post('api/send-message', $payload, 15);
+        $res = BaileysClient::post('api/messages/send', $payload, 15);
 
         $msgRecord = new DeviceMessage();
         $msgRecord->user_id             = $user->id;
@@ -101,14 +111,17 @@ class UserMessageController extends Controller
 
         if ($res && $res->successful()) {
             $data = $res->json();
-            if (isset($data['status']) && $data['status'] === 'success') {
+            if ((isset($data['status']) && $data['status'] === 'success') || (isset($data['success']) && $data['success'] === true)) {
                 $isSuccess = true;
                 $messageId = $data['messageId'] ?? null;
             } else {
-                $errorMessage = $data['message'] ?? 'Gateway failed to deliver message.';
+                $errorMessage = $data['message'] ?? ($data['error'] ?? 'Gateway failed to deliver message.');
             }
         } elseif ($res) {
-            $errorMessage = $res->json('message') ?? 'Gateway returned an error.';
+            $errorMessage = $res->json('error') ?? ($res->json('message') ?? 'Gateway returned an error.');
+            if (str_contains(strtolower($errorMessage), 'not connected') || str_contains(strtolower($errorMessage), 'scan the qr')) {
+                $account->update(['status' => 0]);
+            }
         }
 
         if ($isSuccess) {

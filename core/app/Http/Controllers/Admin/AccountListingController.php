@@ -164,11 +164,25 @@ class AccountListingController extends Controller
         ]);
 
         $account = WhatsappAccount::where('session_id', $request->session_id)->first();
-        if ($account && $account->user_id > 0) {
+        if (!$account) {
+            return response()->json([
+                'status' => 'error',
+                'error'  => 'WhatsApp account session not found or was removed.'
+            ], 404);
+        }
+
+        if ($account->user_id > 0) {
             return response()->json([
                 'status' => 'error',
                 'error'  => 'Permission denied: Admin cannot use user WhatsApp accounts or bots to send messages.'
             ], 403);
+        }
+
+        if ($account->status != 1) {
+            return response()->json([
+                'status' => 'error',
+                'error'  => "WhatsApp account '{$account->account_name}' is not connected. Please scan QR or link account first."
+            ], 400);
         }
 
         try {
@@ -186,6 +200,9 @@ class AccountListingController extends Controller
                 ]);
             } else {
                 $err = $response->json()['error'] ?? 'Failed to send message.';
+                if (str_contains(strtolower($err), 'not connected') || str_contains(strtolower($err), 'scan the qr')) {
+                    $account->update(['status' => 0]);
+                }
                 return response()->json(['status' => 'error', 'error' => $err], 400);
             }
         } catch (\Exception $e) {
