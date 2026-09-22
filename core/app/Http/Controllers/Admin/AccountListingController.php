@@ -203,12 +203,19 @@ class AccountListingController extends Controller
                 if (str_contains(strtolower($err), 'not connected') || str_contains(strtolower($err), 'scan the qr')) {
                     $account->update(['status' => 0]);
                 }
+                if (str_contains(strtolower($err), 'connection closed') || str_contains(strtolower($err), 'websocket')) {
+                    $err = 'WhatsApp connection is briefly syncing. Please wait a moment and try again.';
+                }
                 return response()->json(['status' => 'error', 'error' => $err], 400);
             }
         } catch (\Exception $e) {
+            $errStr = $e->getMessage();
+            if (str_contains(strtolower($errStr), 'connection closed') || str_contains(strtolower($errStr), 'websocket')) {
+                $errStr = 'WhatsApp connection is briefly syncing. Please wait a moment and try again.';
+            }
             return response()->json([
                 'status' => 'error',
-                'error'  => 'Baileys service connection error: ' . $e->getMessage(),
+                'error'  => 'Baileys service connection error: ' . $errStr,
             ], 500);
         }
     }
@@ -243,11 +250,18 @@ class AccountListingController extends Controller
             }
 
             $errMsg = $response ? ($response->json()['error'] ?? 'WhatsApp service could not fetch groups.') : 'Baileys microservice is unreachable.';
+            if (str_contains(strtolower($errMsg), 'connection closed') || str_contains(strtolower($errMsg), 'websocket')) {
+                $errMsg = 'WhatsApp connection is briefly syncing. Please wait a moment and try again.';
+            }
             return response()->json(['success' => false, 'error' => $errMsg], 400);
         } catch (\Throwable $e) {
+            $errStr = $e->getMessage();
+            if (str_contains(strtolower($errStr), 'connection closed') || str_contains(strtolower($errStr), 'websocket')) {
+                $errStr = 'WhatsApp connection is briefly syncing. Please wait a moment and try again.';
+            }
             return response()->json([
                 'success' => false,
-                'error'   => 'Failed to extract WhatsApp groups: ' . $e->getMessage(),
+                'error'   => 'Failed to extract WhatsApp groups: ' . $errStr,
             ], 500);
         }
     }

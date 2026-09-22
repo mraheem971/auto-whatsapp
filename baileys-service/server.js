@@ -1072,49 +1072,82 @@ const handleSendMessage = async (req, res) => {
         }
 
         let result;
-        if (mediaUrl) {
-            const lowerUrl = mediaUrl.toLowerCase();
-            const inferredType = mediaType || (
-                lowerUrl.match(/\.(jpg|jpeg|png|webp|gif)$/) ? 'image' :
-                lowerUrl.match(/\.(mp4|mkv|mov|avi|webm)$/) ? 'video' :
-                lowerUrl.match(/\.(mp3|ogg|wav|m4a|aac)$/) ? 'audio' : 'document'
-            );
+        let lastSendError = null;
 
-            console.log(`[Baileys] Sending ${inferredType.toUpperCase()} via session ${sessionId} to ${jid}`);
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                // If socket is reconnecting or not open, wait briefly before attempting
+                if (session.status === 'reconnecting' || !session.socket?.ws?.isOpen) {
+                    console.log(`[Baileys] Socket not fully ready (attempt ${attempt}/3). Waiting 2s...`);
+                    await new Promise(r => setTimeout(r, 2000));
+                    session = sessions.get(sessionId) || session;
+                }
 
-            if (inferredType === 'image') {
-                result = await session.socket.sendMessage(jid, {
-                    image: { url: mediaUrl },
-                    caption: message || undefined
-                });
-            } else if (inferredType === 'video') {
-                result = await session.socket.sendMessage(jid, {
-                    video: { url: mediaUrl },
-                    caption: message || undefined
-                });
-            } else if (inferredType === 'audio') {
-                result = await session.socket.sendMessage(jid, {
-                    audio: { url: mediaUrl },
-                    mimetype: 'audio/mp4',
-                    ptt: Boolean(req.body.isVoiceNote)
-                });
-            } else {
-                // Document / File
-                const docName = filename || path.basename(mediaUrl) || 'document.pdf';
-                result = await session.socket.sendMessage(jid, {
-                    document: { url: mediaUrl },
-                    mimetype: req.body.mimetype || 'application/octet-stream',
-                    fileName: docName,
-                    caption: message || undefined
-                });
+                if (mediaUrl) {
+                    const lowerUrl = mediaUrl.toLowerCase();
+                    const inferredType = mediaType || (
+                        lowerUrl.match(/\.(jpg|jpeg|png|webp|gif)$/) ? 'image' :
+                        lowerUrl.match(/\.(mp4|mkv|mov|avi|webm)$/) ? 'video' :
+                        lowerUrl.match(/\.(mp3|ogg|wav|m4a|aac)$/) ? 'audio' : 'document'
+                    );
+
+                    console.log(`[Baileys] Sending ${inferredType.toUpperCase()} via session ${sessionId} to ${jid} (attempt ${attempt}/3)`);
+
+                    if (inferredType === 'image') {
+                        result = await session.socket.sendMessage(jid, {
+                            image: { url: mediaUrl },
+                            caption: message || undefined
+                        });
+                    } else if (inferredType === 'video') {
+                        result = await session.socket.sendMessage(jid, {
+                            video: { url: mediaUrl },
+                            caption: message || undefined
+                        });
+                    } else if (inferredType === 'audio') {
+                        result = await session.socket.sendMessage(jid, {
+                            audio: { url: mediaUrl },
+                            mimetype: 'audio/mp4',
+                            ptt: Boolean(req.body.isVoiceNote)
+                        });
+                    } else {
+                        // Document / File
+                        const docName = filename || path.basename(mediaUrl) || 'document.pdf';
+                        result = await session.socket.sendMessage(jid, {
+                            document: { url: mediaUrl },
+                            mimetype: req.body.mimetype || 'application/octet-stream',
+                            fileName: docName,
+                            caption: message || undefined
+                        });
+                    }
+                } else {
+                    console.log(`[Baileys] Sending text message via session ${sessionId} to JID: ${jid} (attempt ${attempt}/3)`);
+                    result = await session.socket.sendMessage(jid, { text: message });
+                }
+
+                lastSendError = null;
+                break;
+            } catch (sendErr) {
+                lastSendError = sendErr;
+                const errStr = (sendErr?.message || '').toLowerCase();
+                const isTransient = errStr.includes('connection closed') || 
+                                    errStr.includes('websocket is not open') || 
+                                    errStr.includes('timed out') || 
+                                    errStr.includes('bad mac') ||
+                                    errStr.includes('socket');
+
+                if (isTransient && attempt < 3) {
+                    console.warn(`[Baileys Send Retry] Attempt ${attempt}/3 failed with "${sendErr.message}". Retrying in 2.5s...`);
+                    await new Promise(r => setTimeout(r, 2500));
+                    session = sessions.get(sessionId) || session;
+                } else {
+                    throw sendErr;
+                }
             }
-        } else {
-            console.log(`[Baileys] Sending text message via session ${sessionId} to JID: ${jid}`);
-            result = await session.socket.sendMessage(jid, { text: message });
         }
 
         res.json({
             success: true,
+            status: 'success',
             message: 'Message sent successfully!',
             targetJid: jid,
             messageId: result?.key?.id,
@@ -1131,9 +1164,11 @@ const handleSendMessage = async (req, res) => {
             errMsg = 'WhatsApp recipient or group not found. Please verify the Group JID or phone number.';
         } else if (errMsg.toLowerCase().includes('rate-overlimit') || statusCode === 429) {
             errMsg = 'Rate limit reached on WhatsApp. Please wait a moment.';
+        } else if (errMsg.toLowerCase().includes('connection closed') || errMsg.toLowerCase().includes('closed') || errMsg.toLowerCase().includes('websocket')) {
+            errMsg = 'WhatsApp connection is briefly syncing or reconnecting. Please wait a few seconds and try again.';
         }
 
-        res.status(400).json({ error: errMsg, originalError: error.message });
+        res.status(400).json({ success: false, status: 'error', error: errMsg, originalError: error.message });
     }
 };
 
@@ -1166,12 +1201,24 @@ app.get('/api/groups/:sessionId', async (req, res) => {
         }
 
         let groups = {};
-        try {
-            if (typeof session.socket.groupFetchAllParticipating === 'function') {
-                groups = await session.socket.groupFetchAllParticipating();
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                if (typeof session.socket?.groupFetchAllParticipating === 'function') {
+                    groups = await session.socket.groupFetchAllParticipating();
+                    break;
+                }
+            } catch (fetchErr) {
+                const errStr = (fetchErr?.message || '').toLowerCase();
+                const isTransient = errStr.includes('connection closed') || errStr.includes('websocket') || errStr.includes('timed out');
+                if (isTransient && attempt < 3) {
+                    console.warn(`[Baileys Groups] groupFetchAllParticipating attempt ${attempt}/3 failed (${fetchErr.message}). Retrying in 2s...`);
+                    await new Promise(r => setTimeout(r, 2000));
+                    session = sessions.get(sessionId) || session;
+                } else {
+                    console.warn(`[${sessionId}] groupFetchAllParticipating warning:`, fetchErr.message);
+                    break;
+                }
             }
-        } catch (fetchErr) {
-            console.warn(`[${sessionId}] groupFetchAllParticipating warning:`, fetchErr.message);
         }
 
         const groupList = Object.values(groups || {}).map(g => ({
@@ -1237,8 +1284,27 @@ app.get('/api/contacts/:sessionId', async (req, res) => {
         // If groups requested or mode is all
         if (mode === 'groups_only' || mode === 'all') {
             try {
-                const groups = await session.socket.groupFetchAllParticipating();
-                for (const group of Object.values(groups)) {
+                let groups = {};
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    try {
+                        if (typeof session.socket?.groupFetchAllParticipating === 'function') {
+                            groups = await session.socket.groupFetchAllParticipating();
+                            break;
+                        }
+                    } catch (fetchErr) {
+                        const errStr = (fetchErr?.message || '').toLowerCase();
+                        if ((errStr.includes('connection closed') || errStr.includes('websocket') || errStr.includes('timed out')) && attempt < 3) {
+                            console.warn(`[Baileys Contacts] groupFetchAllParticipating attempt ${attempt}/3 failed. Retrying in 2s...`);
+                            await new Promise(r => setTimeout(r, 2000));
+                            session = sessions.get(sessionId) || session;
+                        } else {
+                            console.warn(`[${sessionId}] groupFetchAllParticipating warning:`, fetchErr.message);
+                            break;
+                        }
+                    }
+                }
+
+                for (const group of Object.values(groups || {})) {
                     const groupObj = {
                         type: 'group',
                         id: group.id,
