@@ -113,13 +113,21 @@
                                                 <input type="number" name="max_delay_seconds" class="form-control form-control-sm" min="1" max="120" value="{{ $botSettings->max_delay_seconds ?? 15 }}">
                                             </div>
                                         </div>
-                                        <small class="text-muted d-block mt-2">A random delay between min and max seconds will be applied between each message to mimic human behavior.</small>
+                                 <!-- Broadcast Execution Mode -->
+                                <div class="col-12">
+                                    <div class="p-3 bg-light rounded border">
+                                        <h6 class="fw-bold text-dark mb-2"><i class="las la-rocket text-primary me-1"></i> Broadcast Execution Mode</h6>
+                                        <select name="dispatch_mode" class="form-select" required>
+                                            <option value="auto" selected>⚡ Automatic Background Broadcast (Server runs continuously without keeping browser open)</option>
+                                            <option value="manual">🖥 Interactive In-Browser Broadcast (Real-time live progress on screen)</option>
+                                        </select>
+                                        <small class="text-muted d-block mt-1">In Automatic Background Mode, the campaign dispatches continuously on the server until completed or paused by you.</small>
                                     </div>
                                 </div>
 
                                 <div class="col-12 text-end mt-4">
                                     <button type="submit" class="btn btn--base px-4 py-2" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }}>
-                                        <i class="las la-check-circle me-1"></i> Create & Prepare Campaign
+                                        <i class="las la-check-circle me-1"></i> Launch Campaign Broadcast
                                     </button>
                                 </div>
 

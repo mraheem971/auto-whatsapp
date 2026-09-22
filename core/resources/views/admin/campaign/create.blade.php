@@ -83,6 +83,18 @@
                             </small>
                         </div>
 
+                        <!-- Broadcast Execution Mode -->
+                        <div class="col-lg-6 col-md-12">
+                            <label class="fw-bold mb-1">@lang('Broadcast Execution Mode') <span class="text--danger">*</span></label>
+                            <select name="dispatch_mode" id="dispatch_mode" class="form-control form-select" required>
+                                <option value="auto" selected>⚡ @lang('Automatic Background Broadcast (Server runs continuously without keeping browser open)')</option>
+                                <option value="manual">🖥 @lang('Interactive In-Browser Broadcast (Live real-time feed on screen)')</option>
+                            </select>
+                            <small class="text-muted d-block mt-1">
+                                <i class="las la-info-circle text--primary me-1"></i>@lang('In Automatic Mode, the campaign will run continuously on the server until completed or paused by you.')
+                            </small>
+                        </div>
+
                         <!-- Multiple Specific Groups Selector (Hidden by default) -->
                         <div class="col-12 d-none" id="multiple_groups_wrapper">
                             <div class="card border bg-light">

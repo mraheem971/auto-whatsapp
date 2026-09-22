@@ -122,84 +122,74 @@
 
         var targets = @json($targets);
         var total = targets.length;
-        var minDelay = {{ (int) $campaign->min_delay_seconds }};
-        var maxDelay = {{ (int) $campaign->max_delay_seconds }};
-        var isRunning = false;
-        var currentIndex = 0;
-        var sentCount = 0;
-        var failedCount = 0;
+        var campaignId = "{{ $campaign->id }}";
+        var initialStatus = "{{ $campaign->status }}";
+        var pollInterval = null;
 
         function log(msg, type) {
             var color = type === 'success' ? '#28c76f' : (type === 'error' ? '#ea5455' : '#7367f0');
             var time = new Date().toLocaleTimeString();
             $('#campaignTerminal').append('<div style="color:' + color + '">[' + time + '] ' + msg + '</div>');
             var term = document.getElementById('campaignTerminal');
-            term.scrollTop = term.scrollHeight;
+            if (term) term.scrollTop = term.scrollHeight;
         }
 
-        function updateProgress() {
-            var sent = sentCount;
-            var pct = total > 0 ? Math.round(((sent + failedCount) / total) * 100) : 100;
+        function updateProgress(sent, failed, totalTargets, status, pct) {
+            var processed = sent + failed;
             $('#progressBar').css('width', pct + '%');
             $('#progressPercent').text(pct + '%');
-            $('#progressText').text((sent + failedCount) + ' of ' + total + ' processed');
+            $('#progressText').text(processed + ' of ' + totalTargets + ' processed');
             $('#statSent').text(sent);
-            $('#statFailed').text(failedCount);
-            $('#statRemaining').text(Math.max(0, total - (sent + failedCount)));
+            $('#statFailed').text(failed);
+            $('#statRemaining').text(Math.max(0, totalTargets - processed));
+
+            if (status === 'running') {
+                $('#campaignStatusBadge').removeClass('bg-secondary bg-warning').addClass('bg-primary').text('RUNNING (SERVER BACKGROUND)');
+                $('#btnStartCampaign').addClass('d-none');
+                $('#btnPauseCampaign').removeClass('d-none');
+            } else if (status === 'completed') {
+                $('#campaignStatusBadge').removeClass('bg-primary bg-warning bg-secondary').addClass('bg-success').text('COMPLETED');
+                $('#btnPauseCampaign').addClass('d-none');
+                $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-check me-1"></i> Broadcast Finished').prop('disabled', true);
+                stopPolling();
+            } else if (status === 'paused') {
+                $('#campaignStatusBadge').removeClass('bg-primary bg-success').addClass('bg-warning').text('PAUSED');
+                $('#btnPauseCampaign').addClass('d-none');
+                $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
+                stopPolling();
+            }
         }
 
-        async function sendNext() {
-            if (!isRunning || currentIndex >= total) {
-                if (currentIndex >= total && total > 0) {
-                    isRunning = false;
-                    $('#campaignStatusBadge').removeClass('bg-primary').addClass('bg-success').text('COMPLETED');
-                    $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-check me-1"></i> Broadcast Finished').prop('disabled', true);
-                    $('#btnPauseCampaign').addClass('d-none');
-                    log('🎉 All ' + total + ' broadcast messages processed successfully!', 'success');
-                }
-                return;
-            }
-
-            var target = targets[currentIndex];
-            var delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
-
-            log('⏳ Anti-ban wait: ' + delay + 's before sending to ' + (target.phone || target.name || target.target_jid) + '...', 'info');
-
-            await new Promise(r => setTimeout(r, delay * 1000));
-
-            if (!isRunning) return;
-
-            log('🚀 Dispatching message to +' + (target.phone || target.name) + '...', 'info');
-
-            $.ajax({
-                url: "{{ route('user.campaigns.send.single', $campaign->id) }}",
-                type: "POST",
-                data: {
-                    _token: "{{ csrf_token() }}",
-                    target_jid: target.target_jid,
-                    name: target.name,
-                    phone: target.phone
-                },
-                success: function (res) {
-                    if (res.success) {
-                        sentCount++;
-                        log('✔ Sent successfully to ' + (target.phone || target.name), 'success');
-                    } else {
-                        failedCount++;
-                        log('✖ Failed: ' + (res.error || 'Unknown error'), 'error');
+        function pollStatus() {
+            $.get("{{ url('user/campaigns/live-status') }}/" + campaignId, function (res) {
+                if (res && res.success) {
+                    updateProgress(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent);
+                    if (res.logs && res.logs.length > 0) {
+                        var lastLog = res.logs[res.logs.length - 1];
+                        if (lastLog && lastLog.target) {
+                            var statusText = lastLog.status === 'success' ? 'Delivered' : ('Failed: ' + (lastLog.error || ''));
+                            log('[' + lastLog.status.toUpperCase() + '] ' + (lastLog.target || lastLog.target_jid) + ' - ' + statusText, lastLog.status);
+                        }
                     }
-                    currentIndex++;
-                    updateProgress();
-                    sendNext();
-                },
-                error: function (xhr) {
-                    failedCount++;
-                    log('✖ Dispatch error: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Network error'), 'error');
-                    currentIndex++;
-                    updateProgress();
-                    sendNext();
+                    if (res.status === 'completed') {
+                        log('🎉 Campaign broadcast completed successfully on server!', 'success');
+                        stopPolling();
+                    }
                 }
             });
+        }
+
+        function startPolling() {
+            if (pollInterval) clearInterval(pollInterval);
+            pollStatus();
+            pollInterval = setInterval(pollStatus, 2500);
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
         }
 
         $('#btnStartCampaign').on('click', function () {
@@ -208,21 +198,45 @@
                 log('⚠ No targets found in this audience. Please extract groups/contacts into a list first.', 'error');
                 return;
             }
-            isRunning = true;
-            $('#campaignStatusBadge').removeClass('bg-secondary bg-warning').addClass('bg-primary').text('RUNNING');
+
             $('#btnStartCampaign').addClass('d-none');
             $('#btnPauseCampaign').removeClass('d-none');
-            log('▶ Campaign broadcast started.', 'info');
-            sendNext();
+            $('#campaignStatusBadge').removeClass('bg-secondary bg-warning').addClass('bg-primary').text('RUNNING (SERVER BACKGROUND)');
+            log('🚀 Launching automatic background broadcast on server...', 'info');
+
+            $.post("{{ route('user.campaigns.start.auto', $campaign->id) }}", {
+                _token: "{{ csrf_token() }}"
+            }, function (res) {
+                notify('success', 'Automatic background broadcast launched! Server will send messages continuously.');
+                log('✔ Background broadcast active on server. You can safely close this page.', 'success');
+                startPolling();
+            }).fail(function (xhr) {
+                notify('error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to start broadcast');
+                log('✖ Failed to start background worker.', 'error');
+            });
         });
 
         $('#btnPauseCampaign').on('click', function () {
-            isRunning = false;
-            $('#campaignStatusBadge').removeClass('bg-primary').addClass('bg-warning').text('PAUSED');
-            $('#btnPauseCampaign').addClass('d-none');
-            $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
-            log('⏸ Broadcast paused by user.', 'info');
+            $.post("{{ url('user/campaigns/update-status') }}/" + campaignId, {
+                _token: "{{ csrf_token() }}",
+                status: 'paused'
+            }, function () {
+                stopPolling();
+                $('#btnPauseCampaign').addClass('d-none');
+                $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
+                $('#campaignStatusBadge').removeClass('bg-primary').addClass('bg-warning').text('PAUSED');
+                log('⏸ Broadcast paused by user.', 'info');
+                notify('info', 'Broadcast paused.');
+            });
         });
+
+        // If initial status is running, connect poller immediately
+        if (initialStatus === 'running') {
+            log('🔄 Connecting to live background campaign dispatcher...', 'info');
+            startPolling();
+        } else {
+            pollStatus();
+        }
 
     })(jQuery);
 </script>

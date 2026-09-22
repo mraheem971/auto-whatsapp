@@ -172,127 +172,127 @@
 
     const targets = @json($targets);
     const campaignId = "{{ $campaign->id }}";
-    const minDelay = {{ $campaign->min_delay ?: ($campaign->delay_seconds ?: 5) }};
-    const maxDelay = {{ $campaign->max_delay ?: ($campaign->delay_seconds ?: 15) }};
     const totalTargets = targets.length;
 
-    let currentIndex = 0;
-    let isRunning = false;
-    let sentCount = {{ $campaign->sent_count }};
-    let failedCount = {{ $campaign->failed_count }};
+    let pollInterval = null;
+    let initialStatus = "{{ $campaign->status }}";
 
-    function getRandomDelay() {
-        return Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
-    }
-
-    function updateProgressBar(){
-        const totalProcessed = sentCount + failedCount;
-        const pct = totalTargets > 0 ? Math.round((totalProcessed / totalTargets) * 100) : 0;
+    function updateCounters(sent, failed, total, status, pct){
+        $('#sentCountDisplay').text(sent);
+        $('#failedCountDisplay').text(failed);
+        $('#totalCountDisplay').text(total);
         $('#progressBar').css('width', pct + '%');
         $('#progressPercent').text(pct + '%');
-        $('#sentCountDisplay').text(sentCount);
-        $('#failedCountDisplay').text(failedCount);
-    }
-
-    $('#btnStartBroadcast').on('click', function(){
-        if(totalTargets === 0){
-            notify('warning', 'No targets in queue to broadcast.');
-            return;
-        }
-
-        isRunning = true;
-        $('#btnStartBroadcast').addClass('d-none');
-        $('#btnPauseBroadcast').removeClass('d-none');
-        $('#campaignStatusBadge').removeClass('badge--dark').addClass('badge--success').text('Running');
-        $('#queueStatusBadge').removeClass('badge--info').addClass('badge--warning').text('Broadcasting live...');
-
-        $.post("{{ url('admin/campaigns/update-status') }}/" + campaignId, {
-            _token: "{{ csrf_token() }}",
-            status: 'running'
-        });
-
-        processNextTarget();
-    });
-
-    $('#btnPauseBroadcast').on('click', function(){
-        isRunning = false;
-        $('#btnPauseBroadcast').addClass('d-none');
-        $('#btnStartBroadcast').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
-        $('#queueStatusBadge').removeClass('badge--warning').addClass('badge--info').text('Broadcast Paused');
-    });
-
-    function processNextTarget(){
-        if(!isRunning) return;
-
-        if(currentIndex >= totalTargets){
-            isRunning = false;
+        
+        if (status === 'running') {
+            $('#campaignStatusBadge').removeClass('badge--dark badge--warning badge--secondary').addClass('badge--success').text('Running');
+            $('#queueStatusBadge').removeClass('bg-secondary bg--info').addClass('bg--warning text-dark').html('<i class="fas fa-spinner fa-spin me-1"></i> Broadcasting in Background...');
+            $('#btnStartBroadcast').addClass('d-none');
+            $('#btnPauseBroadcast').removeClass('d-none');
+        } else if (status === 'completed') {
+            $('#campaignStatusBadge').removeClass('badge--dark badge--warning').addClass('badge--success').text('Completed');
+            $('#queueStatusBadge').removeClass('bg--warning text-dark').addClass('bg--success').text('Broadcast Completed');
             $('#btnPauseBroadcast').addClass('d-none');
             $('#btnStartBroadcast').removeClass('d-none').prop('disabled', true).html('<i class="las la-check me-1"></i> Completed');
-            $('#queueStatusBadge').removeClass('badge--warning').addClass('badge--success').text('Broadcast Completed');
-            notify('success', 'Campaign broadcast completed successfully!');
-
-            $.post("{{ url('admin/campaigns/update-status') }}/" + campaignId, {
-                _token: "{{ csrf_token() }}",
-                status: 'completed'
-            });
-            return;
+            stopPolling();
+        } else if (status === 'paused') {
+            $('#campaignStatusBadge').removeClass('badge--success badge--dark').addClass('badge--warning').text('Paused');
+            $('#queueStatusBadge').removeClass('bg--warning text-dark').addClass('bg--info').text('Broadcast Paused');
+            $('#btnPauseBroadcast').addClass('d-none');
+            $('#btnStartBroadcast').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
+            stopPolling();
         }
+    }
 
-        const target = targets[currentIndex];
-        const row = $(`#target_row_${currentIndex}`);
-        const statusCell = row.find('.status-cell');
-
-        statusCell.html('<span class="badge badge--info"><i class="fas fa-spinner fa-spin me-1"></i> Sending...</span>');
-        row.addClass('table-active');
-
-        // Send message to this recipient
-        $.ajax({
-            url: "{{ url('admin/campaigns/send-single') }}/" + campaignId,
-            type: "POST",
-            data: {
-                _token: "{{ csrf_token() }}",
-                target_jid: target.target_jid,
-                name: target.name,
-                type: target.type,
-                group_name: target.group_name
-            },
-            success: function(res){
-                row.removeClass('table-active');
-                if(res.success){
-                    sentCount++;
+    function syncLogs(logs){
+        if (!logs || !Array.isArray(logs)) return;
+        logs.forEach(function(l){
+            if (!l.target_jid) return;
+            const targetIndex = targets.findIndex(t => t.target_jid === l.target_jid);
+            if (targetIndex !== -1) {
+                const row = $(`#target_row_${targetIndex}`);
+                const statusCell = row.find('.status-cell');
+                if (l.status === 'success') {
                     statusCell.html('<span class="badge badge--success"><i class="las la-check-circle me-1"></i> Delivered</span>');
-                } else {
-                    failedCount++;
-                    statusCell.html(`<span class="badge badge--danger" title="${res.error || ''}"><i class="las la-times-circle me-1"></i> Failed</span>`);
-                }
-
-                updateProgressBar();
-                currentIndex++;
-
-                if(isRunning && currentIndex < totalTargets){
-                    const waitDelay = getRandomDelay();
-                    statusCell.append(` <small class="text-muted">(${waitDelay}s anti-ban delay)</small>`);
-                    setTimeout(processNextTarget, waitDelay * 1000);
-                } else if(currentIndex >= totalTargets){
-                    processNextTarget();
-                }
-            },
-            error: function(xhr){
-                row.removeClass('table-active');
-                failedCount++;
-                statusCell.html('<span class="badge badge--danger"><i class="las la-times-circle me-1"></i> Error</span>');
-                updateProgressBar();
-                currentIndex++;
-
-                if(isRunning && currentIndex < totalTargets){
-                    const waitDelay = getRandomDelay();
-                    setTimeout(processNextTarget, waitDelay * 1000);
+                } else if (l.status === 'failed') {
+                    statusCell.html(`<span class="badge badge--danger" title="${l.error || ''}"><i class="las la-times-circle me-1"></i> Failed</span>`);
                 }
             }
         });
     }
 
-    updateProgressBar();
+    function pollStatus(){
+        $.get("{{ url('admin/campaigns/live-status') }}/" + campaignId, function(res){
+            if (res && res.success) {
+                updateCounters(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent);
+                syncLogs(res.logs);
+                if (res.status === 'completed') {
+                    stopPolling();
+                }
+            }
+        });
+    }
+
+    function startPolling(){
+        if (pollInterval) clearInterval(pollInterval);
+        pollStatus();
+        pollInterval = setInterval(pollStatus, 2500);
+    }
+
+    function stopPolling(){
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
+
+    $('#btnStartBroadcast').on('click', function(){
+        if (totalTargets === 0){
+            notify('warning', 'No targets in queue. Please extract or sync WhatsApp contacts first.');
+            return;
+        }
+
+        $('#btnStartBroadcast').addClass('d-none');
+        $('#btnPauseBroadcast').removeClass('d-none');
+        $('#campaignStatusBadge').removeClass('badge--dark').addClass('badge--success').text('Running');
+        $('#queueStatusBadge').removeClass('badge--info').addClass('badge--warning').text('Broadcasting in Background...');
+
+        $.post("{{ route('admin.campaigns.start.auto', $campaign->id) }}", {
+            _token: "{{ csrf_token() }}"
+        }, function(res){
+            notify('success', 'Automatic background broadcast launched! Server will send messages continuously.');
+            startPolling();
+        }).fail(function(xhr){
+            notify('error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to launch background broadcast');
+        });
+    });
+
+    $('#btnPauseBroadcast').on('click', function(){
+        $.post("{{ url('admin/campaigns/update-status') }}/" + campaignId, {
+            _token: "{{ csrf_token() }}",
+            status: 'paused'
+        }, function(){
+            stopPolling();
+            $('#btnPauseBroadcast').addClass('d-none');
+            $('#btnStartBroadcast').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
+            $('#campaignStatusBadge').removeClass('badge--success').addClass('badge--warning').text('Paused');
+            $('#queueStatusBadge').removeClass('badge--warning').addClass('badge--info').text('Broadcast Paused');
+            notify('info', 'Broadcast paused by user.');
+        });
+    });
+
+    // Auto-start polling if already running or if auto-dispatched
+    if (initialStatus === 'running') {
+        startPolling();
+    } else {
+        // Initial log sync
+        $.get("{{ url('admin/campaigns/live-status') }}/" + campaignId, function(res){
+            if (res && res.success) {
+                updateCounters(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent);
+                syncLogs(res.logs);
+            }
+        });
+    }
 
 })(jQuery);
 </script>

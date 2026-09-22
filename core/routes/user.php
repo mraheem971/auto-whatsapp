@@ -152,6 +152,8 @@ Route::middleware('auth')->name('user.')->group(function () {
                 Route::get('/create', 'create')->name('create');
                 Route::post('/store', 'store')->name('store');
                 Route::get('/view/{id}', 'view')->name('view');
+                Route::post('/start-auto/{id}', 'startAutoBroadcast')->name('start.auto');
+                Route::get('/live-status/{id}', 'liveStatus')->name('live.status');
                 Route::post('/send-single/{id}', 'sendSingle')->name('send.single');
                 Route::post('/update-status/{id}', 'updateStatus')->name('update.status');
                 Route::post('/delete/{id}', 'delete')->name('delete');

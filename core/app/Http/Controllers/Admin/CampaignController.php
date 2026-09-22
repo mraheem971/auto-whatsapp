@@ -210,10 +210,49 @@ class CampaignController extends Controller
         $campaign->sent_count       = 0;
         $campaign->failed_count     = 0;
         $campaign->logs             = [];
+        if ($request->auto_dispatch || $request->dispatch_mode === 'auto') {
+            $campaign->status = 'running';
+            $campaign->save();
+            \App\Services\CampaignDispatcherService::launchBackgroundProcess($campaign->id);
+            $notify[] = ['success', 'Campaign created and launched automatically in background!'];
+        } else {
+            $notify[] = ['success', 'Campaign created successfully! Ready to launch.'];
+        }
+
+        return redirect()->route('admin.campaigns.view', $campaign->id)->withNotify($notify);
+    }
+
+    public function startAutoBroadcast($id)
+    {
+        $campaign = Campaign::findOrFail($id);
+        $campaign->status = 'running';
         $campaign->save();
 
-        $notify[] = ['success', 'Campaign created successfully! Ready to launch.'];
-        return redirect()->route('admin.campaigns.view', $campaign->id)->withNotify($notify);
+        \App\Services\CampaignDispatcherService::launchBackgroundProcess($campaign->id);
+
+        return response()->json([
+            'success' => true,
+            'status'  => 'running',
+            'message' => 'Automatic background broadcast started. Running continuously on server.'
+        ]);
+    }
+
+    public function liveStatus($id)
+    {
+        $campaign = Campaign::findOrFail($id);
+        $total = $campaign->total_targets ?: 1;
+        $processed = $campaign->sent_count + $campaign->failed_count;
+        $pct = min(100, round(($processed / $total) * 100));
+
+        return response()->json([
+            'success'          => true,
+            'status'           => $campaign->status,
+            'total_targets'    => $campaign->total_targets,
+            'sent_count'       => $campaign->sent_count,
+            'failed_count'     => $campaign->failed_count,
+            'progress_percent' => $pct,
+            'logs'             => array_slice($campaign->logs ?? [], -30),
+        ]);
     }
 
     public function view($id)
