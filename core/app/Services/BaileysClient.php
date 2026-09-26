@@ -57,7 +57,8 @@ class BaileysClient
                 if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                     pclose(popen("start /B cmd /c \"cd /d \"{$realPath}\" && node server.js\"", "r"));
                 } else {
-                    exec("cd \"{$realPath}\" && node server.js > /dev/null 2>&1 &");
+                    $nodeBin = file_exists('/opt/alt/alt-nodejs20/root/usr/bin/node') ? '/opt/alt/alt-nodejs20/root/usr/bin/node' : 'node';
+                    exec("export PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH; cd \"{$realPath}\" && (./node_modules/.bin/pm2 resurrect 2>/dev/null || ./node_modules/.bin/pm2 restart baileys-whatsapp 2>/dev/null || PORT=3333 {$nodeBin} server.js > /dev/null 2>&1 &)");
                 }
             }
         }
