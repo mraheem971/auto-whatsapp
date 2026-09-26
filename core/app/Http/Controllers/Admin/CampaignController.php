@@ -81,9 +81,12 @@ class CampaignController extends Controller
             'target_group_ids' => 'nullable|array',
             'target_group_id'  => 'nullable|string',
             'message'          => 'required|string',
-            'min_delay'        => 'nullable|integer|min:1|max:600',
-            'max_delay'        => 'nullable|integer|min:1|max:600',
-            'daily_limit'      => 'nullable|integer|min:0|max:100000',
+            'min_delay'            => 'nullable|integer|min:1|max:600',
+            'max_delay'            => 'nullable|integer|min:1|max:600',
+            'daily_limit'          => 'nullable|integer|min:0|max:100000',
+            'delay_after_count'    => 'nullable|integer|min:1|max:5000',
+            'delay_after_duration' => 'nullable|integer|min:1|max:3600',
+            'reset_after_count'    => 'nullable|integer|min:1|max:10000',
         ]);
 
         // Security check: Admin cannot use user WhatsApp accounts/bots
@@ -208,10 +211,14 @@ class CampaignController extends Controller
         $campaign->target_group_ids = !empty($request->target_group_ids) ? json_encode($request->target_group_ids) : null;
         $campaign->target_group_id  = $request->target_group_id;
         $campaign->message          = $request->message;
-        $campaign->min_delay        = $minDelay;
-        $campaign->max_delay        = $maxDelay;
-        $campaign->delay_seconds    = $minDelay;
-        $campaign->daily_limit      = ($request->filled('daily_limit') && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
+        $campaign->min_delay            = $minDelay;
+        $campaign->max_delay            = $maxDelay;
+        $campaign->delay_seconds        = $minDelay;
+        $campaign->delay_after_count    = (int)($request->delay_after_count ?: 50);
+        $campaign->delay_after_duration = (int)($request->delay_after_duration ?: 5);
+        $campaign->reset_after_count    = (int)($request->reset_after_count ?: 100);
+        $campaign->batch_sent_count     = 0;
+        $campaign->daily_limit          = ($request->filled('daily_limit') && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
         $campaign->daily_sent_count = 0;
         $campaign->daily_sent_date  = date('Y-m-d');
         $campaign->status           = 'ready';
@@ -294,6 +301,10 @@ class CampaignController extends Controller
             'auto_restart'       => (bool)($campaign->auto_restart ?? 1),
             'min_delay'              => $campaign->min_delay_seconds,
             'max_delay'              => $campaign->max_delay_seconds,
+            'delay_after_count'      => $campaign->delay_after_count,
+            'delay_after_duration'   => $campaign->delay_after_duration,
+            'reset_after_count'      => $campaign->reset_after_count,
+            'batch_sent_count'       => $campaign->batch_sent_count,
             'seconds_until_next'     => $campaign->seconds_until_next,
             'daily_limit'            => (int)($campaign->daily_limit ?? 0),
             'today_sent_count'       => $campaign->today_sent_count,
@@ -545,6 +556,15 @@ class CampaignController extends Controller
         if ($request->has('daily_limit')) {
             $campaign->daily_limit = ($request->daily_limit !== null && $request->daily_limit !== '' && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
         }
+        if ($request->has('delay_after_count')) {
+            $campaign->delay_after_count = max(1, (int)$request->delay_after_count);
+        }
+        if ($request->has('delay_after_duration')) {
+            $campaign->delay_after_duration = max(1, (int)$request->delay_after_duration);
+        }
+        if ($request->has('reset_after_count')) {
+            $campaign->reset_after_count = max(1, (int)$request->reset_after_count);
+        }
         $campaign->save();
 
         return response()->json([
@@ -553,6 +573,10 @@ class CampaignController extends Controller
             'auto_restart'           => (bool)$campaign->auto_restart,
             'min_delay'              => $campaign->min_delay_seconds,
             'max_delay'              => $campaign->max_delay_seconds,
+            'delay_after_count'      => $campaign->delay_after_count,
+            'delay_after_duration'   => $campaign->delay_after_duration,
+            'reset_after_count'      => $campaign->reset_after_count,
+            'batch_sent_count'       => $campaign->batch_sent_count,
             'seconds_until_next'     => $campaign->seconds_until_next,
             'daily_limit'            => (int)($campaign->daily_limit ?? 0),
             'today_sent_count'       => $campaign->today_sent_count,

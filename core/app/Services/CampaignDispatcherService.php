@@ -294,13 +294,16 @@ class CampaignDispatcherService
                     $campaign->increment('daily_sent_count');
                 }
 
+                $campaign->increment('batch_sent_count');
+                $freshBatchCount = (int) $campaign->fresh()->batch_sent_count;
+
                 $logEntry['status'] = 'success';
                 $logEntry['message'] = 'Delivered';
 
                 $currentLogs = $campaign->fresh()->logs ?? [];
                 $currentLogs[] = $logEntry;
 
-                // Check if target daily limit is reached
+                // 1. Check if target daily limit is reached
                 $dailyLimit = (int) ($campaign->daily_limit ?? 0);
                 if ($dailyLimit > 0 && $campaign->daily_sent_count >= $dailyLimit) {
                     $campaign->next_send_at = now()->addDay()->startOfDay()->addSeconds(rand(5, 30));
@@ -312,10 +315,38 @@ class CampaignDispatcherService
                         'status'     => 'info',
                         'message'    => "Daily limit of {$dailyLimit} messages reached for today. Safely pausing broadcast until tomorrow midnight.",
                     ];
-                } else {
-                    // Schedule anti-ban human behavior delay for next message
-                    $minD = $campaign->min_delay_seconds;
-                    $maxD = $campaign->max_delay_seconds;
+                }
+                // 2. Check Reset After Count rule (e.g. after 100 messages, reset cycle and take cooldown)
+                elseif ($campaign->reset_after_count > 0 && $freshBatchCount >= $campaign->reset_after_count) {
+                    $campaign->batch_sent_count = 0;
+                    $pauseSec = $campaign->delay_after_duration ?: 5;
+                    $campaign->next_send_at = now()->addSeconds($pauseSec);
+                    $currentLogs[] = [
+                        'timestamp'  => date('Y-m-d H:i:s'),
+                        'target'     => 'Anti-Ban Batch Cycle',
+                        'target_jid' => '',
+                        'type'       => 'batch_reset',
+                        'status'     => 'info',
+                        'message'    => "Reset cycle reached ({$campaign->reset_after_count} messages). Resetting batch cycle and cooling down for {$pauseSec}s.",
+                    ];
+                }
+                // 3. Check Delay After Count rule (e.g. after 50 messages, take pause of delay_after_duration)
+                elseif ($campaign->delay_after_count > 0 && ($freshBatchCount % $campaign->delay_after_count === 0)) {
+                    $pauseSec = $campaign->delay_after_duration ?: 5;
+                    $campaign->next_send_at = now()->addSeconds($pauseSec);
+                    $currentLogs[] = [
+                        'timestamp'  => date('Y-m-d H:i:s'),
+                        'target'     => 'Anti-Ban Batch Pause',
+                        'target_jid' => '',
+                        'type'       => 'batch_pause',
+                        'status'     => 'info',
+                        'message'    => "Batch of {$campaign->delay_after_count} messages reached ({$freshBatchCount} sent). Pausing for {$pauseSec}s cooldown.",
+                    ];
+                }
+                // 4. Regular per-message random delay
+                else {
+                    $minD = $campaign->min_delay_seconds ?: 30;
+                    $maxD = $campaign->max_delay_seconds ?: 60;
                     if ($maxD < $minD) $maxD = $minD;
                     $campaign->next_send_at = now()->addSeconds(rand($minD, $maxD));
                 }
@@ -604,6 +635,10 @@ class CampaignDispatcherService
                 'daily_sent_count'    => $freshCampaign->today_sent_count,
                 'daily_remaining'     => $freshCampaign->daily_remaining,
                 'daily_limit_reached' => $freshCampaign->isDailyLimitReached(),
+                'delay_after_count'   => $freshCampaign->delay_after_count,
+                'delay_after_duration'=> $freshCampaign->delay_after_duration,
+                'reset_after_count'   => $freshCampaign->reset_after_count,
+                'batch_sent_count'    => $freshCampaign->batch_sent_count,
                 'result'              => $sendRes,
             ];
 

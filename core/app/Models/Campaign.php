@@ -64,4 +64,24 @@ class Campaign extends Model
         }
         return max(0, $limit - $this->today_sent_count);
     }
+
+    public function getDelayAfterCountAttribute()
+    {
+        return (int) ($this->attributes['delay_after_count'] ?? 50);
+    }
+
+    public function getDelayAfterDurationAttribute()
+    {
+        return (int) ($this->attributes['delay_after_duration'] ?? 5);
+    }
+
+    public function getResetAfterCountAttribute()
+    {
+        return (int) ($this->attributes['reset_after_count'] ?? 100);
+    }
+
+    public function getBatchSentCountAttribute(): int
+    {
+        return (int) ($this->attributes['batch_sent_count'] ?? 0);
+    }
 }

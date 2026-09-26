@@ -73,14 +73,31 @@
                             <label class="fw-bold mb-1">@lang('Anti-Ban Random Delay Range (Seconds)') <span class="text--danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white small fw-bold"><i class="las la-stopwatch me-1 text--primary"></i>Min</span>
-                                <input type="number" name="min_delay" id="min_delay" class="form-control" value="5" min="1" max="600" required placeholder="5">
+                                <input type="number" name="min_delay" id="min_delay" class="form-control" value="30" min="1" max="600" required placeholder="30">
                                 <span class="input-group-text bg-white small fw-bold">to</span>
-                                <input type="number" name="max_delay" id="max_delay" class="form-control" value="15" min="1" max="600" required placeholder="15">
+                                <input type="number" name="max_delay" id="max_delay" class="form-control" value="60" min="1" max="600" required placeholder="60">
                                 <span class="input-group-text bg-light small">Seconds</span>
                             </div>
                             <small class="text-muted d-block mt-1">
-                                <i class="las la-shield-alt text--success me-1"></i>@lang('Random delay between Min and Max seconds will be chosen for each message to mimic human behavior and avoid WhatsApp ban.')
+                                <i class="las la-shield-alt text--success me-1"></i>@lang('Random delay between Min and Max seconds (default 30s - 60s) for natural human pace.')
                             </small>
+                        </div>
+
+                        <!-- Anti-Ban Batch Pause & Reset Rules -->
+                        <div class="col-lg-6 col-md-12">
+                            <label class="fw-bold mb-1">@lang('Anti-Ban Batch Pause & Cycle Reset') <span class="text--danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white small fw-bold">Pause</span>
+                                <input type="number" name="delay_after_duration" id="delay_after_duration" class="form-control" value="5" min="1" max="3600" required placeholder="5">
+                                <span class="input-group-text bg-light small">s after</span>
+                                <input type="number" name="delay_after_count" id="delay_after_count" class="form-control" value="50" min="1" max="5000" required placeholder="50">
+                                <span class="input-group-text bg-light small">msgs</span>
+                            </div>
+                            <div class="input-group mt-1">
+                                <span class="input-group-text bg-white small fw-bold">Reset After</span>
+                                <input type="number" name="reset_after_count" id="reset_after_count" class="form-control" value="100" min="1" max="10000" required placeholder="100">
+                                <span class="input-group-text bg-light small">msgs (cycle repeats)</span>
+                            </div>
                         </div>
 
                         <!-- Target Message Limit Per Day -->

@@ -103,12 +103,15 @@ class UserCampaignController extends Controller
             'message'             => 'required|string',
             'min_delay_seconds'   => 'nullable|integer|min:1|max:600',
             'max_delay_seconds'   => 'nullable|integer|min:1|max:600',
+            'delay_after_count'   => 'nullable|integer|min:1|max:5000',
+            'delay_after_duration'=> 'nullable|integer|min:1|max:3600',
+            'reset_after_count'   => 'nullable|integer|min:1|max:10000',
             'daily_limit'         => 'nullable|integer|min:0|max:100000',
         ]);
 
         $botSettings = UserBotSetting::getSettingsForUser($user->id);
-        $minDelay = (int) ($request->min_delay_seconds ?: ($request->min_delay ?: ($botSettings->min_delay_seconds ?? 5)));
-        $maxDelay = (int) ($request->max_delay_seconds ?: ($request->max_delay ?: ($botSettings->max_delay_seconds ?? 15)));
+        $minDelay = (int) ($request->min_delay_seconds ?: ($request->min_delay ?: ($botSettings->min_delay_seconds ?? 30)));
+        $maxDelay = (int) ($request->max_delay_seconds ?: ($request->max_delay ?: ($botSettings->max_delay_seconds ?? 60)));
         if ($maxDelay < $minDelay) {
             $maxDelay = $minDelay;
         }
@@ -138,22 +141,26 @@ class UserCampaignController extends Controller
         }
 
         $campaign = new Campaign();
-        $campaign->user_id           = $user->id;
-        $campaign->name              = $request->name;
-        $campaign->session_id        = $request->session_id;
-        $campaign->template_id       = $request->template_id;
-        $campaign->contact_list_id   = $listId;
-        $campaign->target_type       = $targetType;
-        $campaign->message           = $request->message;
-        $campaign->media_url         = $request->media_url;
-        $campaign->media_type        = $request->media_type ?: 'text';
-        $campaign->min_delay         = $minDelay;
-        $campaign->max_delay         = $maxDelay;
-        $campaign->delay_seconds     = $minDelay;
-        $campaign->daily_limit       = ($request->filled('daily_limit') && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
-        $campaign->daily_sent_count  = 0;
-        $campaign->daily_sent_date   = date('Y-m-d');
-        $campaign->status            = 'ready';
+        $campaign->user_id              = $user->id;
+        $campaign->name                 = $request->name;
+        $campaign->session_id           = $request->session_id;
+        $campaign->template_id          = $request->template_id;
+        $campaign->contact_list_id      = $listId;
+        $campaign->target_type          = $targetType;
+        $campaign->message              = $request->message;
+        $campaign->media_url            = $request->media_url;
+        $campaign->media_type           = $request->media_type ?: 'text';
+        $campaign->min_delay            = $minDelay;
+        $campaign->max_delay            = $maxDelay;
+        $campaign->delay_seconds        = $minDelay;
+        $campaign->delay_after_count    = $request->filled('delay_after_count') ? (int)$request->delay_after_count : ($botSettings->delay_after_count ?? 50);
+        $campaign->delay_after_duration = $request->filled('delay_after_duration') ? (int)$request->delay_after_duration : ($botSettings->delay_after_duration ?? 5);
+        $campaign->reset_after_count    = $request->filled('reset_after_count') ? (int)$request->reset_after_count : ($botSettings->reset_after_count ?? 100);
+        $campaign->batch_sent_count     = 0;
+        $campaign->daily_limit          = ($request->filled('daily_limit') && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
+        $campaign->daily_sent_count     = 0;
+        $campaign->daily_sent_date      = date('Y-m-d');
+        $campaign->status               = 'ready';
         $campaign->auto_restart     = $request->has('auto_restart') ? 1 : ($request->auto_restart ?? 1);
         $campaign->loop_count        = 0;
         $campaign->total_targets     = $recipientsCount;
@@ -235,6 +242,10 @@ class UserCampaignController extends Controller
             'auto_restart'       => (bool)($campaign->auto_restart ?? 1),
             'min_delay'              => $campaign->min_delay_seconds,
             'max_delay'              => $campaign->max_delay_seconds,
+            'delay_after_count'      => $campaign->delay_after_count,
+            'delay_after_duration'   => $campaign->delay_after_duration,
+            'reset_after_count'      => $campaign->reset_after_count,
+            'batch_sent_count'       => $campaign->batch_sent_count,
             'seconds_until_next'     => $campaign->seconds_until_next,
             'daily_limit'            => (int)($campaign->daily_limit ?? 0),
             'today_sent_count'       => $campaign->today_sent_count,
@@ -433,6 +444,15 @@ class UserCampaignController extends Controller
         if ($request->has('max_delay')) {
             $campaign->max_delay = max($campaign->min_delay ?: 1, (int)$request->max_delay);
         }
+        if ($request->has('delay_after_count')) {
+            $campaign->delay_after_count = max(1, (int)$request->delay_after_count);
+        }
+        if ($request->has('delay_after_duration')) {
+            $campaign->delay_after_duration = max(1, (int)$request->delay_after_duration);
+        }
+        if ($request->has('reset_after_count')) {
+            $campaign->reset_after_count = max(1, (int)$request->reset_after_count);
+        }
         if ($request->has('daily_limit')) {
             $campaign->daily_limit = ($request->daily_limit !== null && $request->daily_limit !== '' && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
         }
@@ -444,11 +464,45 @@ class UserCampaignController extends Controller
             'auto_restart'           => (bool)$campaign->auto_restart,
             'min_delay'              => $campaign->min_delay_seconds,
             'max_delay'              => $campaign->max_delay_seconds,
+            'delay_after_count'      => $campaign->delay_after_count,
+            'delay_after_duration'   => $campaign->delay_after_duration,
+            'reset_after_count'      => $campaign->reset_after_count,
+            'batch_sent_count'       => $campaign->batch_sent_count,
             'seconds_until_next'     => $campaign->seconds_until_next,
             'daily_limit'            => (int)($campaign->daily_limit ?? 0),
             'today_sent_count'       => $campaign->today_sent_count,
             'daily_remaining'        => $campaign->daily_remaining,
             'is_daily_limit_reached' => $campaign->isDailyLimitReached(),
+        ]);
+    }
+
+    public function saveAntiBanSettings(Request $request)
+    {
+        $request->validate([
+            'min_delay_seconds'    => 'required|integer|min:1|max:600',
+            'max_delay_seconds'    => 'required|integer|min:1|max:600|gte:min_delay_seconds',
+            'delay_after_count'    => 'required|integer|min:1|max:5000',
+            'delay_after_duration' => 'required|integer|min:1|max:3600',
+            'reset_after_count'    => 'required|integer|min:1|max:10000',
+        ]);
+
+        $user = auth()->user();
+        $settings = UserBotSetting::getSettingsForUser($user->id);
+        $settings->min_delay_seconds    = (int) $request->min_delay_seconds;
+        $settings->max_delay_seconds    = (int) $request->max_delay_seconds;
+        $settings->delay_after_count    = (int) $request->delay_after_count;
+        $settings->delay_after_duration = (int) $request->delay_after_duration;
+        $settings->reset_after_count    = (int) $request->reset_after_count;
+        $settings->save();
+
+        return response()->json([
+            'success'              => true,
+            'message'              => 'Anti-Ban Human Behaviour rules saved successfully!',
+            'min_delay_seconds'    => $settings->min_delay_seconds,
+            'max_delay_seconds'    => $settings->max_delay_seconds,
+            'delay_after_count'    => $settings->delay_after_count,
+            'delay_after_duration' => $settings->delay_after_duration,
+            'reset_after_count'    => $settings->reset_after_count,
         ]);
     }
 

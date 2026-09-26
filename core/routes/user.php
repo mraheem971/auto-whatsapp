@@ -156,6 +156,7 @@ Route::middleware('auth')->name('user.')->group(function () {
                 Route::get('/live-status/{id}', 'liveStatus')->name('live.status');
                 Route::post('/send-single/{id}', 'sendSingle')->name('send.single');
                 Route::post('/update-status/{id}', 'updateStatus')->name('update.status');
+                Route::post('/save-anti-ban-settings', 'saveAntiBanSettings')->name('anti_ban.save');
                 Route::post('/delete/{id}', 'delete')->name('delete');
             });
 

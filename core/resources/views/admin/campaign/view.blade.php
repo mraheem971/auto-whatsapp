@@ -67,6 +67,23 @@
 
                 <div class="mb-3 pb-3 border-bottom">
                     <div class="d-flex align-items-center justify-content-between">
+                        <span class="text-muted"><i class="las la-layer-group me-1"></i> @lang('Batch Pause & Reset')</span>
+                        <span class="badge bg-light text-dark border font-monospace" id="displayBatchRules">
+                            Pause {{ $campaign->delay_after_duration }}s / {{ $campaign->delay_after_count }} msgs
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 11px;">
+                        <span class="text-muted">@lang('Cycle Reset'):</span>
+                        <span class="fw-bold text-dark" id="displayResetRule">After {{ $campaign->reset_after_count }} msgs</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 11px;">
+                        <span class="text-muted">@lang('Current Batch Sent'):</span>
+                        <span class="badge badge--secondary" id="displayBatchSent">{{ $campaign->batch_sent_count ?? 0 }} / {{ $campaign->delay_after_count }}</span>
+                    </div>
+                </div>
+
+                <div class="mb-3 pb-3 border-bottom">
+                    <div class="d-flex align-items-center justify-content-between">
                         <span class="text-muted"><i class="las la-calendar-check me-1"></i> @lang('Daily Send Limit')</span>
                         <div>
                             <span class="badge bg-light text-dark border font-monospace" id="displayDailyLimit">
@@ -287,7 +304,7 @@
         }
     }
 
-    function updateCounters(sent, failed, total, status, pct, round, autoRestart, secondsUntilNext, minD, maxD, dailyLimit, todaySent, dailyRemaining, isDailyLimitReached){
+    function updateCounters(sent, failed, total, status, pct, round, autoRestart, secondsUntilNext, minD, maxD, dailyLimit, todaySent, dailyRemaining, isDailyLimitReached, delayAfterCount, delayAfterDuration, resetAfterCount, batchSentCount){
         $('#sentCountDisplay').text(sent);
         $('#failedCountDisplay').text(failed);
         $('#totalCountDisplay').text(total);
@@ -304,6 +321,16 @@
         if (minD && maxD) {
             $('#displayDelayRange').text(minD + 's - ' + maxD + 's Random');
             $('#delayRangeNotice').text('(' + minD + 's - ' + maxD + 's delay)');
+        }
+
+        if (delayAfterCount && delayAfterDuration) {
+            $('#displayBatchRules').text('Pause ' + delayAfterDuration + 's / ' + delayAfterCount + ' msgs');
+        }
+        if (resetAfterCount) {
+            $('#displayResetRule').text('After ' + resetAfterCount + ' msgs');
+        }
+        if (batchSentCount !== undefined && delayAfterCount) {
+            $('#displayBatchSent').text(batchSentCount + ' / ' + delayAfterCount);
         }
 
         if (dailyLimit !== undefined) {
@@ -372,7 +399,26 @@
     function pollStatus(){
         $.get("{{ url('admin/campaigns/live-status') }}/" + campaignId, function(res){
             if (res && res.success) {
-                updateCounters(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart, res.seconds_until_next, res.min_delay, res.max_delay, res.daily_limit, res.today_sent_count, res.daily_remaining, res.is_daily_limit_reached);
+                updateCounters(
+                    res.sent_count, 
+                    res.failed_count, 
+                    res.total_targets, 
+                    res.status, 
+                    res.progress_percent, 
+                    res.current_round, 
+                    res.auto_restart, 
+                    res.seconds_until_next, 
+                    res.min_delay, 
+                    res.max_delay, 
+                    res.daily_limit, 
+                    res.today_sent_count, 
+                    res.daily_remaining, 
+                    res.is_daily_limit_reached,
+                    res.delay_after_count,
+                    res.delay_after_duration,
+                    res.reset_after_count,
+                    res.batch_sent_count
+                );
                 syncLogs(res.logs);
                 if (res.status === 'completed' && !res.auto_restart) {
                     stopPolling();
