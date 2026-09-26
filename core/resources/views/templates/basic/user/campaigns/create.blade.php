@@ -99,21 +99,34 @@
                                     </select>
                                 </div>
 
-                                <!-- Anti-Ban Human Behavior Timing -->
+                                <!-- Anti-Ban Human Behavior Timing & Daily Limit -->
                                 <div class="col-12">
                                     <div class="p-3 bg-light rounded border">
-                                        <h6 class="fw-bold text-dark mb-2"><i class="las la-shield-alt text-success me-1"></i> Anti-Ban Human Delay Settings</h6>
+                                        <h6 class="fw-bold text-dark mb-2"><i class="las la-shield-alt text-success me-1"></i> Anti-Ban Human Delay & Safety Limits</h6>
                                         <div class="row g-3">
                                             <div class="col-md-6">
                                                 <label class="small fw-bold mb-1">Min Delay Between Messages (Seconds)</label>
-                                                <input type="number" name="min_delay_seconds" class="form-control form-control-sm" min="1" max="60" value="{{ $botSettings->min_delay_seconds ?? 5 }}">
+                                                <input type="number" name="min_delay_seconds" class="form-control form-control-sm" min="1" max="600" value="{{ $botSettings->min_delay_seconds ?? 5 }}">
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="small fw-bold mb-1">Max Delay Between Messages (Seconds)</label>
-                                                <input type="number" name="max_delay_seconds" class="form-control form-control-sm" min="1" max="120" value="{{ $botSettings->max_delay_seconds ?? 15 }}">
+                                                <input type="number" name="max_delay_seconds" class="form-control form-control-sm" min="1" max="600" value="{{ $botSettings->max_delay_seconds ?? 15 }}">
+                                            </div>
+                                            <div class="col-12 pt-2 border-top">
+                                                <label class="small fw-bold mb-1"><i class="las la-calendar-check text-primary me-1"></i> Target Message Limit Per Day</label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" name="daily_limit" class="form-control form-control-sm" min="0" max="50000" placeholder="e.g. 100 (0 or empty = unlimited)" value="{{ old('daily_limit') }}">
+                                                    <span class="input-group-text">msgs / day</span>
+                                                </div>
+                                                <small class="text-muted d-block mt-1">
+                                                    Maximum messages to send per day (e.g. 50 or 100). Leave 0 or blank for unlimited. If limit is reached, broadcast safely pauses and automatically resumes tomorrow at midnight.
+                                                </small>
                                             </div>
                                         </div>
-                                 <!-- Broadcast Execution Mode -->
+                                    </div>
+                                </div>
+
+                                <!-- Broadcast Execution Mode -->
                                 <div class="col-12">
                                     <div class="p-3 bg-light rounded border">
                                         <h6 class="fw-bold text-dark mb-2"><i class="las la-rocket text-primary me-1"></i> Broadcast Execution Mode</h6>

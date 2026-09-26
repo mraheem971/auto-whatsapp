@@ -57,6 +57,26 @@
                                     <small class="text-muted" style="font-size: 10px;">Anti-ban random delay between messages</small>
                                 </div>
                             </li>
+                            <li class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted"><i class="las la-calendar-check me-1"></i> Daily Send Limit</span>
+                                    <div>
+                                        <span class="fw-bold text-primary" id="displayDailyLimit">{{ $campaign->daily_limit > 0 ? $campaign->daily_limit . ' / day' : 'Unlimited' }}</span>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary ms-1 py-0 px-1" id="btnEditDailyLimit" style="font-size: 10px;">Edit</button>
+                                    </div>
+                                </div>
+                                <div class="d-none mt-2 p-2 bg-light rounded border" id="editDailyLimitBox">
+                                    <div class="input-group input-group-sm mb-1">
+                                        <input type="number" id="inputDailyLimit" class="form-control form-control-sm" placeholder="0 = Unlimited" min="0" max="50000" value="{{ $campaign->daily_limit }}">
+                                        <button type="button" class="btn btn-sm btn--base" id="btnSaveDailyLimit"><i class="las la-save"></i> Save</button>
+                                    </div>
+                                    <small class="text-muted" style="font-size: 10px;">Max messages per day (0 = unlimited)</small>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 11px;">
+                                    <span class="text-muted">Today's Sent:</span>
+                                    <span class="fw-bold text-dark" id="displayTodaySent">{{ $campaign->today_sent_count }}{{ $campaign->daily_limit > 0 ? ' / ' . $campaign->daily_limit : '' }}</span>
+                                </div>
+                            </li>
                             <li class="list-group-item px-0 d-flex justify-content-between">
                                 <span class="text-muted">Simulated Typing</span>
                                 <span class="fw-bold text-primary">{{ $botSettings->typing_simulation ? 'Active (' . $botSettings->typing_duration_seconds . 's)' : 'Off' }}</span>
@@ -98,10 +118,10 @@
                         <!-- Anti-Ban Human Delay Live Alert -->
                         <div id="delayCountdownAlert" class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center justify-content-between d-none" style="border-left: 4px solid #0d6efd;">
                             <div class="d-flex align-items-center">
-                                <i class="las la-shield-alt fs-3 me-2 text-primary"></i>
+                                <i class="las la-shield-alt fs-3 me-2 text-primary" id="delayAlertIcon"></i>
                                 <div>
-                                    <span class="fw-bold d-block text-dark">Anti-Ban Human Delay Active</span>
-                                    <small class="text-muted">Next message will send in <span class="badge bg-primary text-white fw-bold fs-6" id="delayCountdownTimer">0s</span> <span class="text-secondary" id="delayRangeNotice">({{ $campaign->min_delay_seconds }}s - {{ $campaign->max_delay_seconds }}s human delay)</span></small>
+                                    <span class="fw-bold d-block text-dark" id="delayAlertTitle">Anti-Ban Human Delay Active</span>
+                                    <small class="text-muted" id="delayAlertSubtitle">Next message will send in <span class="badge bg-primary text-white fw-bold fs-6" id="delayCountdownTimer">0s</span> <span class="text-secondary" id="delayRangeNotice">({{ $campaign->min_delay_seconds }}s - {{ $campaign->max_delay_seconds }}s human delay)</span></small>
                                 </div>
                             </div>
                             <div class="spinner-grow spinner-grow-sm text-primary" role="status"></div>
@@ -169,13 +189,32 @@
         var countdownTimer = null;
         var currentSecondsLeft = 0;
 
-        function startCountdown(seconds) {
+        function formatDuration(sec) {
+            sec = Math.max(0, parseInt(sec) || 0);
+            if (sec < 60) return sec + 's';
+            var hrs = Math.floor(sec / 3600);
+            var mins = Math.floor((sec % 3600) / 60);
+            var s = sec % 60;
+            if (hrs > 0) return hrs + 'h ' + mins + 'm ' + s + 's';
+            return mins + 'm ' + s + 's';
+        }
+
+        function startCountdown(seconds, isDailyLimitReached, dailyLimit, todaySent, minD, maxD) {
             currentSecondsLeft = parseInt(seconds) || 0;
             if (countdownTimer) clearInterval(countdownTimer);
 
             if (currentSecondsLeft > 0) {
                 $('#delayCountdownAlert').removeClass('d-none');
-                $('#delayCountdownTimer').text(currentSecondsLeft + 's');
+
+                if (isDailyLimitReached) {
+                    $('#delayAlertIcon').attr('class', 'las la-hourglass-half fs-3 me-2 text-warning');
+                    $('#delayAlertTitle').text('Daily Target Message Limit Reached (' + todaySent + '/' + dailyLimit + ')');
+                    $('#delayAlertSubtitle').html('Safe anti-ban sleep active. Broadcast automatically resumes tomorrow at midnight. Next message in <span class="badge bg-warning text-dark fw-bold fs-6" id="delayCountdownTimer">' + formatDuration(currentSecondsLeft) + '</span>');
+                } else {
+                    $('#delayAlertIcon').attr('class', 'las la-shield-alt fs-3 me-2 text-primary');
+                    $('#delayAlertTitle').text('Anti-Ban Human Delay Active');
+                    $('#delayAlertSubtitle').html('Next message will send in <span class="badge bg-primary text-white fw-bold fs-6" id="delayCountdownTimer">' + formatDuration(currentSecondsLeft) + '</span> <span class="text-secondary" id="delayRangeNotice">(' + (minD || 5) + 's - ' + (maxD || 15) + 's human delay)</span>');
+                }
 
                 countdownTimer = setInterval(function () {
                     currentSecondsLeft--;
@@ -184,7 +223,7 @@
                         countdownTimer = null;
                         $('#delayCountdownAlert').addClass('d-none');
                     } else {
-                        $('#delayCountdownTimer').text(currentSecondsLeft + 's');
+                        $('#delayCountdownTimer').text(formatDuration(currentSecondsLeft));
                     }
                 }, 1000);
             } else {
@@ -200,7 +239,7 @@
             if (term) term.scrollTop = term.scrollHeight;
         }
 
-        function updateProgress(sent, failed, totalTargets, status, pct, round, autoRestart, secondsUntilNext, minD, maxD) {
+        function updateProgress(sent, failed, totalTargets, status, pct, round, autoRestart, secondsUntilNext, minD, maxD, dailyLimit, todaySent, dailyRemaining, isDailyLimitReached) {
             var processed = sent + failed;
             $('#progressBar').css('width', pct + '%');
             $('#progressPercent').text(pct + '%');
@@ -221,13 +260,22 @@
                 $('#delayRangeNotice').text('(' + minD + 's - ' + maxD + 's human delay)');
             }
 
+            if (dailyLimit !== undefined) {
+                $('#displayDailyLimit').text(dailyLimit > 0 ? dailyLimit + ' / day' : 'Unlimited');
+                $('#displayTodaySent').text((todaySent || 0) + (dailyLimit > 0 ? ' / ' + dailyLimit : ''));
+            }
+
             if (status === 'running') {
-                $('#campaignStatusBadge').removeClass('bg-secondary bg-warning bg-success').addClass('bg-primary').text('RUNNING (ROUND #' + (round || 1) + ')');
+                if (isDailyLimitReached) {
+                    $('#campaignStatusBadge').removeClass('bg-secondary bg-warning bg-success').addClass('bg-info').text('DAILY LIMIT SLEEP (RESUMES TOMORROW)');
+                } else {
+                    $('#campaignStatusBadge').removeClass('bg-secondary bg-warning bg-success bg-info').addClass('bg-primary').text('RUNNING (ROUND #' + (round || 1) + ')');
+                }
                 $('#btnStartCampaign').addClass('d-none');
                 $('#btnPauseCampaign').removeClass('d-none');
 
                 if (secondsUntilNext > 0) {
-                    startCountdown(secondsUntilNext);
+                    startCountdown(secondsUntilNext, isDailyLimitReached, dailyLimit, todaySent, minD, maxD);
                 } else {
                     if (countdownTimer) clearInterval(countdownTimer);
                     $('#delayCountdownAlert').addClass('d-none');
@@ -256,7 +304,7 @@
         function pollStatus() {
             $.get("{{ url('user/campaigns/live-status') }}/" + campaignId, function (res) {
                 if (res && res.success) {
-                    updateProgress(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart, res.seconds_until_next, res.min_delay, res.max_delay);
+                    updateProgress(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart, res.seconds_until_next, res.min_delay, res.max_delay, res.daily_limit, res.today_sent_count, res.daily_remaining, res.is_daily_limit_reached);
                     if (res.logs && res.logs.length > 0) {
                         var lastLog = res.logs[res.logs.length - 1];
                         if (lastLog && lastLog.target) {
@@ -353,6 +401,26 @@
                 $('#delayRangeNotice').text('(' + minVal + 's - ' + maxVal + 's human delay)');
                 notify('success', 'Anti-ban delay updated to ' + minVal + 's - ' + maxVal + 's.');
                 log('⏱ Anti-ban delay updated: ' + minVal + 's - ' + maxVal + 's random delay between messages.', 'info');
+            });
+        });
+
+        $('#btnEditDailyLimit').on('click', function () {
+            $('#editDailyLimitBox').toggleClass('d-none');
+        });
+
+        $('#btnSaveDailyLimit').on('click', function () {
+            var limitVal = parseInt($('#inputDailyLimit').val()) || 0;
+            if (limitVal < 0) limitVal = 0;
+
+            $.post("{{ url('user/campaigns/update-status') }}/" + campaignId, {
+                _token: "{{ csrf_token() }}",
+                daily_limit: limitVal
+            }, function (res) {
+                $('#editDailyLimitBox').addClass('d-none');
+                $('#displayDailyLimit').text(limitVal > 0 ? limitVal + ' / day' : 'Unlimited');
+                $('#displayTodaySent').text(res.today_sent_count + (limitVal > 0 ? ' / ' + limitVal : ''));
+                notify('success', limitVal > 0 ? 'Daily message limit updated to ' + limitVal + ' msgs/day.' : 'Daily message limit removed (Unlimited).');
+                log('🎯 Daily message limit updated: ' + (limitVal > 0 ? limitVal + ' msgs/day' : 'Unlimited'), 'info');
             });
         });
 

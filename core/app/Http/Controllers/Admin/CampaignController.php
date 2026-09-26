@@ -83,6 +83,7 @@ class CampaignController extends Controller
             'message'          => 'required|string',
             'min_delay'        => 'nullable|integer|min:1|max:600',
             'max_delay'        => 'nullable|integer|min:1|max:600',
+            'daily_limit'      => 'nullable|integer|min:0|max:100000',
         ]);
 
         // Security check: Admin cannot use user WhatsApp accounts/bots
@@ -210,6 +211,9 @@ class CampaignController extends Controller
         $campaign->min_delay        = $minDelay;
         $campaign->max_delay        = $maxDelay;
         $campaign->delay_seconds    = $minDelay;
+        $campaign->daily_limit      = ($request->filled('daily_limit') && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
+        $campaign->daily_sent_count = 0;
+        $campaign->daily_sent_date  = date('Y-m-d');
         $campaign->status           = 'ready';
         $campaign->auto_restart     = $request->has('auto_restart') ? 1 : ($request->auto_restart ?? 1);
         $campaign->loop_count       = 0;
@@ -288,11 +292,15 @@ class CampaignController extends Controller
             'current_round'      => ($campaign->loop_count ?? 0) + 1,
             'loop_count'         => $campaign->loop_count ?? 0,
             'auto_restart'       => (bool)($campaign->auto_restart ?? 1),
-            'min_delay'          => $campaign->min_delay_seconds,
-            'max_delay'          => $campaign->max_delay_seconds,
-            'seconds_until_next' => $campaign->seconds_until_next,
-            'progress_percent'   => $pct,
-            'logs'               => array_slice($campaign->logs ?? [], -30),
+            'min_delay'              => $campaign->min_delay_seconds,
+            'max_delay'              => $campaign->max_delay_seconds,
+            'seconds_until_next'     => $campaign->seconds_until_next,
+            'daily_limit'            => (int)($campaign->daily_limit ?? 0),
+            'today_sent_count'       => $campaign->today_sent_count,
+            'daily_remaining'        => $campaign->daily_remaining,
+            'is_daily_limit_reached' => $campaign->isDailyLimitReached(),
+            'progress_percent'       => $pct,
+            'logs'                   => array_slice($campaign->logs ?? [], -30),
         ]);
     }
 
@@ -534,15 +542,22 @@ class CampaignController extends Controller
         if ($request->has('max_delay')) {
             $campaign->max_delay = max($campaign->min_delay ?: 1, (int)$request->max_delay);
         }
+        if ($request->has('daily_limit')) {
+            $campaign->daily_limit = ($request->daily_limit !== null && $request->daily_limit !== '' && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
+        }
         $campaign->save();
 
         return response()->json([
-            'success'            => true,
-            'status'             => $campaign->status,
-            'auto_restart'       => (bool)$campaign->auto_restart,
-            'min_delay'          => $campaign->min_delay_seconds,
-            'max_delay'          => $campaign->max_delay_seconds,
-            'seconds_until_next' => $campaign->seconds_until_next,
+            'success'                => true,
+            'status'                 => $campaign->status,
+            'auto_restart'           => (bool)$campaign->auto_restart,
+            'min_delay'              => $campaign->min_delay_seconds,
+            'max_delay'              => $campaign->max_delay_seconds,
+            'seconds_until_next'     => $campaign->seconds_until_next,
+            'daily_limit'            => (int)($campaign->daily_limit ?? 0),
+            'today_sent_count'       => $campaign->today_sent_count,
+            'daily_remaining'        => $campaign->daily_remaining,
+            'is_daily_limit_reached' => $campaign->isDailyLimitReached(),
         ]);
     }
 

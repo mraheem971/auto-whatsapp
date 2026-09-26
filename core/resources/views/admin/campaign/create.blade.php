@@ -73,13 +73,26 @@
                             <label class="fw-bold mb-1">@lang('Anti-Ban Random Delay Range (Seconds)') <span class="text--danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white small fw-bold"><i class="las la-stopwatch me-1 text--primary"></i>Min</span>
-                                <input type="number" name="min_delay" id="min_delay" class="form-control" value="5" min="1" max="60" required placeholder="5">
+                                <input type="number" name="min_delay" id="min_delay" class="form-control" value="5" min="1" max="600" required placeholder="5">
                                 <span class="input-group-text bg-white small fw-bold">to</span>
-                                <input type="number" name="max_delay" id="max_delay" class="form-control" value="15" min="2" max="120" required placeholder="15">
+                                <input type="number" name="max_delay" id="max_delay" class="form-control" value="15" min="1" max="600" required placeholder="15">
                                 <span class="input-group-text bg-light small">Seconds</span>
                             </div>
                             <small class="text-muted d-block mt-1">
                                 <i class="las la-shield-alt text--success me-1"></i>@lang('Random delay between Min and Max seconds will be chosen for each message to mimic human behavior and avoid WhatsApp ban.')
+                            </small>
+                        </div>
+
+                        <!-- Target Message Limit Per Day -->
+                        <div class="col-lg-6 col-md-12">
+                            <label class="fw-bold mb-1">@lang('Target Message Limit Per Day')</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white small fw-bold"><i class="las la-calendar-check me-1 text--primary"></i>Limit</span>
+                                <input type="number" name="daily_limit" id="daily_limit" class="form-control" min="0" max="50000" placeholder="e.g. 100 (0 or empty = unlimited)" value="{{ old('daily_limit') }}">
+                                <span class="input-group-text bg-light small">msgs / day</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                <i class="las la-info-circle text--primary me-1"></i>@lang('Max messages sent per day. When reached, broadcast safely pauses and automatically resumes tomorrow.')
                             </small>
                         </div>
 

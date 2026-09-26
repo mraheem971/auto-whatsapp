@@ -283,19 +283,44 @@ class CampaignDispatcherService
 
             if ($isSuccess) {
                 $campaign->increment('sent_count');
+
+                // Track daily sent count with anti-ban daily reset
+                $today = date('Y-m-d');
+                $sentDate = $campaign->daily_sent_date ? (is_string($campaign->daily_sent_date) ? substr($campaign->daily_sent_date, 0, 10) : $campaign->daily_sent_date->format('Y-m-d')) : null;
+                if ($sentDate !== $today) {
+                    $campaign->daily_sent_date = $today;
+                    $campaign->daily_sent_count = 1;
+                } else {
+                    $campaign->increment('daily_sent_count');
+                }
+
                 $logEntry['status'] = 'success';
                 $logEntry['message'] = 'Delivered';
 
                 $currentLogs = $campaign->fresh()->logs ?? [];
                 $currentLogs[] = $logEntry;
+
+                // Check if target daily limit is reached
+                $dailyLimit = (int) ($campaign->daily_limit ?? 0);
+                if ($dailyLimit > 0 && $campaign->daily_sent_count >= $dailyLimit) {
+                    $campaign->next_send_at = now()->addDay()->startOfDay()->addSeconds(rand(5, 30));
+                    $currentLogs[] = [
+                        'timestamp'  => date('Y-m-d H:i:s'),
+                        'target'     => 'Anti-Ban Protection',
+                        'target_jid' => '',
+                        'type'       => 'daily_limit',
+                        'status'     => 'info',
+                        'message'    => "Daily limit of {$dailyLimit} messages reached for today. Safely pausing broadcast until tomorrow midnight.",
+                    ];
+                } else {
+                    // Schedule anti-ban human behavior delay for next message
+                    $minD = $campaign->min_delay_seconds;
+                    $maxD = $campaign->max_delay_seconds;
+                    if ($maxD < $minD) $maxD = $minD;
+                    $campaign->next_send_at = now()->addSeconds(rand($minD, $maxD));
+                }
+
                 $campaign->logs = $currentLogs;
-
-                // Schedule anti-ban human behavior delay for next message
-                $minD = $campaign->min_delay_seconds;
-                $maxD = $campaign->max_delay_seconds;
-                if ($maxD < $minD) $maxD = $minD;
-                $campaign->next_send_at = now()->addSeconds(rand($minD, $maxD));
-
                 $campaign->save();
 
                 return ['success' => true, 'status' => 'success', 'message' => 'Delivered'];
@@ -451,6 +476,41 @@ class CampaignDispatcherService
                 }
             }
 
+            // 3. Target message limit per day check
+            $today = date('Y-m-d');
+            $sentDate = $campaign->daily_sent_date ? (is_string($campaign->daily_sent_date) ? substr($campaign->daily_sent_date, 0, 10) : $campaign->daily_sent_date->format('Y-m-d')) : null;
+            if ($sentDate !== $today) {
+                $campaign->daily_sent_date = $today;
+                $campaign->daily_sent_count = 0;
+                $campaign->save();
+            }
+
+            $dailyLimit = (int) ($campaign->daily_limit ?? 0);
+            if ($dailyLimit > 0 && ($campaign->daily_sent_count ?? 0) >= $dailyLimit) {
+                $tomorrow = now()->addDay()->startOfDay()->addSeconds(rand(5, 30));
+                if (!$campaign->next_send_at || now()->gte($campaign->next_send_at) || $campaign->next_send_at->isToday()) {
+                    $campaign->next_send_at = $tomorrow;
+                    $campaign->save();
+                }
+
+                $secondsUntilTomorrow = max(0, now()->diffInSeconds($campaign->next_send_at, false));
+
+                $lastResult = [
+                    'campaign_id'         => $campaign->id,
+                    'campaign_name'       => $campaign->name,
+                    'status'              => $campaign->status,
+                    'cooldown_active'     => true,
+                    'daily_limit_reached' => true,
+                    'daily_limit'         => $dailyLimit,
+                    'daily_sent_count'    => $campaign->daily_sent_count,
+                    'seconds_until_next'  => $secondsUntilTomorrow,
+                    'min_delay'           => $minDelay,
+                    'max_delay'           => $maxDelay,
+                    'message'             => "Daily limit of {$dailyLimit} messages reached for today ({$campaign->daily_sent_count}/{$dailyLimit}). Resumes tomorrow midnight.",
+                ];
+                continue;
+            }
+
             $targets = self::getTargets($campaign);
             if (empty($targets)) {
                 $campaign->status = 'completed';
@@ -537,10 +597,14 @@ class CampaignDispatcherService
                 'failed_count'       => $freshCampaign->failed_count,
                 'total_targets'      => $freshCampaign->total_targets,
                 'loop_count'         => $freshCampaign->loop_count ?? 0,
-                'seconds_until_next' => $freshCampaign->seconds_until_next,
-                'min_delay'          => $minDelay,
-                'max_delay'          => $maxDelay,
-                'result'             => $sendRes,
+                'seconds_until_next'  => $freshCampaign->seconds_until_next,
+                'min_delay'           => $minDelay,
+                'max_delay'           => $maxDelay,
+                'daily_limit'         => (int) ($freshCampaign->daily_limit ?? 0),
+                'daily_sent_count'    => $freshCampaign->today_sent_count,
+                'daily_remaining'     => $freshCampaign->daily_remaining,
+                'daily_limit_reached' => $freshCampaign->isDailyLimitReached(),
+                'result'              => $sendRes,
             ];
 
             // In a single tick, dispatch 1 per running campaign to maintain natural delivery pacing

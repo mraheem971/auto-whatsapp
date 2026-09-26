@@ -9,8 +9,9 @@ class Campaign extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
-        'logs'         => 'array',
-        'next_send_at' => 'datetime',
+        'logs'            => 'array',
+        'next_send_at'    => 'datetime',
+        'daily_sent_date' => 'date',
     ];
 
     public function getSecondsUntilNextAttribute()
@@ -29,5 +30,38 @@ class Campaign extends Model
     public function getMaxDelaySecondsAttribute()
     {
         return (int) ($this->attributes['max_delay'] ?? ($this->attributes['delay_seconds'] ? ($this->attributes['delay_seconds'] + 5) : 15));
+    }
+
+    public function getDailyLimitAttribute($value)
+    {
+        return (int) ($value ?? 0);
+    }
+
+    public function getTodaySentCountAttribute(): int
+    {
+        $today = date('Y-m-d');
+        $sentDate = $this->daily_sent_date ? (is_string($this->daily_sent_date) ? substr($this->daily_sent_date, 0, 10) : $this->daily_sent_date->format('Y-m-d')) : null;
+        if ($sentDate !== $today) {
+            return 0;
+        }
+        return (int) ($this->attributes['daily_sent_count'] ?? 0);
+    }
+
+    public function isDailyLimitReached(): bool
+    {
+        $limit = $this->daily_limit;
+        if ($limit <= 0) {
+            return false;
+        }
+        return $this->today_sent_count >= $limit;
+    }
+
+    public function getDailyRemainingAttribute(): int
+    {
+        $limit = $this->daily_limit;
+        if ($limit <= 0) {
+            return -1; // Unlimited
+        }
+        return max(0, $limit - $this->today_sent_count);
     }
 }
