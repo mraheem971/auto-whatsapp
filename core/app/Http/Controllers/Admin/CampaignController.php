@@ -81,8 +81,8 @@ class CampaignController extends Controller
             'target_group_ids' => 'nullable|array',
             'target_group_id'  => 'nullable|string',
             'message'          => 'required|string',
-            'min_delay'        => 'nullable|integer|min:1|max:120',
-            'max_delay'        => 'nullable|integer|min:1|max:120',
+            'min_delay'        => 'nullable|integer|min:1|max:600',
+            'max_delay'        => 'nullable|integer|min:1|max:600',
         ]);
 
         // Security check: Admin cannot use user WhatsApp accounts/bots
@@ -280,16 +280,19 @@ class CampaignController extends Controller
         }
 
         return response()->json([
-            'success'          => true,
-            'status'           => $campaign->status,
-            'total_targets'    => $campaign->total_targets,
-            'sent_count'       => $campaign->sent_count,
-            'failed_count'     => $campaign->failed_count,
-            'current_round'    => ($campaign->loop_count ?? 0) + 1,
-            'loop_count'       => $campaign->loop_count ?? 0,
-            'auto_restart'     => (bool)($campaign->auto_restart ?? 1),
-            'progress_percent' => $pct,
-            'logs'             => array_slice($campaign->logs ?? [], -30),
+            'success'            => true,
+            'status'             => $campaign->status,
+            'total_targets'      => $campaign->total_targets,
+            'sent_count'         => $campaign->sent_count,
+            'failed_count'       => $campaign->failed_count,
+            'current_round'      => ($campaign->loop_count ?? 0) + 1,
+            'loop_count'         => $campaign->loop_count ?? 0,
+            'auto_restart'       => (bool)($campaign->auto_restart ?? 1),
+            'min_delay'          => $campaign->min_delay_seconds,
+            'max_delay'          => $campaign->max_delay_seconds,
+            'seconds_until_next' => $campaign->seconds_until_next,
+            'progress_percent'   => $pct,
+            'logs'               => array_slice($campaign->logs ?? [], -30),
         ]);
     }
 
@@ -524,12 +527,22 @@ class CampaignController extends Controller
         if ($request->has('auto_restart')) {
             $campaign->auto_restart = $request->auto_restart ? 1 : 0;
         }
+        if ($request->has('min_delay')) {
+            $campaign->min_delay = max(1, (int)$request->min_delay);
+            $campaign->delay_seconds = $campaign->min_delay;
+        }
+        if ($request->has('max_delay')) {
+            $campaign->max_delay = max($campaign->min_delay ?: 1, (int)$request->max_delay);
+        }
         $campaign->save();
 
         return response()->json([
-            'success'      => true,
-            'status'       => $campaign->status,
-            'auto_restart' => (bool)$campaign->auto_restart
+            'success'            => true,
+            'status'             => $campaign->status,
+            'auto_restart'       => (bool)$campaign->auto_restart,
+            'min_delay'          => $campaign->min_delay_seconds,
+            'max_delay'          => $campaign->max_delay_seconds,
+            'seconds_until_next' => $campaign->seconds_until_next,
         ]);
     }
 

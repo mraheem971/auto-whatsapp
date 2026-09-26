@@ -34,9 +34,28 @@
                                 <span class="text-muted">Total Targets</span>
                                 <span class="fw-bold">{{ count($targets) }} recipients</span>
                             </li>
-                            <li class="list-group-item px-0 d-flex justify-content-between">
-                                <span class="text-muted">Human Delay Range</span>
-                                <span class="fw-bold text-success">{{ $campaign->min_delay_seconds }}s - {{ $campaign->max_delay_seconds }}s</span>
+                            <li class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted"><i class="las la-clock me-1"></i> Human Delay</span>
+                                    <div>
+                                        <span class="fw-bold text-success" id="displayDelayRange">{{ $campaign->min_delay_seconds }}s - {{ $campaign->max_delay_seconds }}s</span>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary ms-1 py-0 px-1" id="btnEditDelay" style="font-size: 10px;">Edit</button>
+                                    </div>
+                                </div>
+                                <div class="d-none mt-2 p-2 bg-light rounded border" id="editDelayBox">
+                                    <div class="row g-1 align-items-center">
+                                        <div class="col-5">
+                                            <input type="number" id="inputMinDelay" class="form-control form-control-sm" placeholder="Min s" min="1" max="600" value="{{ $campaign->min_delay_seconds }}">
+                                        </div>
+                                        <div class="col-5">
+                                            <input type="number" id="inputMaxDelay" class="form-control form-control-sm" placeholder="Max s" min="1" max="600" value="{{ $campaign->max_delay_seconds }}">
+                                        </div>
+                                        <div class="col-2 text-end">
+                                            <button type="button" class="btn btn-sm btn--base w-100 p-1" id="btnSaveDelay" title="Save Delay"><i class="las la-save"></i></button>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted" style="font-size: 10px;">Anti-ban random delay between messages</small>
+                                </div>
                             </li>
                             <li class="list-group-item px-0 d-flex justify-content-between">
                                 <span class="text-muted">Simulated Typing</span>
@@ -76,6 +95,18 @@
                     </div>
                     <div class="card-body p-4">
                         
+                        <!-- Anti-Ban Human Delay Live Alert -->
+                        <div id="delayCountdownAlert" class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center justify-content-between d-none" style="border-left: 4px solid #0d6efd;">
+                            <div class="d-flex align-items-center">
+                                <i class="las la-shield-alt fs-3 me-2 text-primary"></i>
+                                <div>
+                                    <span class="fw-bold d-block text-dark">Anti-Ban Human Delay Active</span>
+                                    <small class="text-muted">Next message will send in <span class="badge bg-primary text-white fw-bold fs-6" id="delayCountdownTimer">0s</span> <span class="text-secondary" id="delayRangeNotice">({{ $campaign->min_delay_seconds }}s - {{ $campaign->max_delay_seconds }}s human delay)</span></small>
+                                </div>
+                            </div>
+                            <div class="spinner-grow spinner-grow-sm text-primary" role="status"></div>
+                        </div>
+
                         <!-- Progress Bar -->
                         <div class="mb-4">
                             <div class="d-flex justify-content-between small fw-bold mb-2">
@@ -135,6 +166,31 @@
         var campaignId = "{{ $campaign->id }}";
         var initialStatus = "{{ $campaign->status }}";
         var pollInterval = null;
+        var countdownTimer = null;
+        var currentSecondsLeft = 0;
+
+        function startCountdown(seconds) {
+            currentSecondsLeft = parseInt(seconds) || 0;
+            if (countdownTimer) clearInterval(countdownTimer);
+
+            if (currentSecondsLeft > 0) {
+                $('#delayCountdownAlert').removeClass('d-none');
+                $('#delayCountdownTimer').text(currentSecondsLeft + 's');
+
+                countdownTimer = setInterval(function () {
+                    currentSecondsLeft--;
+                    if (currentSecondsLeft <= 0) {
+                        clearInterval(countdownTimer);
+                        countdownTimer = null;
+                        $('#delayCountdownAlert').addClass('d-none');
+                    } else {
+                        $('#delayCountdownTimer').text(currentSecondsLeft + 's');
+                    }
+                }, 1000);
+            } else {
+                $('#delayCountdownAlert').addClass('d-none');
+            }
+        }
 
         function log(msg, type) {
             var color = type === 'success' ? '#28c76f' : (type === 'error' ? '#ea5455' : '#7367f0');
@@ -144,7 +200,7 @@
             if (term) term.scrollTop = term.scrollHeight;
         }
 
-        function updateProgress(sent, failed, totalTargets, status, pct, round, autoRestart) {
+        function updateProgress(sent, failed, totalTargets, status, pct, round, autoRestart, secondsUntilNext, minD, maxD) {
             var processed = sent + failed;
             $('#progressBar').css('width', pct + '%');
             $('#progressPercent').text(pct + '%');
@@ -160,11 +216,25 @@
                 $('#toggleAutoRestart').prop('checked', !!autoRestart);
             }
 
+            if (minD && maxD) {
+                $('#displayDelayRange').text(minD + 's - ' + maxD + 's');
+                $('#delayRangeNotice').text('(' + minD + 's - ' + maxD + 's human delay)');
+            }
+
             if (status === 'running') {
                 $('#campaignStatusBadge').removeClass('bg-secondary bg-warning bg-success').addClass('bg-primary').text('RUNNING (ROUND #' + (round || 1) + ')');
                 $('#btnStartCampaign').addClass('d-none');
                 $('#btnPauseCampaign').removeClass('d-none');
+
+                if (secondsUntilNext > 0) {
+                    startCountdown(secondsUntilNext);
+                } else {
+                    if (countdownTimer) clearInterval(countdownTimer);
+                    $('#delayCountdownAlert').addClass('d-none');
+                }
             } else if (status === 'completed') {
+                if (countdownTimer) clearInterval(countdownTimer);
+                $('#delayCountdownAlert').addClass('d-none');
                 if (autoRestart) {
                     $('#campaignStatusBadge').removeClass('bg-secondary bg-warning bg-success').addClass('bg-info').text('AUTO-RESTARTING...');
                 } else {
@@ -174,6 +244,8 @@
                     stopPolling();
                 }
             } else if (status === 'paused') {
+                if (countdownTimer) clearInterval(countdownTimer);
+                $('#delayCountdownAlert').addClass('d-none');
                 $('#campaignStatusBadge').removeClass('bg-primary bg-success bg-info').addClass('bg-warning').text('PAUSED');
                 $('#btnPauseCampaign').addClass('d-none');
                 $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
@@ -184,7 +256,7 @@
         function pollStatus() {
             $.get("{{ url('user/campaigns/live-status') }}/" + campaignId, function (res) {
                 if (res && res.success) {
-                    updateProgress(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart);
+                    updateProgress(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart, res.seconds_until_next, res.min_delay, res.max_delay);
                     if (res.logs && res.logs.length > 0) {
                         var lastLog = res.logs[res.logs.length - 1];
                         if (lastLog && lastLog.target) {
@@ -259,6 +331,28 @@
             }, function (res) {
                 notify('info', isAuto ? 'Auto-Restart Loop enabled: Broadcast will restart when completed.' : 'Auto-Restart Loop disabled: Broadcast will finish once.');
                 log(isAuto ? '🔁 Auto-Restart Loop enabled.' : '⏹ Auto-Restart Loop disabled.', 'info');
+            });
+        });
+
+        $('#btnEditDelay').on('click', function () {
+            $('#editDelayBox').toggleClass('d-none');
+        });
+
+        $('#btnSaveDelay').on('click', function () {
+            var minVal = parseInt($('#inputMinDelay').val()) || 5;
+            var maxVal = parseInt($('#inputMaxDelay').val()) || 15;
+            if (maxVal < minVal) maxVal = minVal;
+
+            $.post("{{ url('user/campaigns/update-status') }}/" + campaignId, {
+                _token: "{{ csrf_token() }}",
+                min_delay: minVal,
+                max_delay: maxVal
+            }, function (res) {
+                $('#editDelayBox').addClass('d-none');
+                $('#displayDelayRange').text(minVal + 's - ' + maxVal + 's');
+                $('#delayRangeNotice').text('(' + minVal + 's - ' + maxVal + 's human delay)');
+                notify('success', 'Anti-ban delay updated to ' + minVal + 's - ' + maxVal + 's.');
+                log('⏱ Anti-ban delay updated: ' + minVal + 's - ' + maxVal + 's random delay between messages.', 'info');
             });
         });
 

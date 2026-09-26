@@ -39,16 +39,47 @@
                     <span class="badge badge--primary fw-bold" id="statRound">Round #{{ ($campaign->loop_count ?? 0) + 1 }}</span>
                 </div>
 
-                <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
-                    <span class="text-muted">@lang('Anti-Ban Cooldown')</span>
-                    <span class="badge bg-light text-dark border font-monospace">
-                        {{ $campaign->min_delay ?: $campaign->delay_seconds }}-{{ $campaign->max_delay ?: ($campaign->delay_seconds + 5) }}s Random
-                    </span>
+                <div class="mb-3 pb-3 border-bottom">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="text-muted"><i class="las la-clock me-1"></i> @lang('Anti-Ban Delay')</span>
+                        <div>
+                            <span class="badge bg-light text-dark border font-monospace" id="displayDelayRange">
+                                {{ $campaign->min_delay_seconds }}-{{ $campaign->max_delay_seconds }}s Random
+                            </span>
+                            <button type="button" class="btn btn-xs btn-outline--secondary ms-1 py-0 px-1" id="btnEditDelay" style="font-size: 10px;">Edit</button>
+                        </div>
+                    </div>
+                    <div class="d-none mt-2 p-2 bg-light rounded border" id="editDelayBox">
+                        <div class="row g-1 align-items-center">
+                            <div class="col-5">
+                                <input type="number" id="inputMinDelay" class="form-control form-control-sm" placeholder="Min s" min="1" max="600" value="{{ $campaign->min_delay_seconds }}">
+                            </div>
+                            <div class="col-5">
+                                <input type="number" id="inputMaxDelay" class="form-control form-control-sm" placeholder="Max s" min="1" max="600" value="{{ $campaign->max_delay_seconds }}">
+                            </div>
+                            <div class="col-2 text-end">
+                                <button type="button" class="btn btn-sm btn--primary w-100 p-1" id="btnSaveDelay" title="Save Delay"><i class="las la-save"></i></button>
+                            </div>
+                        </div>
+                        <small class="text-muted" style="font-size: 10px;">Random delay in seconds before next message</small>
+                    </div>
                 </div>
 
                 <div class="mb-4">
                     <label class="fw-bold text-muted small mb-1">@lang('Message Content'):</label>
                     <div class="p-3 bg-light rounded border text-dark font-monospace small" style="white-space: pre-wrap; max-height: 160px; overflow-y: auto;">{{ $campaign->message }}</div>
+                </div>
+
+                <!-- Anti-Ban Human Delay Live Alert -->
+                <div id="delayCountdownAlert" class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center justify-content-between d-none" style="border-left: 4px solid #0d6efd;">
+                    <div class="d-flex align-items-center">
+                        <i class="las la-shield-alt fs-3 me-2 text-primary"></i>
+                        <div>
+                            <strong class="d-block small text-dark">Anti-Ban Human Delay Active</strong>
+                            <small class="text-muted">Next message in <span class="badge bg--primary text-white fw-bold" id="delayCountdownTimer">0s</span> <span class="text-secondary" id="delayRangeNotice">({{ $campaign->min_delay_seconds }}s - {{ $campaign->max_delay_seconds }}s delay)</span></small>
+                        </div>
+                    </div>
+                    <div class="spinner-grow spinner-grow-sm text-primary" role="status"></div>
                 </div>
 
                 <!-- Live Progress Bar -->
@@ -188,8 +219,33 @@
 
     let pollInterval = null;
     let initialStatus = "{{ $campaign->status }}";
+    let countdownTimer = null;
+    let currentSecondsLeft = 0;
 
-    function updateCounters(sent, failed, total, status, pct, round, autoRestart){
+    function startCountdown(seconds){
+        currentSecondsLeft = parseInt(seconds) || 0;
+        if (countdownTimer) clearInterval(countdownTimer);
+
+        if (currentSecondsLeft > 0) {
+            $('#delayCountdownAlert').removeClass('d-none');
+            $('#delayCountdownTimer').text(currentSecondsLeft + 's');
+
+            countdownTimer = setInterval(function(){
+                currentSecondsLeft--;
+                if (currentSecondsLeft <= 0) {
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                    $('#delayCountdownAlert').addClass('d-none');
+                } else {
+                    $('#delayCountdownTimer').text(currentSecondsLeft + 's');
+                }
+            }, 1000);
+        } else {
+            $('#delayCountdownAlert').addClass('d-none');
+        }
+    }
+
+    function updateCounters(sent, failed, total, status, pct, round, autoRestart, secondsUntilNext, minD, maxD){
         $('#sentCountDisplay').text(sent);
         $('#failedCountDisplay').text(failed);
         $('#totalCountDisplay').text(total);
@@ -203,12 +259,26 @@
             $('#toggleAutoRestart').prop('checked', !!autoRestart);
         }
 
+        if (minD && maxD) {
+            $('#displayDelayRange').text(minD + 's - ' + maxD + 's Random');
+            $('#delayRangeNotice').text('(' + minD + 's - ' + maxD + 's delay)');
+        }
+
         if (status === 'running') {
             $('#campaignStatusBadge').removeClass('badge--dark badge--warning badge--secondary').addClass('badge--success').text('Running (Round #' + (round || 1) + ')');
             $('#queueStatusBadge').removeClass('bg-secondary bg--info').addClass('bg--warning text-dark').html('<i class="fas fa-spinner fa-spin me-1"></i> Broadcasting Round #' + (round || 1) + '...');
             $('#btnStartBroadcast').addClass('d-none');
             $('#btnPauseBroadcast').removeClass('d-none');
+
+            if (secondsUntilNext > 0) {
+                startCountdown(secondsUntilNext);
+            } else {
+                if (countdownTimer) clearInterval(countdownTimer);
+                $('#delayCountdownAlert').addClass('d-none');
+            }
         } else if (status === 'completed') {
+            if (countdownTimer) clearInterval(countdownTimer);
+            $('#delayCountdownAlert').addClass('d-none');
             if (autoRestart) {
                 $('#campaignStatusBadge').removeClass('badge--dark badge--warning').addClass('badge--info').text('Restarting Next Round...');
                 $('#queueStatusBadge').removeClass('bg--warning text-dark').addClass('badge--info').text('Auto-Restarting Loop...');
@@ -220,6 +290,8 @@
                 stopPolling();
             }
         } else if (status === 'paused') {
+            if (countdownTimer) clearInterval(countdownTimer);
+            $('#delayCountdownAlert').addClass('d-none');
             $('#campaignStatusBadge').removeClass('badge--success badge--dark badge--info').addClass('badge--warning').text('Paused');
             $('#queueStatusBadge').removeClass('bg--warning text-dark').addClass('bg--info').text('Broadcast Paused');
             $('#btnPauseBroadcast').addClass('d-none');
@@ -248,7 +320,7 @@
     function pollStatus(){
         $.get("{{ url('admin/campaigns/live-status') }}/" + campaignId, function(res){
             if (res && res.success) {
-                updateCounters(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart);
+                updateCounters(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart, res.seconds_until_next, res.min_delay, res.max_delay);
                 syncLogs(res.logs);
                 if (res.status === 'completed' && !res.auto_restart) {
                     stopPolling();
@@ -315,6 +387,27 @@
         });
     });
 
+    $('#btnEditDelay').on('click', function(){
+        $('#editDelayBox').toggleClass('d-none');
+    });
+
+    $('#btnSaveDelay').on('click', function(){
+        var minVal = parseInt($('#inputMinDelay').val()) || 5;
+        var maxVal = parseInt($('#inputMaxDelay').val()) || 15;
+        if (maxVal < minVal) maxVal = minVal;
+
+        $.post("{{ url('admin/campaigns/update-status') }}/" + campaignId, {
+            _token: "{{ csrf_token() }}",
+            min_delay: minVal,
+            max_delay: maxVal
+        }, function(res){
+            $('#editDelayBox').addClass('d-none');
+            $('#displayDelayRange').text(minVal + 's - ' + maxVal + 's Random');
+            $('#delayRangeNotice').text('(' + minVal + 's - ' + maxVal + 's delay)');
+            notify('success', 'Anti-ban delay updated to ' + minVal + 's - ' + maxVal + 's.');
+        });
+    });
+
     // Auto-start polling if already running or if auto-dispatched
     if (initialStatus === 'running') {
         startPolling();
@@ -322,7 +415,7 @@
         // Initial log sync
         $.get("{{ url('admin/campaigns/live-status') }}/" + campaignId, function(res){
             if (res && res.success) {
-                updateCounters(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent);
+                updateCounters(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart, res.seconds_until_next, res.min_delay, res.max_delay);
                 syncLogs(res.logs);
             }
         });

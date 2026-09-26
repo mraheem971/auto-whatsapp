@@ -289,6 +289,13 @@ class CampaignDispatcherService
                 $currentLogs = $campaign->fresh()->logs ?? [];
                 $currentLogs[] = $logEntry;
                 $campaign->logs = $currentLogs;
+
+                // Schedule anti-ban human behavior delay for next message
+                $minD = $campaign->min_delay_seconds;
+                $maxD = $campaign->max_delay_seconds;
+                if ($maxD < $minD) $maxD = $minD;
+                $campaign->next_send_at = now()->addSeconds(rand($minD, $maxD));
+
                 $campaign->save();
 
                 return ['success' => true, 'status' => 'success', 'message' => 'Delivered'];
@@ -301,6 +308,13 @@ class CampaignDispatcherService
                 $currentLogs = $campaign->fresh()->logs ?? [];
                 $currentLogs[] = $logEntry;
                 $campaign->logs = $currentLogs;
+
+                // Schedule anti-ban human behavior delay even on failure
+                $minD = $campaign->min_delay_seconds;
+                $maxD = $campaign->max_delay_seconds;
+                if ($maxD < $minD) $maxD = $minD;
+                $campaign->next_send_at = now()->addSeconds(rand($minD, $maxD));
+
                 $campaign->save();
 
                 return ['success' => false, 'status' => 'failed', 'error' => $errMsg];
@@ -313,6 +327,12 @@ class CampaignDispatcherService
             $currentLogs = $campaign->fresh()->logs ?? [];
             $currentLogs[] = $logEntry;
             $campaign->logs = $currentLogs;
+
+            $minD = $campaign->min_delay_seconds;
+            $maxD = $campaign->max_delay_seconds;
+            if ($maxD < $minD) $maxD = $minD;
+            $campaign->next_send_at = now()->addSeconds(rand($minD, $maxD));
+
             $campaign->save();
 
             return ['success' => false, 'status' => 'failed', 'error' => $e->getMessage()];
@@ -381,6 +401,56 @@ class CampaignDispatcherService
         $lastResult = null;
 
         foreach ($campaigns as $campaign) {
+            // Anti-Ban Human Behavior Delay Check:
+            // Ensure the configured delay has elapsed before sending the next message
+            $minDelay = $campaign->min_delay_seconds;
+            $maxDelay = $campaign->max_delay_seconds;
+            if ($maxDelay < $minDelay) $maxDelay = $minDelay;
+
+            $existingLogs = $campaign->logs ?? [];
+
+            // 1. Check next_send_at timestamp
+            if ($campaign->next_send_at && now()->lt($campaign->next_send_at)) {
+                $secondsLeft = now()->diffInSeconds($campaign->next_send_at, false);
+                if ($secondsLeft > 0) {
+                    $lastResult = [
+                        'campaign_id'        => $campaign->id,
+                        'campaign_name'      => $campaign->name,
+                        'status'             => $campaign->status,
+                        'cooldown_active'    => true,
+                        'seconds_until_next' => $secondsLeft,
+                        'min_delay'          => $minDelay,
+                        'max_delay'          => $maxDelay,
+                        'message'            => "Anti-ban delay active: next message in {$secondsLeft}s",
+                    ];
+                    continue;
+                }
+            }
+
+            // 2. Secondary check against last log timestamp if next_send_at was not yet populated
+            if (!$campaign->next_send_at && !empty($existingLogs)) {
+                $lastLog = end($existingLogs);
+                if (!empty($lastLog['timestamp'])) {
+                    $lastTime = strtotime($lastLog['timestamp']);
+                    if ($lastTime && (time() - $lastTime) < $minDelay) {
+                        $secondsLeft = $minDelay - (time() - $lastTime);
+                        $campaign->next_send_at = now()->addSeconds($secondsLeft);
+                        $campaign->save();
+                        $lastResult = [
+                            'campaign_id'        => $campaign->id,
+                            'campaign_name'      => $campaign->name,
+                            'status'             => $campaign->status,
+                            'cooldown_active'    => true,
+                            'seconds_until_next' => $secondsLeft,
+                            'min_delay'          => $minDelay,
+                            'max_delay'          => $maxDelay,
+                            'message'            => "Anti-ban delay active: next message in {$secondsLeft}s",
+                        ];
+                        continue;
+                    }
+                }
+            }
+
             $targets = self::getTargets($campaign);
             if (empty($targets)) {
                 $campaign->status = 'completed';
@@ -394,7 +464,6 @@ class CampaignDispatcherService
             }
 
             // Find target JIDs already processed in the current cycle (after latest cycle_reset marker)
-            $existingLogs = $campaign->logs ?? [];
             $processedJids = [];
             $lastResetIndex = -1;
             for ($i = count($existingLogs) - 1; $i >= 0; $i--) {
@@ -460,15 +529,18 @@ class CampaignDispatcherService
             $totalDispatched++;
             $freshCampaign = $campaign->fresh();
             $lastResult = [
-                'campaign_id'   => $campaign->id,
-                'campaign_name' => $campaign->name,
-                'target'        => $nextTarget['name'] ?? $nextTarget['target_jid'],
-                'status'        => $freshCampaign->status,
-                'sent_count'    => $freshCampaign->sent_count,
-                'failed_count'  => $freshCampaign->failed_count,
-                'total_targets' => $freshCampaign->total_targets,
-                'loop_count'    => $freshCampaign->loop_count ?? 0,
-                'result'        => $sendRes,
+                'campaign_id'        => $campaign->id,
+                'campaign_name'      => $campaign->name,
+                'target'             => $nextTarget['name'] ?? $nextTarget['target_jid'],
+                'status'             => $freshCampaign->status,
+                'sent_count'         => $freshCampaign->sent_count,
+                'failed_count'       => $freshCampaign->failed_count,
+                'total_targets'      => $freshCampaign->total_targets,
+                'loop_count'         => $freshCampaign->loop_count ?? 0,
+                'seconds_until_next' => $freshCampaign->seconds_until_next,
+                'min_delay'          => $minDelay,
+                'max_delay'          => $maxDelay,
+                'result'             => $sendRes,
             ];
 
             // In a single tick, dispatch 1 per running campaign to maintain natural delivery pacing
@@ -476,12 +548,14 @@ class CampaignDispatcherService
         }
 
         return [
-            'success'       => true,
-            'dispatched'    => $totalDispatched,
-            'campaign_id'   => $lastResult['campaign_id'] ?? null,
-            'campaign_name' => $lastResult['campaign_name'] ?? null,
-            'status'        => $lastResult['status'] ?? 'completed',
-            'detail'        => $lastResult,
+            'success'            => true,
+            'dispatched'         => $totalDispatched,
+            'campaign_id'        => $lastResult['campaign_id'] ?? null,
+            'campaign_name'      => $lastResult['campaign_name'] ?? null,
+            'status'             => $lastResult['status'] ?? 'completed',
+            'seconds_until_next' => $lastResult['seconds_until_next'] ?? 0,
+            'cooldown_active'    => $lastResult['cooldown_active'] ?? false,
+            'detail'             => $lastResult,
         ];
     }
 
