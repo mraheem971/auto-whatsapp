@@ -7,15 +7,19 @@ use Illuminate\Support\Facades\Log;
 
 class BaileysClient
 {
-    protected static $baseUrl = 'http://127.0.0.1:3000';
+    public static function getBaseUrl()
+    {
+        return rtrim(env('BAILEYS_URL', env('WHATSAPP_SERVER_URL', 'http://127.0.0.1:3000')), '/');
+    }
 
     /**
      * Ensure the Baileys Node.js background process is alive
      */
     public static function ensureServiceRunning()
     {
+        $baseUrl = self::getBaseUrl();
         try {
-            $res = Http::timeout(2)->get(self::$baseUrl . '/health');
+            $res = Http::timeout(2)->get($baseUrl . '/health');
             if ($res && $res->successful()) {
                 return true;
             }
@@ -27,7 +31,7 @@ class BaileysClient
         for ($i = 0; $i < 10; $i++) {
             usleep(500000); // 500ms
             try {
-                $res = Http::timeout(2)->get(self::$baseUrl . '/health');
+                $res = Http::timeout(2)->get($baseUrl . '/health');
                 if ($res && $res->successful()) {
                     return true;
                 }
@@ -70,7 +74,7 @@ class BaileysClient
         }
         $data = is_array($data) ? $data : [];
 
-        $url = rtrim(self::$baseUrl, '/') . '/' . ltrim($endpoint, '/');
+        $url = rtrim(self::getBaseUrl(), '/') . '/' . ltrim($endpoint, '/');
 
         for ($attempt = 1; $attempt <= 2; $attempt++) {
             try {
@@ -101,7 +105,7 @@ class BaileysClient
         }
         $query = is_array($query) ? $query : [];
 
-        $url = rtrim(self::$baseUrl, '/') . '/' . ltrim($endpoint, '/');
+        $url = rtrim(self::getBaseUrl(), '/') . '/' . ltrim($endpoint, '/');
 
         for ($attempt = 1; $attempt <= 2; $attempt++) {
             try {
@@ -132,7 +136,7 @@ class BaileysClient
         }
         $data = is_array($data) ? $data : [];
 
-        $url = rtrim(self::$baseUrl, '/') . '/' . ltrim($endpoint, '/');
+        $url = rtrim(self::getBaseUrl(), '/') . '/' . ltrim($endpoint, '/');
 
         try {
             return Http::timeout($timeout)->delete($url, $data);

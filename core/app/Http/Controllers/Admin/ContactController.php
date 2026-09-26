@@ -11,7 +11,12 @@ use Illuminate\Support\Facades\Http;
 
 class ContactController extends Controller
 {
-    protected $baileysUrl = 'http://127.0.0.1:3000';
+    protected $baileysUrl;
+
+    public function __construct()
+    {
+        $this->baileysUrl = rtrim(env('BAILEYS_URL', env('WHATSAPP_SERVER_URL', 'http://127.0.0.1:3000')), '/');
+    }
 
     // 1. All Contact Lists View
     public function listsIndex(Request $request)
