@@ -189,44 +189,7 @@
         background-color: #ffffff;
     }
 
-    .dashboard-welcome-banner {
-        background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%) !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        box-shadow: 0 10px 30px rgba(6, 78, 59, 0.2) !important;
-    }
 
-    .dashboard-welcome-banner h1,
-    .dashboard-welcome-banner h2,
-    .dashboard-welcome-banner h3,
-    .dashboard-welcome-banner h4,
-    .dashboard-welcome-banner h5 {
-        color: #ffffff !important;
-    }
-
-    .dashboard-welcome-banner p {
-        color: rgba(255, 255, 255, 0.9) !important;
-    }
-
-    .dashboard-welcome-banner .btn-connect-whatsapp,
-    body.dark-mode .dashboard-welcome-banner .btn-connect-whatsapp,
-    body.dark-mode .dashboard-welcome-banner a.btn-connect-whatsapp {
-        background-color: #ffffff !important;
-        color: #064e3b !important;
-        border: 1px solid #ffffff !important;
-        font-weight: 700 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
-    }
-
-    .dashboard-welcome-banner .btn-connect-whatsapp:hover,
-    body.dark-mode .dashboard-welcome-banner .btn-connect-whatsapp:hover {
-        background-color: #f0fdf4 !important;
-        color: #047857 !important;
-    }
-
-    .dashboard-welcome-banner .btn-connect-whatsapp i {
-        color: #25d366 !important;
-    }
 
     .card-header {
         background-color: #ffffff;
