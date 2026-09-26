@@ -170,6 +170,8 @@ class UserCampaignController extends Controller
         $campaign->status = 'running';
         $campaign->save();
 
+        // Dispatch first target immediately for instant real-time start
+        \App\Services\CampaignDispatcherService::dispatchNextPendingTarget($campaign->id);
         \App\Services\CampaignDispatcherService::launchBackgroundProcess($campaign->id);
 
         return response()->json([
@@ -183,6 +185,13 @@ class UserCampaignController extends Controller
     {
         $user = auth()->user();
         $campaign = Campaign::where('user_id', $user->id)->findOrFail($id);
+
+        // If campaign is running, pump next target to ensure continuous real-time delivery
+        if ($campaign->status === 'running') {
+            \App\Services\CampaignDispatcherService::dispatchNextPendingTarget($campaign->id);
+            $campaign = $campaign->fresh();
+        }
+
         $total = $campaign->total_targets ?: 1;
         $processed = $campaign->sent_count + $campaign->failed_count;
         $pct = min(100, round(($processed / $total) * 100));

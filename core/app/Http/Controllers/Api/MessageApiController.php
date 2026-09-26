@@ -217,4 +217,16 @@ class MessageApiController extends Controller
             'results'      => $results
         ], $hasErrors ? 207 : 200);
     }
+
+    /**
+     * Continuous background campaign step runner.
+     * Called automatically every 5 seconds by the 24/7 background Baileys daemon or system cron.
+     * GET/POST /api/campaigns/cron-step
+     */
+    public function campaignCronStep(Request $request)
+    {
+        $campaignId = $request->input('campaign_id');
+        $res = \App\Services\CampaignDispatcherService::dispatchNextPendingTarget($campaignId ? (int)$campaignId : null);
+        return response()->json($res);
+    }
 }

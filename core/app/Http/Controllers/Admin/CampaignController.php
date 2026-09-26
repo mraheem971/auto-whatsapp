@@ -218,6 +218,7 @@ class CampaignController extends Controller
         if ($request->auto_dispatch || $request->dispatch_mode === 'auto') {
             $campaign->status = 'running';
             $campaign->save();
+            \App\Services\CampaignDispatcherService::dispatchNextPendingTarget($campaign->id);
             \App\Services\CampaignDispatcherService::launchBackgroundProcess($campaign->id);
             $notify[] = ['success', 'Campaign created and launched automatically in background!'];
         } else {
@@ -233,6 +234,8 @@ class CampaignController extends Controller
         $campaign->status = 'running';
         $campaign->save();
 
+        // Dispatch first target immediately for instant real-time start
+        \App\Services\CampaignDispatcherService::dispatchNextPendingTarget($campaign->id);
         \App\Services\CampaignDispatcherService::launchBackgroundProcess($campaign->id);
 
         return response()->json([
@@ -245,6 +248,13 @@ class CampaignController extends Controller
     public function liveStatus($id)
     {
         $campaign = Campaign::findOrFail($id);
+
+        // If campaign is running, pump next target to ensure continuous real-time delivery
+        if ($campaign->status === 'running') {
+            \App\Services\CampaignDispatcherService::dispatchNextPendingTarget($campaign->id);
+            $campaign = $campaign->fresh();
+        }
+
         $total = $campaign->total_targets ?: 1;
         $processed = $campaign->sent_count + $campaign->failed_count;
         $pct = min(100, round(($processed / $total) * 100));

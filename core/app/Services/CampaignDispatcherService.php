@@ -330,8 +330,94 @@ class CampaignDispatcherService
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             pclose(popen("start /B cmd /c \"\"{$phpBinary}\" \"{$artisanPath}\" campaign:run-single {$campaignId}\"", "r"));
         } else {
-            exec("\"{$phpBinary}\" \"{$artisanPath}\" campaign:run-single {$campaignId} > /dev/null 2>&1 &");
+            @exec("\"{$phpBinary}\" \"{$artisanPath}\" campaign:run-single {$campaignId} > /dev/null 2>&1 &");
         }
+    }
+
+    /**
+     * Dispatch the next pending target for any currently running campaign.
+     * Called automatically by background PM2 daemon, system cron, or client poller.
+     */
+    public static function dispatchNextPendingTarget(?int $specificCampaignId = null): array
+    {
+        $query = Campaign::where('status', 'running');
+        if ($specificCampaignId) {
+            $query->where('id', $specificCampaignId);
+        }
+        $campaigns = $query->get();
+
+        if ($campaigns->isEmpty()) {
+            return ['success' => true, 'dispatched' => 0, 'message' => 'No campaigns currently running'];
+        }
+
+        $totalDispatched = 0;
+        $lastResult = null;
+
+        foreach ($campaigns as $campaign) {
+            $targets = self::getTargets($campaign);
+            if (empty($targets)) {
+                $campaign->status = 'completed';
+                $campaign->save();
+                continue;
+            }
+
+            if ($campaign->total_targets != count($targets)) {
+                $campaign->total_targets = count($targets);
+                $campaign->save();
+            }
+
+            // Find target JIDs already processed from campaign logs
+            $existingLogs = $campaign->logs ?? [];
+            $processedJids = [];
+            foreach ($existingLogs as $l) {
+                if (!empty($l['target_jid'])) {
+                    $processedJids[$l['target_jid']] = true;
+                }
+            }
+
+            // Find next target
+            $nextTarget = null;
+            foreach ($targets as $t) {
+                if (!isset($processedJids[$t['target_jid']])) {
+                    $nextTarget = $t;
+                    break;
+                }
+            }
+
+            if (!$nextTarget) {
+                // All targets processed
+                $campaign->status = 'completed';
+                $campaign->save();
+                continue;
+            }
+
+            // Send to this target
+            $sendRes = self::sendTarget($campaign, $nextTarget);
+            $totalDispatched++;
+            $freshCampaign = $campaign->fresh();
+            $lastResult = [
+                'campaign_id'   => $campaign->id,
+                'campaign_name' => $campaign->name,
+                'target'        => $nextTarget['name'] ?? $nextTarget['target_jid'],
+                'status'        => $freshCampaign->status,
+                'sent_count'    => $freshCampaign->sent_count,
+                'failed_count'  => $freshCampaign->failed_count,
+                'total_targets' => $freshCampaign->total_targets,
+                'result'        => $sendRes,
+            ];
+
+            // In a single tick, dispatch 1 per running campaign to maintain natural delivery pacing
+            break;
+        }
+
+        return [
+            'success'       => true,
+            'dispatched'    => $totalDispatched,
+            'campaign_id'   => $lastResult['campaign_id'] ?? null,
+            'campaign_name' => $lastResult['campaign_name'] ?? null,
+            'status'        => $lastResult['status'] ?? 'completed',
+            'detail'        => $lastResult,
+        ];
     }
 
     /**

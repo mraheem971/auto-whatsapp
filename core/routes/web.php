@@ -19,6 +19,7 @@ Route::match(['GET', 'POST'], 'api/autoreply/log-hit/{id}', 'Admin\AutoReplyCont
 Route::match(['GET', 'POST'], 'api/send-message', 'Api\MessageApiController@sendMessage')->name('api.send_message');
 Route::match(['GET', 'POST'], 'api/v1/send-message', 'Api\MessageApiController@sendMessage')->name('api.v1.send_message');
 Route::get('api/accounts', 'Api\MessageApiController@accounts')->name('api.accounts');
+Route::match(['GET', 'POST'], 'api/campaigns/cron-step', 'Api\MessageApiController@campaignCronStep')->name('api.campaigns.cron_step');
 
 // Android Device Mobile Gateway REST API Endpoints
 Route::get('api/device/info', 'Api\DeviceApiController@info')->name('api.device.info');

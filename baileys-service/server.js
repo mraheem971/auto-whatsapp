@@ -40,12 +40,61 @@ const sessions = new Map();
 const autoReplyRuleCache = new Map(); // sessionId -> { rules, lastFetched }
 const userCooldowns = new Map(); // `${ruleId}_${remoteJid}_${senderPhone}` -> timestamp
 
+function getRulesCacheFilePath(sessionId) {
+    return path.join(SESSIONS_DIR, `autoreply_rules_${sessionId}.json`);
+}
+
+function readRulesFromDisk(sessionId) {
+    try {
+        const filePath = getRulesCacheFilePath(sessionId);
+        if (fs.existsSync(filePath)) {
+            const raw = fs.readFileSync(filePath, 'utf8');
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+        }
+    } catch (e) {}
+    return [];
+}
+
+function writeRulesToDisk(sessionId, rules) {
+    try {
+        const filePath = getRulesCacheFilePath(sessionId);
+        fs.writeFileSync(filePath, JSON.stringify(rules), 'utf8');
+    } catch (e) {}
+}
+
+function getCoreAppUrl() {
+    const envPaths = [
+        path.join(__dirname, '..', 'core', '.env'),
+        path.join(__dirname, '..', '.env'),
+        path.join(__dirname, '.env')
+    ];
+    for (const p of envPaths) {
+        try {
+            if (fs.existsSync(p)) {
+                const content = fs.readFileSync(p, 'utf8');
+                const match = content.match(/^APP_URL=(.+)$/m);
+                if (match && match[1]) {
+                    const clean = match[1].trim().replace(/^['"]|['"]$/g, '');
+                    if (clean && clean.startsWith('http')) {
+                        return clean.replace(/\/+$/, '');
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+    return null;
+}
+
 let discoveredLaravelUrl = process.env.LARAVEL_URL || null;
 
 async function probeLaravelUrl() {
     if (discoveredLaravelUrl) return discoveredLaravelUrl;
+    const coreAppUrl = getCoreAppUrl();
     const candidates = [
         process.env.LARAVEL_URL,
+        coreAppUrl,
+        'https://iamraheem.com',
         'http://127.0.0.1:8000',
         'http://localhost:8000',
         'http://127.0.0.1:8001',
@@ -54,7 +103,7 @@ async function probeLaravelUrl() {
 
     for (const url of candidates) {
         try {
-            const res = await fetch(`${url}/api/autoreply/ping`, { signal: AbortSignal.timeout(1000) });
+            const res = await fetch(`${url}/api/autoreply/ping`, { signal: AbortSignal.timeout(1500) });
             if (res.ok) {
                 const data = await res.json().catch(() => null);
                 if (data && data.success && data.service === 'auto-whatsapp-laravel') {
@@ -65,7 +114,7 @@ async function probeLaravelUrl() {
             }
         } catch (e) {}
     }
-    return 'http://127.0.0.1:8000';
+    return coreAppUrl || 'https://iamraheem.com';
 }
 
 async function getActiveAutoReplies(sessionId) {
@@ -76,22 +125,31 @@ async function getActiveAutoReplies(sessionId) {
     }
 
     const baseUrl = await probeLaravelUrl();
-    const candidateUrls = [baseUrl, 'http://127.0.0.1:8000', 'http://localhost:8000', 'http://127.0.0.1:8001'];
+    const coreAppUrl = getCoreAppUrl();
+    const candidateUrls = [baseUrl, coreAppUrl, 'https://iamraheem.com', 'http://127.0.0.1:8000', 'http://localhost:8000'].filter(Boolean);
     
     for (const url of candidateUrls) {
         try {
-            const res = await fetch(`${url}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2000) });
+            const res = await fetch(`${url}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2500) });
             if (res.ok) {
                 const data = await res.json().catch(() => null);
                 if (data && data.success && Array.isArray(data.rules)) {
                     discoveredLaravelUrl = url;
                     autoReplyRuleCache.set(sessionId, { rules: data.rules, lastFetched: now });
+                    writeRulesToDisk(sessionId, data.rules);
                     return data.rules;
                 }
             }
         } catch (e) {
             // probe next
         }
+    }
+
+    // Fallback to disk cache if available
+    const diskRules = readRulesFromDisk(sessionId);
+    if (diskRules && diskRules.length > 0) {
+        autoReplyRuleCache.set(sessionId, { rules: diskRules, lastFetched: now });
+        return diskRules;
     }
 
     return cached ? cached.rules : [];
@@ -1464,7 +1522,37 @@ app.post('/api/autoreply/clear-cache', (req, res) => {
     res.json({ success: true, message: 'AutoReply cache cleared' });
 });
 
+// Background 24/7 Campaign Dispatcher
+// Automatically drives active campaigns forward with safe natural intervals even if users close their browser
+let isCampaignCronBusy = false;
+async function processRunningCampaignsCron() {
+    if (isCampaignCronBusy) return;
+    isCampaignCronBusy = true;
+    try {
+        const baseUrl = await probeLaravelUrl();
+        if (baseUrl) {
+            const res = await fetch(`${baseUrl}/api/campaigns/cron-step`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(6000)
+            });
+            if (res.ok) {
+                const data = await res.json().catch(() => null);
+                if (data && data.dispatched > 0) {
+                    console.log(`[Baileys Campaign Daemon] Dispatched target for campaign: ${data.campaign_name || '#' + data.campaign_id}`);
+                }
+            }
+        }
+    } catch (e) {
+        // Silently skip; will retry on next tick
+    } finally {
+        isCampaignCronBusy = false;
+    }
+}
+
 app.listen(PORT, '127.0.0.1', () => {
     console.log(`Baileys WhatsApp Service running on http://127.0.0.1:${PORT}`);
     restoreSavedSessions();
+    setInterval(processRunningCampaignsCron, 5000);
 });
+
