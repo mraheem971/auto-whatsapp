@@ -196,12 +196,6 @@
                                                         <span class="fw-bold text-dark small" id="badgeResetCount">Reset at {{ $botSettings->reset_after_count ?? 100 }} msgs</span>
                                                     </div>
                                                 </div>
-                                                <div class="col-6 col-sm-4 col-md-auto">
-                                                    <div class="p-2 bg-light rounded text-center border">
-                                                        <small class="text-muted d-block" style="font-size: 11px;">Daily Limit</small>
-                                                        <span class="fw-bold text-primary small" id="badgeDailyLimit">Unlimited</span>
-                                                    </div>
-                                                </div>
                                             </div>
 
                                             <!-- Hidden / Synced Inputs for form submission -->
@@ -211,20 +205,6 @@
                                             <input type="hidden" name="delay_after_duration" id="inputDelayAfterDuration" value="{{ $botSettings->delay_after_duration ?? 5 }}">
                                             <input type="hidden" name="reset_after_count" id="inputResetAfterCount" value="{{ $botSettings->reset_after_count ?? 100 }}">
                                         </div>
-                                    </div>
-                                </div>
-
-                                <!-- Target Message Limit Per Day -->
-                                <div class="col-12">
-                                    <div class="p-3 bg-light rounded border">
-                                        <label class="fw-bold mb-1 small text-dark"><i class="las la-calendar-check text-primary me-1"></i> Target Message Limit Per Day</label>
-                                        <div class="input-group input-group-sm">
-                                            <input type="number" name="daily_limit" id="inputDailyLimit" class="form-control form-control-sm" min="0" max="50000" placeholder="e.g. 100 (0 or empty = unlimited)" value="{{ old('daily_limit') }}">
-                                            <span class="input-group-text">msgs / day</span>
-                                        </div>
-                                        <small class="text-muted d-block mt-1">
-                                            Maximum messages to send per day (e.g. 50 or 100). Leave 0 or blank for unlimited. Broadcast safely pauses and automatically resumes tomorrow.
-                                        </small>
                                     </div>
                                 </div>
 
@@ -346,15 +326,7 @@
             }
         });
 
-        // Sync daily limit badge
-        $('#inputDailyLimit').on('input', function() {
-            var val = $(this).val();
-            if (val && parseInt(val) > 0) {
-                $('#badgeDailyLimit').text(val + ' msgs / day').removeClass('text-primary').addClass('text-success');
-            } else {
-                $('#badgeDailyLimit').text('Unlimited').removeClass('text-success').addClass('text-primary');
-            }
-        });
+
 
         // When user opens modal manually
         $('#btnOpenAntiBanModal').on('click', function() {

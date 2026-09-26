@@ -82,28 +82,6 @@
                     </div>
                 </div>
 
-                <div class="mb-3 pb-3 border-bottom">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <span class="text-muted"><i class="las la-calendar-check me-1"></i> @lang('Daily Send Limit')</span>
-                        <div>
-                            <span class="badge bg-light text-dark border font-monospace" id="displayDailyLimit">
-                                {{ $campaign->daily_limit > 0 ? $campaign->daily_limit . ' / day' : 'Unlimited' }}
-                            </span>
-                            <button type="button" class="btn btn-xs btn-outline--secondary ms-1 py-0 px-1" id="btnEditDailyLimit" style="font-size: 10px;">Edit</button>
-                        </div>
-                    </div>
-                    <div class="d-none mt-2 p-2 bg-light rounded border" id="editDailyLimitBox">
-                        <div class="input-group input-group-sm mb-1">
-                            <input type="number" id="inputDailyLimit" class="form-control form-control-sm" placeholder="0 = Unlimited" min="0" max="50000" value="{{ $campaign->daily_limit }}">
-                            <button type="button" class="btn btn-sm btn--primary" id="btnSaveDailyLimit"><i class="las la-save"></i> Save</button>
-                        </div>
-                        <small class="text-muted" style="font-size: 10px;">Max messages per day (0 = unlimited)</small>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 11px;">
-                        <span class="text-muted">Today's Sent:</span>
-                        <span class="fw-bold text-dark font-monospace" id="displayTodaySent">{{ $campaign->today_sent_count }}{{ $campaign->daily_limit > 0 ? ' / ' . $campaign->daily_limit : '' }}</span>
-                    </div>
-                </div>
 
                 <div class="mb-4">
                     <label class="fw-bold text-muted small mb-1">@lang('Message Content'):</label>
@@ -506,24 +484,6 @@
         });
     });
 
-    $('#btnEditDailyLimit').on('click', function(){
-        $('#editDailyLimitBox').toggleClass('d-none');
-    });
-
-    $('#btnSaveDailyLimit').on('click', function(){
-        var limitVal = parseInt($('#inputDailyLimit').val()) || 0;
-        if (limitVal < 0) limitVal = 0;
-
-        $.post("{{ url('admin/campaigns/update-status') }}/" + campaignId, {
-            _token: "{{ csrf_token() }}",
-            daily_limit: limitVal
-        }, function(res){
-            $('#editDailyLimitBox').addClass('d-none');
-            $('#displayDailyLimit').text(limitVal > 0 ? limitVal + ' / day' : 'Unlimited');
-            $('#displayTodaySent').text((res.today_sent_count || 0) + (limitVal > 0 ? ' / ' + limitVal : ''));
-            notify('success', limitVal > 0 ? 'Daily message limit updated to ' + limitVal + ' msgs/day.' : 'Daily message limit removed (Unlimited).');
-        });
-    });
 
     // Auto-start polling if already running or if auto-dispatched
     if (initialStatus === 'running') {

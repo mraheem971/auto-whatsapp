@@ -243,23 +243,7 @@
                         </div>
 
                         <!-- ================= RIGHT COLUMN ================= -->
-                        <!-- 3. Target Message Limit Per Day -->
-                        <div class="col-lg-6 col-md-12">
-                            <label class="form-label-enhanced">
-                                <i class="las la-calendar-check text--primary"></i> @lang('Target Message Limit Per Day')
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="las la-calendar-check me-1 text--primary"></i> Limit</span>
-                                <input type="number" name="daily_limit" id="daily_limit" class="form-control fw-bold" min="0" max="50000" placeholder="@lang('e.g. 100 (0 or empty = unlimited)')" value="{{ old('daily_limit') }}">
-                                <span class="input-group-text">msgs / day</span>
-                            </div>
-                            <small class="text-muted d-block mt-1">
-                                <i class="las la-info-circle text--primary me-1"></i>@lang('Max messages sent per day. When reached, broadcast safely pauses and automatically resumes tomorrow.')
-                            </small>
-                        </div>
-
-                        <!-- ================= LEFT COLUMN ================= -->
-                        <!-- 4. Broadcast Execution Mode -->
+                        <!-- 3. Broadcast Execution Mode -->
                         <div class="col-lg-6 col-md-12">
                             <label class="form-label-enhanced">
                                 <i class="las la-rocket text--primary"></i> @lang('Broadcast Execution Mode') <span class="text--danger ms-1">*</span>
