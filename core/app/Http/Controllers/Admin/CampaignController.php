@@ -211,6 +211,8 @@ class CampaignController extends Controller
         $campaign->max_delay        = $maxDelay;
         $campaign->delay_seconds    = $minDelay;
         $campaign->status           = 'ready';
+        $campaign->auto_restart     = $request->has('auto_restart') ? 1 : ($request->auto_restart ?? 1);
+        $campaign->loop_count       = 0;
         $campaign->total_targets    = count($recipients);
         $campaign->sent_count       = 0;
         $campaign->failed_count     = 0;
@@ -255,9 +257,27 @@ class CampaignController extends Controller
             $campaign = $campaign->fresh();
         }
 
+        $existingLogs = $campaign->logs ?? [];
+        $lastResetIndex = -1;
+        for ($i = count($existingLogs) - 1; $i >= 0; $i--) {
+            if (isset($existingLogs[$i]['type']) && $existingLogs[$i]['type'] === 'cycle_reset') {
+                $lastResetIndex = $i;
+                break;
+            }
+        }
+        $currentCycleCount = 0;
+        $startIndex = ($lastResetIndex >= 0) ? $lastResetIndex + 1 : 0;
+        for ($i = $startIndex; $i < count($existingLogs); $i++) {
+            if (!empty($existingLogs[$i]['target_jid']) && ($existingLogs[$i]['type'] ?? '') !== 'cycle_reset') {
+                $currentCycleCount++;
+            }
+        }
+
         $total = $campaign->total_targets ?: 1;
-        $processed = $campaign->sent_count + $campaign->failed_count;
-        $pct = min(100, round(($processed / $total) * 100));
+        $pct = min(100, round(($currentCycleCount / $total) * 100));
+        if ($pct == 0 && $campaign->sent_count > 0 && $campaign->status === 'running') {
+            $pct = min(100, round((($campaign->sent_count % $total) / $total) * 100));
+        }
 
         return response()->json([
             'success'          => true,
@@ -265,6 +285,9 @@ class CampaignController extends Controller
             'total_targets'    => $campaign->total_targets,
             'sent_count'       => $campaign->sent_count,
             'failed_count'     => $campaign->failed_count,
+            'current_round'    => ($campaign->loop_count ?? 0) + 1,
+            'loop_count'       => $campaign->loop_count ?? 0,
+            'auto_restart'     => (bool)($campaign->auto_restart ?? 1),
             'progress_percent' => $pct,
             'logs'             => array_slice($campaign->logs ?? [], -30),
         ]);
@@ -495,10 +518,19 @@ class CampaignController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $campaign = Campaign::findOrFail($id);
-        $campaign->status = $request->status ?: 'completed';
+        if ($request->has('status')) {
+            $campaign->status = $request->status ?: 'completed';
+        }
+        if ($request->has('auto_restart')) {
+            $campaign->auto_restart = $request->auto_restart ? 1 : 0;
+        }
         $campaign->save();
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success'      => true,
+            'status'       => $campaign->status,
+            'auto_restart' => (bool)$campaign->auto_restart
+        ]);
     }
 
     public function delete($id)

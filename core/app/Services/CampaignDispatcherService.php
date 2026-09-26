@@ -346,6 +346,33 @@ class CampaignDispatcherService
         }
         $campaigns = $query->get();
 
+        // If no running campaigns found and no specific campaign requested, check for completed campaigns that should auto-restart
+        if ($campaigns->isEmpty() && !$specificCampaignId) {
+            $completedToRestart = Campaign::where('status', 'completed')
+                ->where(function($q) {
+                    $q->whereNull('auto_restart')->orWhere('auto_restart', 1);
+                })
+                ->latest()
+                ->first();
+
+            if ($completedToRestart) {
+                $completedToRestart->status = 'running';
+                $completedToRestart->loop_count = ($completedToRestart->loop_count ?? 0) + 1;
+                $logs = $completedToRestart->logs ?? [];
+                $logs[] = [
+                    'timestamp'  => date('Y-m-d H:i:s'),
+                    'target'     => "Auto-Restart (Round #{$completedToRestart->loop_count})",
+                    'target_jid' => '',
+                    'type'       => 'cycle_reset',
+                    'status'     => 'info',
+                    'message'    => "Campaign completed. Automatically starting again (Round #{$completedToRestart->loop_count}).",
+                ];
+                $completedToRestart->logs = array_slice($logs, -150);
+                $completedToRestart->save();
+                $campaigns = collect([$completedToRestart]);
+            }
+        }
+
         if ($campaigns->isEmpty()) {
             return ['success' => true, 'dispatched' => 0, 'message' => 'No campaigns currently running'];
         }
@@ -366,11 +393,20 @@ class CampaignDispatcherService
                 $campaign->save();
             }
 
-            // Find target JIDs already processed from campaign logs
+            // Find target JIDs already processed in the current cycle (after latest cycle_reset marker)
             $existingLogs = $campaign->logs ?? [];
             $processedJids = [];
-            foreach ($existingLogs as $l) {
-                if (!empty($l['target_jid'])) {
+            $lastResetIndex = -1;
+            for ($i = count($existingLogs) - 1; $i >= 0; $i--) {
+                if (isset($existingLogs[$i]['type']) && $existingLogs[$i]['type'] === 'cycle_reset') {
+                    $lastResetIndex = $i;
+                    break;
+                }
+            }
+            $startIndex = ($lastResetIndex >= 0) ? $lastResetIndex + 1 : 0;
+            for ($i = $startIndex; $i < count($existingLogs); $i++) {
+                $l = $existingLogs[$i];
+                if (!empty($l['target_jid']) && ($l['type'] ?? '') !== 'cycle_reset') {
                     $processedJids[$l['target_jid']] = true;
                 }
             }
@@ -385,10 +421,38 @@ class CampaignDispatcherService
             }
 
             if (!$nextTarget) {
-                // All targets processed
-                $campaign->status = 'completed';
-                $campaign->save();
-                continue;
+                // All targets reached in the current cycle!
+                $autoRestart = isset($campaign->auto_restart) ? (bool)$campaign->auto_restart : true;
+                if ($autoRestart) {
+                    $loopCount = ($campaign->loop_count ?? 0) + 1;
+                    $cycleLog = [
+                        'timestamp'  => date('Y-m-d H:i:s'),
+                        'target'     => "Auto-Restart (Round #{$loopCount})",
+                        'target_jid' => '',
+                        'type'       => 'cycle_reset',
+                        'status'     => 'info',
+                        'message'    => "All targets completed. Automatically starting again (Round #{$loopCount})!",
+                    ];
+
+                    $trimmedLogs = array_slice($existingLogs, -150);
+                    $trimmedLogs[] = $cycleLog;
+                    $campaign->logs = $trimmedLogs;
+                    $campaign->loop_count = $loopCount;
+                    $campaign->status = 'running';
+                    $campaign->save();
+
+                    // Immediately pick the first target so the stream continues without interruption
+                    $nextTarget = $targets[0] ?? null;
+                    if (!$nextTarget) {
+                        $campaign->status = 'completed';
+                        $campaign->save();
+                        continue;
+                    }
+                } else {
+                    $campaign->status = 'completed';
+                    $campaign->save();
+                    continue;
+                }
             }
 
             // Send to this target
@@ -403,6 +467,7 @@ class CampaignDispatcherService
                 'sent_count'    => $freshCampaign->sent_count,
                 'failed_count'  => $freshCampaign->failed_count,
                 'total_targets' => $freshCampaign->total_targets,
+                'loop_count'    => $freshCampaign->loop_count ?? 0,
                 'result'        => $sendRes,
             ];
 
@@ -428,7 +493,6 @@ class CampaignDispatcherService
         $campaign = Campaign::find($campaignId);
         if (!$campaign) return;
 
-        // Ensure status is running
         $campaign->status = 'running';
         $campaign->save();
 
@@ -446,46 +510,73 @@ class CampaignDispatcherService
         $maxDelay = $campaign->max_delay ?: ($campaign->delay_seconds ?: 15);
         if ($maxDelay < $minDelay) $maxDelay = $minDelay;
 
-        // Find already sent target JIDs from logs
-        $existingLogs = $campaign->logs ?? [];
-        $processedJids = [];
-        foreach ($existingLogs as $l) {
-            if (!empty($l['target_jid'])) {
-                $processedJids[$l['target_jid']] = true;
+        do {
+            $existingLogs = $campaign->logs ?? [];
+            $processedJids = [];
+            $lastResetIndex = -1;
+            for ($i = count($existingLogs) - 1; $i >= 0; $i--) {
+                if (isset($existingLogs[$i]['type']) && $existingLogs[$i]['type'] === 'cycle_reset') {
+                    $lastResetIndex = $i;
+                    break;
+                }
             }
-        }
+            $startIndex = ($lastResetIndex >= 0) ? $lastResetIndex + 1 : 0;
+            for ($i = $startIndex; $i < count($existingLogs); $i++) {
+                $l = $existingLogs[$i];
+                if (!empty($l['target_jid']) && ($l['type'] ?? '') !== 'cycle_reset') {
+                    $processedJids[$l['target_jid']] = true;
+                }
+            }
 
-        foreach ($targets as $target) {
-            // Check if user paused or stopped the campaign
+            foreach ($targets as $target) {
+                $fresh = Campaign::find($campaignId);
+                if (!$fresh || $fresh->status !== 'running') {
+                    Log::info("Campaign #{$campaignId} stopped/paused by user.");
+                    return;
+                }
+
+                if (isset($processedJids[$target['target_jid']])) {
+                    continue;
+                }
+
+                $delay = rand($minDelay, $maxDelay);
+                sleep($delay);
+
+                $fresh = Campaign::find($campaignId);
+                if (!$fresh || $fresh->status !== 'running') {
+                    return;
+                }
+
+                self::sendTarget($fresh, $target);
+                $processedJids[$target['target_jid']] = true;
+            }
+
+            // Check if auto_restart is active
             $fresh = Campaign::find($campaignId);
             if (!$fresh || $fresh->status !== 'running') {
-                Log::info("Campaign #{$campaignId} stopped/paused by user.");
                 return;
             }
 
-            if (isset($processedJids[$target['target_jid']])) {
-                continue; // Skip already processed target
+            $autoRestart = isset($fresh->auto_restart) ? (bool)$fresh->auto_restart : true;
+            if ($autoRestart) {
+                $fresh->loop_count = ($fresh->loop_count ?? 0) + 1;
+                $cLogs = $fresh->logs ?? [];
+                $cLogs[] = [
+                    'timestamp'  => date('Y-m-d H:i:s'),
+                    'target'     => "Auto-Restart (Round #{$fresh->loop_count})",
+                    'target_jid' => '',
+                    'type'       => 'cycle_reset',
+                    'status'     => 'info',
+                    'message'    => "Campaign round completed. Automatically restarting broadcast.",
+                ];
+                $fresh->logs = array_slice($cLogs, -150);
+                $fresh->save();
+                sleep(rand(5, 10)); // Safe breathing interval between cycles
+            } else {
+                $fresh->status = 'completed';
+                $fresh->save();
+                break;
             }
-
-            // Random anti-ban delay
-            $delay = rand($minDelay, $maxDelay);
-            sleep($delay);
-
-            // Double check status after sleep
-            $fresh = Campaign::find($campaignId);
-            if (!$fresh || $fresh->status !== 'running') {
-                return;
-            }
-
-            self::sendTarget($fresh, $target);
-            $processedJids[$target['target_jid']] = true;
-        }
-
-        // Mark completed
-        $final = Campaign::find($campaignId);
-        if ($final && $final->status === 'running') {
-            $final->status = 'completed';
-            $final->save();
-        }
+        } while (true);
     }
 }

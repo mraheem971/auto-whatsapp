@@ -95,6 +95,21 @@
                             </small>
                         </div>
 
+                        <!-- Auto-Restart Loop Option -->
+                        <div class="col-12 mt-2">
+                            <div class="p-3 bg-light rounded border d-flex align-items-center justify-content-between">
+                                <div>
+                                    <label class="fw-bold text-dark mb-0 cursor-pointer" for="autoRestartCheck">
+                                        <i class="las la-sync text--success me-1"></i> @lang('Auto-Restart Broadcast Loop')
+                                    </label>
+                                    <small class="text-muted d-block mt-1">@lang('When all recipients receive the message, automatically start broadcasting again from the beginning non-stop until you pause it.')</small>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" name="auto_restart" id="autoRestartCheck" value="1" checked style="width: 2.5em; height: 1.3em; cursor: pointer;">
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Multiple Specific Groups Selector (Hidden by default) -->
                         <div class="col-12 d-none" id="multiple_groups_wrapper">
                             <div class="card border bg-light">

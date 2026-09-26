@@ -28,6 +28,18 @@
                 </div>
 
                 <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                    <span class="text-muted">@lang('Auto-Restart Loop')</span>
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" id="toggleAutoRestart" {{ ($campaign->auto_restart ?? 1) ? 'checked' : '' }} style="cursor: pointer; width: 2.2em; height: 1.2em;">
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                    <span class="text-muted">@lang('Broadcast Round')</span>
+                    <span class="badge badge--primary fw-bold" id="statRound">Round #{{ ($campaign->loop_count ?? 0) + 1 }}</span>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
                     <span class="text-muted">@lang('Anti-Ban Cooldown')</span>
                     <span class="badge bg-light text-dark border font-monospace">
                         {{ $campaign->min_delay ?: $campaign->delay_seconds }}-{{ $campaign->max_delay ?: ($campaign->delay_seconds + 5) }}s Random
@@ -177,26 +189,38 @@
     let pollInterval = null;
     let initialStatus = "{{ $campaign->status }}";
 
-    function updateCounters(sent, failed, total, status, pct){
+    function updateCounters(sent, failed, total, status, pct, round, autoRestart){
         $('#sentCountDisplay').text(sent);
         $('#failedCountDisplay').text(failed);
         $('#totalCountDisplay').text(total);
         $('#progressBar').css('width', pct + '%');
         $('#progressPercent').text(pct + '%');
         
+        if (round) {
+            $('#statRound').text('Round #' + round);
+        }
+        if (autoRestart !== undefined) {
+            $('#toggleAutoRestart').prop('checked', !!autoRestart);
+        }
+
         if (status === 'running') {
-            $('#campaignStatusBadge').removeClass('badge--dark badge--warning badge--secondary').addClass('badge--success').text('Running');
-            $('#queueStatusBadge').removeClass('bg-secondary bg--info').addClass('bg--warning text-dark').html('<i class="fas fa-spinner fa-spin me-1"></i> Broadcasting in Background...');
+            $('#campaignStatusBadge').removeClass('badge--dark badge--warning badge--secondary').addClass('badge--success').text('Running (Round #' + (round || 1) + ')');
+            $('#queueStatusBadge').removeClass('bg-secondary bg--info').addClass('bg--warning text-dark').html('<i class="fas fa-spinner fa-spin me-1"></i> Broadcasting Round #' + (round || 1) + '...');
             $('#btnStartBroadcast').addClass('d-none');
             $('#btnPauseBroadcast').removeClass('d-none');
         } else if (status === 'completed') {
-            $('#campaignStatusBadge').removeClass('badge--dark badge--warning').addClass('badge--success').text('Completed');
-            $('#queueStatusBadge').removeClass('bg--warning text-dark').addClass('bg--success').text('Broadcast Completed');
-            $('#btnPauseBroadcast').addClass('d-none');
-            $('#btnStartBroadcast').removeClass('d-none').prop('disabled', true).html('<i class="las la-check me-1"></i> Completed');
-            stopPolling();
+            if (autoRestart) {
+                $('#campaignStatusBadge').removeClass('badge--dark badge--warning').addClass('badge--info').text('Restarting Next Round...');
+                $('#queueStatusBadge').removeClass('bg--warning text-dark').addClass('badge--info').text('Auto-Restarting Loop...');
+            } else {
+                $('#campaignStatusBadge').removeClass('badge--dark badge--warning').addClass('badge--success').text('Completed');
+                $('#queueStatusBadge').removeClass('bg--warning text-dark').addClass('bg--success').text('Broadcast Completed');
+                $('#btnPauseBroadcast').addClass('d-none');
+                $('#btnStartBroadcast').removeClass('d-none').prop('disabled', true).html('<i class="las la-check me-1"></i> Completed');
+                stopPolling();
+            }
         } else if (status === 'paused') {
-            $('#campaignStatusBadge').removeClass('badge--success badge--dark').addClass('badge--warning').text('Paused');
+            $('#campaignStatusBadge').removeClass('badge--success badge--dark badge--info').addClass('badge--warning').text('Paused');
             $('#queueStatusBadge').removeClass('bg--warning text-dark').addClass('bg--info').text('Broadcast Paused');
             $('#btnPauseBroadcast').addClass('d-none');
             $('#btnStartBroadcast').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
@@ -224,9 +248,9 @@
     function pollStatus(){
         $.get("{{ url('admin/campaigns/live-status') }}/" + campaignId, function(res){
             if (res && res.success) {
-                updateCounters(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent);
+                updateCounters(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart);
                 syncLogs(res.logs);
-                if (res.status === 'completed') {
+                if (res.status === 'completed' && !res.auto_restart) {
                     stopPolling();
                 }
             }
@@ -278,6 +302,16 @@
             $('#campaignStatusBadge').removeClass('badge--success').addClass('badge--warning').text('Paused');
             $('#queueStatusBadge').removeClass('badge--warning').addClass('badge--info').text('Broadcast Paused');
             notify('info', 'Broadcast paused by user.');
+        });
+    });
+
+    $('#toggleAutoRestart').on('change', function(){
+        var isAuto = this.checked ? 1 : 0;
+        $.post("{{ url('admin/campaigns/update-status') }}/" + campaignId, {
+            _token: "{{ csrf_token() }}",
+            auto_restart: isAuto
+        }, function(res){
+            notify('info', isAuto ? 'Auto-Restart Loop enabled: Broadcast will restart when completed.' : 'Auto-Restart Loop disabled: Broadcast will finish once.');
         });
     });
 

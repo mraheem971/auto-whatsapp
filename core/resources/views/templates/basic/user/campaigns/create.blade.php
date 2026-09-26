@@ -125,6 +125,19 @@
                                     </div>
                                 </div>
 
+                                <!-- Auto-Restart Loop Option -->
+                                <div class="col-12 mt-3">
+                                    <div class="form-check form-switch p-3 bg-light rounded border d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <label class="form-check-label fw-bold text-dark mb-0" for="autoRestartCheck" style="cursor: pointer;">
+                                                <i class="las la-sync text-success me-1"></i> Auto-Restart Broadcast Loop
+                                            </label>
+                                            <small class="text-muted d-block mt-1">When all recipients receive the message, automatically start broadcasting again from the beginning non-stop until you pause it.</small>
+                                        </div>
+                                        <input class="form-check-input ms-3" type="checkbox" name="auto_restart" id="autoRestartCheck" value="1" checked style="width: 2.5em; height: 1.3em; cursor: pointer;">
+                                    </div>
+                                </div>
+
                                 <div class="col-12 text-end mt-4">
                                     <button type="submit" class="btn btn--base px-4 py-2" {{ $connectedAccounts->isEmpty() ? 'disabled' : '' }}>
                                         <i class="las la-check-circle me-1"></i> Launch Campaign Broadcast

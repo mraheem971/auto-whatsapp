@@ -42,6 +42,16 @@
                                 <span class="text-muted">Simulated Typing</span>
                                 <span class="fw-bold text-primary">{{ $botSettings->typing_simulation ? 'Active (' . $botSettings->typing_duration_seconds . 's)' : 'Off' }}</span>
                             </li>
+                            <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Auto-Restart Loop</span>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" id="toggleAutoRestart" {{ ($campaign->auto_restart ?? 1) ? 'checked' : '' }} style="cursor: pointer; width: 2.2em; height: 1.2em;">
+                                </div>
+                            </li>
+                            <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Broadcast Round</span>
+                                <span class="badge bg-primary text-white fw-bold px-2 py-1" id="statRound">Round #{{ ($campaign->loop_count ?? 0) + 1 }}</span>
+                            </li>
                         </ul>
 
                         <!-- Controls -->
@@ -134,26 +144,37 @@
             if (term) term.scrollTop = term.scrollHeight;
         }
 
-        function updateProgress(sent, failed, totalTargets, status, pct) {
+        function updateProgress(sent, failed, totalTargets, status, pct, round, autoRestart) {
             var processed = sent + failed;
             $('#progressBar').css('width', pct + '%');
             $('#progressPercent').text(pct + '%');
-            $('#progressText').text(processed + ' of ' + totalTargets + ' processed');
+            $('#progressText').text(pct + '% of target audience in current cycle');
             $('#statSent').text(sent);
             $('#statFailed').text(failed);
-            $('#statRemaining').text(Math.max(0, totalTargets - processed));
+            $('#statRemaining').text(Math.max(0, totalTargets - (sent % (totalTargets || 1))));
+
+            if (round) {
+                $('#statRound').text('Round #' + round);
+            }
+            if (autoRestart !== undefined) {
+                $('#toggleAutoRestart').prop('checked', !!autoRestart);
+            }
 
             if (status === 'running') {
-                $('#campaignStatusBadge').removeClass('bg-secondary bg-warning').addClass('bg-primary').text('RUNNING (SERVER BACKGROUND)');
+                $('#campaignStatusBadge').removeClass('bg-secondary bg-warning bg-success').addClass('bg-primary').text('RUNNING (ROUND #' + (round || 1) + ')');
                 $('#btnStartCampaign').addClass('d-none');
                 $('#btnPauseCampaign').removeClass('d-none');
             } else if (status === 'completed') {
-                $('#campaignStatusBadge').removeClass('bg-primary bg-warning bg-secondary').addClass('bg-success').text('COMPLETED');
-                $('#btnPauseCampaign').addClass('d-none');
-                $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-check me-1"></i> Broadcast Finished').prop('disabled', true);
-                stopPolling();
+                if (autoRestart) {
+                    $('#campaignStatusBadge').removeClass('bg-secondary bg-warning bg-success').addClass('bg-info').text('AUTO-RESTARTING...');
+                } else {
+                    $('#campaignStatusBadge').removeClass('bg-primary bg-warning bg-secondary bg-info').addClass('bg-success').text('COMPLETED');
+                    $('#btnPauseCampaign').addClass('d-none');
+                    $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-check me-1"></i> Broadcast Finished').prop('disabled', true);
+                    stopPolling();
+                }
             } else if (status === 'paused') {
-                $('#campaignStatusBadge').removeClass('bg-primary bg-success').addClass('bg-warning').text('PAUSED');
+                $('#campaignStatusBadge').removeClass('bg-primary bg-success bg-info').addClass('bg-warning').text('PAUSED');
                 $('#btnPauseCampaign').addClass('d-none');
                 $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
                 stopPolling();
@@ -163,15 +184,15 @@
         function pollStatus() {
             $.get("{{ url('user/campaigns/live-status') }}/" + campaignId, function (res) {
                 if (res && res.success) {
-                    updateProgress(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent);
+                    updateProgress(res.sent_count, res.failed_count, res.total_targets, res.status, res.progress_percent, res.current_round, res.auto_restart);
                     if (res.logs && res.logs.length > 0) {
                         var lastLog = res.logs[res.logs.length - 1];
                         if (lastLog && lastLog.target) {
-                            var statusText = lastLog.status === 'success' ? 'Delivered' : ('Failed: ' + (lastLog.error || ''));
+                            var statusText = lastLog.status === 'success' ? 'Delivered' : (lastLog.status === 'info' ? lastLog.message : ('Failed: ' + (lastLog.error || '')));
                             log('[' + lastLog.status.toUpperCase() + '] ' + (lastLog.target || lastLog.target_jid) + ' - ' + statusText, lastLog.status);
                         }
                     }
-                    if (res.status === 'completed') {
+                    if (res.status === 'completed' && !res.auto_restart) {
                         log('🎉 Campaign broadcast completed successfully on server!', 'success');
                         stopPolling();
                     }
@@ -227,6 +248,17 @@
                 $('#campaignStatusBadge').removeClass('bg-primary').addClass('bg-warning').text('PAUSED');
                 log('⏸ Broadcast paused by user.', 'info');
                 notify('info', 'Broadcast paused.');
+            });
+        });
+
+        $('#toggleAutoRestart').on('change', function () {
+            var isAuto = this.checked ? 1 : 0;
+            $.post("{{ url('user/campaigns/update-status') }}/" + campaignId, {
+                _token: "{{ csrf_token() }}",
+                auto_restart: isAuto
+            }, function (res) {
+                notify('info', isAuto ? 'Auto-Restart Loop enabled: Broadcast will restart when completed.' : 'Auto-Restart Loop disabled: Broadcast will finish once.');
+                log(isAuto ? '🔁 Auto-Restart Loop enabled.' : '⏹ Auto-Restart Loop disabled.', 'info');
             });
         });
 
