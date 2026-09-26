@@ -1,4 +1,50 @@
 @extends($activeTemplate . 'layouts.master')
+
+@push('style')
+<style>
+    /* Enhanced text legibility and contrast on user campaign page */
+    .dashboard-section label {
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        font-size: 13.5px !important;
+    }
+    .dashboard-section .form-control,
+    .dashboard-section .form-select,
+    .dashboard-section textarea {
+        color: #0f172a !important;
+        font-weight: 600 !important;
+        border: 1.5px solid #cbd5e1 !important;
+        background-color: #ffffff !important;
+    }
+    .dashboard-section .form-control:focus,
+    .dashboard-section .form-select:focus,
+    .dashboard-section textarea:focus {
+        border-color: #25d366 !important;
+        color: #0f172a !important;
+        box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.2) !important;
+    }
+    .dashboard-section .form-control::placeholder,
+    .dashboard-section textarea::placeholder {
+        color: #64748b !important;
+        opacity: 1 !important;
+        font-weight: 400 !important;
+    }
+    .dashboard-section .input-group-text {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        border: 1.5px solid #cbd5e1 !important;
+        font-weight: 700 !important;
+    }
+    .dashboard-section .text-muted,
+    .dashboard-section small.text-muted,
+    .dashboard-section p.text-muted {
+        color: #334155 !important;
+        font-weight: 500 !important;
+        font-size: 12.5px !important;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="dashboard-section py-2 py-sm-3">
     <div class="container-fluid px-2 px-sm-3">
