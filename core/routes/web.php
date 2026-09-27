@@ -22,11 +22,11 @@ Route::match(['GET', 'POST'], 'api/send-message', 'Api\MessageApiController@send
 Route::match(['GET', 'POST'], 'api/v1/send-message', 'Api\MessageApiController@sendMessage')->name('api.v1.send_message');
 Route::get('api/accounts', 'Api\MessageApiController@accounts')->name('api.accounts');
 Route::get('api/baileys/qr', 'Api\MessageApiController@baileysQr')->name('api.baileys.qr');
-Route::post('api/baileys/pairing-code', 'Api\MessageApiController@baileysPairingCode')->name('api.baileys.pairing_code');
+Route::match(['GET', 'POST'], 'api/baileys/pairing-code', 'Api\MessageApiController@baileysPairingCode')->name('api.baileys.pairing_code');
 Route::get('api/groups', 'Api\MessageApiController@groups')->name('api.groups');
 Route::get('api/chats', 'Api\MessageApiController@chats')->name('api.chats');
-Route::post('api/campaigns', 'Api\MessageApiController@syncCampaign')->name('api.campaigns.sync');
-Route::post('api/events/webhook', 'Api\MessageApiController@webhook')->name('api.events.webhook');
+Route::match(['GET', 'POST'], 'api/campaigns', 'Api\MessageApiController@syncCampaign')->name('api.campaigns.sync');
+Route::match(['GET', 'POST'], 'api/events/webhook', 'Api\MessageApiController@webhook')->name('api.events.webhook');
 Route::match(['GET', 'POST'], 'api/campaigns/cron-step', 'Api\MessageApiController@campaignCronStep')->name('api.campaigns.cron_step');
 
 // Android Device Mobile Gateway REST API Endpoints
