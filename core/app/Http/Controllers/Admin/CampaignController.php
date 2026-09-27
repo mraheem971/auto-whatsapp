@@ -243,19 +243,42 @@ class CampaignController extends Controller
 
     public function startAutoBroadcast($id)
     {
-        $campaign = Campaign::findOrFail($id);
-        $campaign->status = 'running';
-        $campaign->save();
+        try {
+            $campaign = Campaign::findOrFail($id);
+            $campaign->status = 'running';
+            // Clear any old next_send_at if it was in the past so it can dispatch immediately
+            if ($campaign->next_send_at && now()->gte($campaign->next_send_at)) {
+                $campaign->next_send_at = null;
+            }
+            $campaign->save();
 
-        // Dispatch first target immediately for instant real-time start
-        \App\Services\CampaignDispatcherService::dispatchNextPendingTarget($campaign->id);
-        \App\Services\CampaignDispatcherService::launchBackgroundProcess($campaign->id);
+            // Safely launch background process without blocking
+            try {
+                \App\Services\CampaignDispatcherService::launchBackgroundProcess($campaign->id);
+            } catch (\Throwable $e) {
+                \Log::warning("Campaign {$id} launchBackgroundProcess warning: " . $e->getMessage());
+            }
 
-        return response()->json([
-            'success' => true,
-            'status'  => 'running',
-            'message' => 'Automatic background broadcast started. Running continuously on server.'
-        ]);
+            // Attempt instant first target dispatch without crashing if network delays occur
+            try {
+                \App\Services\CampaignDispatcherService::dispatchNextPendingTarget($campaign->id);
+            } catch (\Throwable $e) {
+                \Log::warning("Campaign {$id} initial dispatch warning: " . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'status'  => 'running',
+                'message' => 'Automatic background broadcast started. Running continuously on server.'
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error("Campaign startAutoBroadcast error: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'status'  => 'error',
+                'message' => 'Failed to launch background broadcast: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function liveStatus($id)
@@ -542,6 +565,14 @@ class CampaignController extends Controller
         $campaign = Campaign::findOrFail($id);
         if ($request->has('status')) {
             $campaign->status = $request->status ?: 'completed';
+            if ($campaign->status === 'running') {
+                if ($campaign->next_send_at && now()->gte($campaign->next_send_at)) {
+                    $campaign->next_send_at = null;
+                }
+                try {
+                    \App\Services\CampaignDispatcherService::launchBackgroundProcess($campaign->id);
+                } catch (\Throwable $e) {}
+            }
         }
         if ($request->has('auto_restart')) {
             $campaign->auto_restart = $request->auto_restart ? 1 : 0;

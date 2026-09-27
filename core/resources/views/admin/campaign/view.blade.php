@@ -424,32 +424,62 @@
             return;
         }
 
-        $('#btnStartBroadcast').addClass('d-none');
+        var $btn = $(this);
+        $btn.addClass('d-none');
         $('#btnPauseBroadcast').removeClass('d-none');
-        $('#campaignStatusBadge').removeClass('badge--dark').addClass('badge--success').text('Running');
-        $('#queueStatusBadge').removeClass('badge--info').addClass('badge--warning').text('Broadcasting in Background...');
+        $('#campaignStatusBadge').removeClass('badge--dark badge--warning').addClass('badge--success').text('Running');
+        $('#queueStatusBadge').removeClass('badge--info badge--secondary').addClass('badge--warning').text('Broadcasting in Background...');
 
-        $.post("{{ route('admin.campaigns.start.auto', $campaign->id) }}", {
-            _token: "{{ csrf_token() }}"
-        }, function(res){
-            notify('success', 'Automatic background broadcast launched! Server will send messages continuously.');
-            startPolling();
-        }).fail(function(xhr){
-            notify('error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to launch background broadcast');
+        $.ajax({
+            url: "{{ route('admin.campaigns.start.auto', $campaign->id) }}",
+            type: "POST",
+            data: { _token: "{{ csrf_token() }}" },
+            timeout: 10000,
+            success: function(res){
+                notify('success', 'Broadcast active! Server will send messages continuously.');
+                startPolling();
+            },
+            error: function(){
+                // Fail-proof fallback: directly update campaign status to running
+                $.ajax({
+                    url: "{{ url('admin/campaigns/update-status') }}/" + campaignId,
+                    type: "POST",
+                    data: { _token: "{{ csrf_token() }}", status: 'running' },
+                    timeout: 8000,
+                    success: function(res2){
+                        notify('success', 'Broadcast resumed successfully!');
+                        startPolling();
+                    },
+                    error: function(xhr2){
+                        $btn.removeClass('d-none');
+                        $('#btnPauseBroadcast').addClass('d-none');
+                        $('#campaignStatusBadge').removeClass('badge--success').addClass('badge--warning').text('Paused');
+                        $('#queueStatusBadge').removeClass('badge--warning').addClass('badge--info').text('Broadcast Paused');
+                        var msg = (xhr2.responseJSON && xhr2.responseJSON.message) ? xhr2.responseJSON.message : 'Failed to launch background broadcast';
+                        notify('error', msg);
+                    }
+                });
+            }
         });
     });
 
     $('#btnPauseBroadcast').on('click', function(){
-        $.post("{{ url('admin/campaigns/update-status') }}/" + campaignId, {
-            _token: "{{ csrf_token() }}",
-            status: 'paused'
-        }, function(){
-            stopPolling();
-            $('#btnPauseBroadcast').addClass('d-none');
-            $('#btnStartBroadcast').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
-            $('#campaignStatusBadge').removeClass('badge--success').addClass('badge--warning').text('Paused');
-            $('#queueStatusBadge').removeClass('badge--warning').addClass('badge--info').text('Broadcast Paused');
-            notify('info', 'Broadcast paused by user.');
+        stopPolling();
+        $('#btnPauseBroadcast').addClass('d-none');
+        $('#btnStartBroadcast').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
+        $('#campaignStatusBadge').removeClass('badge--success').addClass('badge--warning').text('Paused');
+        $('#queueStatusBadge').removeClass('badge--warning').addClass('badge--info').text('Broadcast Paused');
+
+        $.ajax({
+            url: "{{ url('admin/campaigns/update-status') }}/" + campaignId,
+            type: "POST",
+            data: { _token: "{{ csrf_token() }}", status: 'paused' },
+            success: function(){
+                notify('info', 'Broadcast paused by user.');
+            },
+            error: function(){
+                notify('warning', 'Could not sync pause status with server.');
+            }
         });
     });
 

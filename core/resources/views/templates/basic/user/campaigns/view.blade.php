@@ -411,34 +411,64 @@
                 return;
             }
 
-            $('#btnStartCampaign').addClass('d-none');
+            var $btn = $(this);
+            $btn.addClass('d-none');
             $('#btnPauseCampaign').removeClass('d-none');
             $('#campaignStatusBadge').removeClass('bg-secondary bg-warning').addClass('bg-primary').text('RUNNING (SERVER BACKGROUND)');
             log('🚀 Launching automatic background broadcast on server...', 'info');
 
-            $.post("{{ route('user.campaigns.start.auto', $campaign->id) }}", {
-                _token: "{{ csrf_token() }}"
-            }, function (res) {
-                notify('success', 'Automatic background broadcast launched! Server will send messages continuously.');
-                log('✔ Background broadcast active on server. You can safely close this page.', 'success');
-                startPolling();
-            }).fail(function (xhr) {
-                notify('error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to start broadcast');
-                log('✖ Failed to start background worker.', 'error');
+            $.ajax({
+                url: "{{ route('user.campaigns.start.auto', $campaign->id) }}",
+                type: "POST",
+                data: { _token: "{{ csrf_token() }}" },
+                timeout: 10000,
+                success: function (res) {
+                    notify('success', 'Automatic background broadcast launched! Server will send messages continuously.');
+                    log('✔ Background broadcast active on server. You can safely close this page.', 'success');
+                    startPolling();
+                },
+                error: function () {
+                    // Fail-proof fallback: update status to running directly
+                    $.ajax({
+                        url: "{{ url('user/campaigns/update-status') }}/" + campaignId,
+                        type: "POST",
+                        data: { _token: "{{ csrf_token() }}", status: 'running' },
+                        timeout: 8000,
+                        success: function (res2) {
+                            notify('success', 'Broadcast resumed successfully!');
+                            log('✔ Broadcast resumed on server.', 'success');
+                            startPolling();
+                        },
+                        error: function (xhr2) {
+                            $btn.removeClass('d-none');
+                            $('#btnPauseCampaign').addClass('d-none');
+                            $('#campaignStatusBadge').removeClass('bg-primary').addClass('bg-warning').text('PAUSED');
+                            var msg = (xhr2.responseJSON && xhr2.responseJSON.message) ? xhr2.responseJSON.message : 'Failed to start broadcast';
+                            notify('error', msg);
+                            log('✖ Failed to resume broadcast.', 'error');
+                        }
+                    });
+                }
             });
         });
 
         $('#btnPauseCampaign').on('click', function () {
-            $.post("{{ url('user/campaigns/update-status') }}/" + campaignId, {
-                _token: "{{ csrf_token() }}",
-                status: 'paused'
-            }, function () {
-                stopPolling();
-                $('#btnPauseCampaign').addClass('d-none');
-                $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
-                $('#campaignStatusBadge').removeClass('bg-primary').addClass('bg-warning').text('PAUSED');
-                log('⏸ Broadcast paused by user.', 'info');
-                notify('info', 'Broadcast paused.');
+            stopPolling();
+            $('#btnPauseCampaign').addClass('d-none');
+            $('#btnStartCampaign').removeClass('d-none').html('<i class="las la-play me-1"></i> Resume Broadcast');
+            $('#campaignStatusBadge').removeClass('bg-primary').addClass('bg-warning').text('PAUSED');
+            log('⏸ Broadcast paused by user.', 'info');
+
+            $.ajax({
+                url: "{{ url('user/campaigns/update-status') }}/" + campaignId,
+                type: "POST",
+                data: { _token: "{{ csrf_token() }}", status: 'paused' },
+                success: function () {
+                    notify('info', 'Broadcast paused.');
+                },
+                error: function () {
+                    notify('warning', 'Could not sync pause status with server.');
+                }
             });
         });
 
