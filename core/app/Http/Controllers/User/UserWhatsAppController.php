@@ -114,7 +114,15 @@ class UserWhatsAppController extends Controller
         }
 
         try {
-            $res = BaileysClient::post('api/sessions/start', $payload, 20);
+            BaileysClient::ensureServiceRunning();
+            $res = BaileysClient::post('api/sessions/start', $payload, 25);
+
+            // If first attempt returned null or 5xx, retry once with fresh discovery
+            if (!$res || !$res->successful()) {
+                usleep(500000);
+                BaileysClient::ensureServiceRunning();
+                $res = BaileysClient::post('api/sessions/start', $payload, 25);
+            }
 
             if ($res && $res->successful()) {
                 $data = $res->json();

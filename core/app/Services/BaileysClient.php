@@ -7,9 +7,53 @@ use Illuminate\Support\Facades\Log;
 
 class BaileysClient
 {
-    public static function getBaseUrl()
+    protected static $resolvedBaseUrl = null;
+
+    /**
+     * Get the active Baileys service base URL with auto-detection across ports 3333 and 3000
+     */
+    public static function getBaseUrl($forceProbe = false)
     {
-        return rtrim(env('BAILEYS_URL', env('WHATSAPP_SERVER_URL', 'http://127.0.0.1:3000')), '/');
+        if (self::$resolvedBaseUrl && !$forceProbe) {
+            return self::$resolvedBaseUrl;
+        }
+
+        $envUrl = env('BAILEYS_URL', env('WHATSAPP_SERVER_URL'));
+        if (!empty($envUrl)) {
+            $envUrl = rtrim($envUrl, '/');
+            // If explicitly configured, test it quickly
+            try {
+                $check = Http::timeout(0.6)->get($envUrl . '/health');
+                if ($check && $check->successful()) {
+                    self::$resolvedBaseUrl = $envUrl;
+                    return self::$resolvedBaseUrl;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // Candidate ports (3333 is primary on live server PM2, 3000 is fallback/local)
+        $candidates = array_unique(array_filter([
+            $envUrl,
+            'http://127.0.0.1:3333',
+            'http://localhost:3333',
+            'http://127.0.0.1:3000',
+            'http://localhost:3000',
+        ]));
+
+        foreach ($candidates as $cand) {
+            $cand = rtrim($cand, '/');
+            try {
+                $res = Http::timeout(0.5)->get($cand . '/health');
+                if ($res && $res->successful()) {
+                    self::$resolvedBaseUrl = $cand;
+                    return self::$resolvedBaseUrl;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // Default to live PM2 port 3333 if neither responded yet
+        self::$resolvedBaseUrl = !empty($envUrl) ? $envUrl : 'http://127.0.0.1:3333';
+        return self::$resolvedBaseUrl;
     }
 
     /**
@@ -20,7 +64,16 @@ class BaileysClient
         try {
             $baseUrl = self::getBaseUrl();
             try {
-                $res = Http::timeout(2)->get($baseUrl . '/health');
+                $res = Http::timeout(1.5)->get($baseUrl . '/health');
+                if ($res && $res->successful()) {
+                    return true;
+                }
+            } catch (\Throwable $e) {}
+
+            // Try re-detecting active port before spawning
+            $activeUrl = self::getBaseUrl(true);
+            try {
+                $res = Http::timeout(1.5)->get($activeUrl . '/health');
                 if ($res && $res->successful()) {
                     return true;
                 }
@@ -31,8 +84,9 @@ class BaileysClient
             // Wait up to 3 seconds for service to answer health check
             for ($i = 0; $i < 6; $i++) {
                 usleep(500000); // 500ms
+                $activeUrl = self::getBaseUrl(true);
                 try {
-                    $res = Http::timeout(2)->get($baseUrl . '/health');
+                    $res = Http::timeout(1.5)->get($activeUrl . '/health');
                     if ($res && $res->successful()) {
                         return true;
                     }
@@ -89,14 +143,14 @@ class BaileysClient
         }
         $data = is_array($data) ? $data : [];
 
-        $url = rtrim(self::getBaseUrl(), '/') . '/' . ltrim($endpoint, '/');
-
         for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $url = rtrim(self::getBaseUrl(), '/') . '/' . ltrim($endpoint, '/');
             try {
                 $response = Http::timeout($timeout)->post($url, $data);
                 return $response;
             } catch (\Throwable $e) {
                 if ($attempt === 1) {
+                    self::$resolvedBaseUrl = null; // force rediscovery
                     self::ensureServiceRunning();
                     usleep(500000);
                 } else {
@@ -120,14 +174,14 @@ class BaileysClient
         }
         $query = is_array($query) ? $query : [];
 
-        $url = rtrim(self::getBaseUrl(), '/') . '/' . ltrim($endpoint, '/');
-
         for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $url = rtrim(self::getBaseUrl(), '/') . '/' . ltrim($endpoint, '/');
             try {
                 $response = Http::timeout($timeout)->get($url, $query);
                 return $response;
             } catch (\Throwable $e) {
                 if ($attempt === 1) {
+                    self::$resolvedBaseUrl = null; // force rediscovery
                     self::ensureServiceRunning();
                     usleep(500000);
                 } else {
@@ -151,18 +205,22 @@ class BaileysClient
         }
         $data = is_array($data) ? $data : [];
 
-        $url = rtrim(self::getBaseUrl(), '/') . '/' . ltrim($endpoint, '/');
-
-        try {
-            return Http::timeout($timeout)->delete($url, $data);
-        } catch (\Throwable $e) {
-            self::ensureServiceRunning();
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $url = rtrim(self::getBaseUrl(), '/') . '/' . ltrim($endpoint, '/');
             try {
                 return Http::timeout($timeout)->delete($url, $data);
-            } catch (\Throwable $ex) {
-                Log::warning("BaileysClient DELETE {$endpoint} failed: " . $ex->getMessage());
-                return null;
+            } catch (\Throwable $e) {
+                if ($attempt === 1) {
+                    self::$resolvedBaseUrl = null;
+                    self::ensureServiceRunning();
+                    usleep(500000);
+                } else {
+                    Log::warning("BaileysClient DELETE {$endpoint} failed: " . $e->getMessage());
+                    return null;
+                }
             }
         }
+
+        return null;
     }
 }

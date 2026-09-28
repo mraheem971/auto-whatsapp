@@ -17,7 +17,7 @@ class CampaignController extends Controller
 
     public function __construct()
     {
-        $this->baileysUrl = rtrim(env('BAILEYS_URL', env('WHATSAPP_SERVER_URL', 'http://127.0.0.1:3000')), '/');
+        $this->baileysUrl = \App\Services\BaileysClient::getBaseUrl();
     }
 
     public function index(Request $request)

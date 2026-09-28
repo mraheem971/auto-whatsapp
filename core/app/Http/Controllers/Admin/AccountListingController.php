@@ -84,6 +84,7 @@ class AccountListingController extends Controller
         $account->save();
 
         try {
+            BaileysClient::ensureServiceRunning();
             $response = BaileysClient::post('api/sessions/start', [
                 'sessionId'     => $sessionId,
                 'accountName'   => $accountName,
@@ -92,7 +93,7 @@ class AccountListingController extends Controller
                 'fresh'         => true,
             ], 20);
 
-            if ($response->successful()) {
+            if ($response && $response->successful()) {
                 $data = $response->json();
                 return response()->json([
                     'status'        => $data['status'] ?? 'initializing',
@@ -104,15 +105,16 @@ class AccountListingController extends Controller
                     'user'          => $data['user'] ?? null,
                 ]);
             } else {
+                $err = $response ? ('Baileys service returned an error: ' . $response->body()) : 'Could not connect to WhatsApp microservice.';
                 return response()->json([
                     'status' => 'error',
-                    'error'  => 'Baileys service returned an error: ' . $response->body(),
+                    'error'  => $err,
                 ], 500);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'status' => 'error',
-                'error'  => 'Could not connect to Baileys service. Auto-spawn initiated: ' . $e->getMessage(),
+                'error'  => 'Could not connect to Baileys service: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -122,7 +124,7 @@ class AccountListingController extends Controller
         try {
             $response = BaileysClient::get("api/sessions/status/{$sessionId}", [], 8);
 
-            if ($response->successful()) {
+            if ($response && $response->successful()) {
                 $data = $response->json();
                 $status = $data['status'] ?? 'unknown';
 
