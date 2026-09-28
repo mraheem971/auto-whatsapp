@@ -10,8 +10,8 @@
                 <small class="d-block text-white-50" style="font-size: 11px; margin-top: 3px;">{{ gs('site_name') }} SaaS</small>
             </div>
         </a>
-        <button class="btn btn-sm text-white d-lg-none" id="closeSidebarBtn">
-            <i class="las la-times fs-4"></i>
+        <button class="sidebar-close-btn d-lg-none" id="closeSidebarBtn" type="button" aria-label="Close Navigation" title="Close">
+            <i class="las la-times fs-5"></i>
         </button>
     </div>
 

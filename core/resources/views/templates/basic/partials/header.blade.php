@@ -15,8 +15,12 @@
                 </span>
             </div>
             @endauth
-            <button class="navbar-toggler header-button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" type="button" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                <span id="hiddenNav"><i class="las la-bars"></i></span>
+            <button class="navbar-toggler header-button modern-frontend-toggle" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" type="button" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="hamburger-box">
+                    <span class="hamburger-line line-top"></span>
+                    <span class="hamburger-line line-mid"></span>
+                    <span class="hamburger-line line-bot"></span>
+                </span>
             </button>
 
             <div class="navbar-collapse collapse" id="navbarSupportedContent">
@@ -251,3 +255,109 @@
         </ul>
     </div>
     @endauth
+
+<style>
+/* ================= Modern Frontend 3-Dash Hamburger Toggle ================= */
+.navbar-toggler.modern-frontend-toggle {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.navbar-toggler.modern-frontend-toggle:hover,
+.navbar-toggler.modern-frontend-toggle:focus {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border-color: rgba(255, 255, 255, 0.45) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
+    outline: none !important;
+    transform: translateY(-1px);
+}
+
+.navbar-toggler.modern-frontend-toggle:active {
+    transform: scale(0.95);
+}
+
+.navbar-toggler.modern-frontend-toggle .hamburger-box {
+    width: 20px;
+    height: 15px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.navbar-toggler.modern-frontend-toggle .hamburger-line {
+    display: block;
+    height: 2.5px;
+    width: 100%;
+    background-color: #ffffff;
+    border-radius: 4px;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.2s ease, 
+                width 0.2s ease,
+                background-color 0.25s ease;
+    transform-origin: center;
+}
+
+.navbar-toggler.modern-frontend-toggle .line-mid {
+    width: 15px;
+}
+
+.navbar-toggler.modern-frontend-toggle:hover .line-mid {
+    width: 20px;
+}
+
+/* Animated active state (when menu is collapsed/expanded) */
+.navbar-toggler.modern-frontend-toggle[aria-expanded="true"] {
+    background: rgba(37, 211, 102, 0.25) !important;
+    border-color: rgba(37, 211, 102, 0.6) !important;
+    box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.25) !important;
+}
+
+.navbar-toggler.modern-frontend-toggle[aria-expanded="true"] .hamburger-line {
+    background-color: #25d366;
+}
+
+.navbar-toggler.modern-frontend-toggle[aria-expanded="true"] .line-top {
+    transform: translateY(6.25px) rotate(45deg);
+}
+
+.navbar-toggler.modern-frontend-toggle[aria-expanded="true"] .line-mid {
+    opacity: 0;
+    transform: scaleX(0);
+}
+
+.navbar-toggler.modern-frontend-toggle[aria-expanded="true"] .line-bot {
+    transform: translateY(-6.25px) rotate(-45deg);
+}
+
+/* Override old font icon content rules */
+.navbar-toggler.modern-frontend-toggle[aria-expanded=true] i::before {
+    display: none !important;
+}
+
+/* Mobile dropdown menu polish */
+@media (max-width: 991.98px) {
+    .header .navbar-collapse {
+        background: #111b21 !important;
+        border-radius: 16px !important;
+        padding: 16px 20px !important;
+        margin-top: 14px !important;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    }
+}
+</style>

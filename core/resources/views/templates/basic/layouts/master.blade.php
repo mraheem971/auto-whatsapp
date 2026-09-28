@@ -594,29 +594,100 @@
         margin-left: 0;
     }
 
-    /* Mobile Drawer */
+    /* Mobile Drawer & Mobile Friendly Layout */
+    .sidebar-close-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .sidebar-close-btn:hover, .sidebar-close-btn:active {
+        background: rgba(239, 68, 68, 0.25);
+        border-color: #ef4444;
+        color: #ef4444;
+    }
+
+    /* Remove excessive py-60 / py-120 padding on dashboard inside user portal */
+    .user-layout .py-60,
+    .user-layout .py-120 {
+        padding-top: 10px !important;
+        padding-bottom: 25px !important;
+    }
+
     @media (max-width: 991.98px) {
         .user-sidebar {
-            margin-left: calc(-1 * var(--sidebar-width));
-        }
-        .user-main-wrapper {
+            width: min(85vw, 290px);
+            left: 0;
+            top: 0;
+            bottom: 0;
+            transform: translateX(-105%);
+            transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.32s ease;
+            box-shadow: none;
+            z-index: 1050;
+            border-radius: 0 16px 16px 0;
+            will-change: transform;
             margin-left: 0 !important;
         }
-        .user-layout.mobile-sidebar-open .user-sidebar {
-            margin-left: 0;
+
+        .user-main-wrapper {
+            margin-left: 0 !important;
+            width: 100% !important;
+            min-width: 0;
         }
+
+        .user-layout.mobile-sidebar-open .user-sidebar {
+            transform: translateX(0);
+            box-shadow: 10px 0 35px rgba(0, 0, 0, 0.4);
+        }
+
         .user-sidebar-backdrop {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1030;
-            display: none;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            display: block !important;
         }
+
         .user-layout.mobile-sidebar-open .user-sidebar-backdrop {
-            display: block;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        body.mobile-drawer-locked {
+            overflow: hidden !important;
+            touch-action: none;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .user-content-body {
+            padding: 10px 10px 30px 10px !important;
+        }
+        .user-content-body .container,
+        .user-content-body .container-fluid {
+            padding-left: 4px !important;
+            padding-right: 4px !important;
+        }
+        .user-content-body .card {
+            border-radius: 12px !important;
+        }
+        .user-content-body .card-body {
+            padding: 14px !important;
         }
     }
 </style>
@@ -631,7 +702,16 @@
         $('#sidebarToggleBtn').on('click', function(e) {
             e.preventDefault();
             if ($(window).width() < 992) {
-                $('#userLayout').toggleClass('mobile-sidebar-open');
+                var isOpen = $('#userLayout').hasClass('mobile-sidebar-open');
+                if (isOpen) {
+                    $('#userLayout').removeClass('mobile-sidebar-open');
+                    $('body').removeClass('mobile-drawer-locked');
+                    $('#sidebarToggleBtn').removeClass('is-active');
+                } else {
+                    $('#userLayout').addClass('mobile-sidebar-open');
+                    $('body').addClass('mobile-drawer-locked');
+                    $('#sidebarToggleBtn').addClass('is-active');
+                }
             } else {
                 $('#userLayout').toggleClass('sidebar-collapsed');
             }
@@ -639,6 +719,17 @@
 
         $('#closeSidebarBtn, #userSidebarBackdrop').on('click', function() {
             $('#userLayout').removeClass('mobile-sidebar-open');
+            $('body').removeClass('mobile-drawer-locked');
+            $('#sidebarToggleBtn').removeClass('is-active');
+        });
+
+        // Auto close on mobile when clicking regular menu link
+        $('.user-sidebar .nav-link:not(.user-dropdown-toggle), .user-sidebar .submenu-link').on('click', function() {
+            if ($(window).width() < 992) {
+                $('#userLayout').removeClass('mobile-sidebar-open');
+                $('body').removeClass('mobile-drawer-locked');
+                $('#sidebarToggleBtn').removeClass('is-active');
+            }
         });
 
         // Sidebar Submenu Dropdowns Toggle
