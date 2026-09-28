@@ -62,7 +62,7 @@
 
                                 <div class="mb-4 d-none" id="phoneNumberWrapper">
                                     <label class="fw-bold mb-1">WhatsApp Phone Number (with Country Code) <span class="text-danger">*</span></label>
-                                    <input type="text" name="phone_number" id="phoneNumberInput" class="form-control" placeholder="e.g. 923216793596 (no dashes or spaces)">
+                                    <input type="text" name="phone_number" id="phoneNumberInput" class="form-control" placeholder="e.g. 14155552671 (no dashes or spaces)">
                                     <small class="text-muted">Enter the phone number registered with your WhatsApp.</small>
                                 </div>
 

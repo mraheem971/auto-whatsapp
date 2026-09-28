@@ -193,7 +193,7 @@
                             <label class="fw-bold mb-1" id="targetIdentifierLabel">Target Phone Number</label>
                             
                             <!-- Input for Single Phone -->
-                            <input type="text" name="target_identifier" id="targetInputSingle" class="form-control" placeholder="e.g. 923216793596">
+                            <input type="text" name="target_identifier" id="targetInputSingle" class="form-control" placeholder="e.g. 14155552671">
 
                             <!-- Select for Contact List -->
                             <select id="targetSelectContactList" class="form-select d-none">

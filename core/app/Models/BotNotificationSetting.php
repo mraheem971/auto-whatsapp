@@ -13,14 +13,14 @@ class BotNotificationSetting extends Model
         $settings = self::first();
         if (!$settings) {
             $settings = self::create([
-                'admin_whatsapp_number'           => '923216793596',
+                'admin_whatsapp_number'           => '14155552671',
                 'notify_on_new_message'           => false,
                 'notify_on_system_error'          => true,
                 'notify_on_user_error_escalation' => true,
                 'notify_on_session_disconnect'    => true,
                 'notify_on_scheduled_reminder'    => true,
                 'auto_error_reply_to_user'        => true,
-                'error_reply_message'             => "⚠️ Hello {name}, we noticed you encountered an issue. Our support team has been automatically alerted on WhatsApp and will assist you shortly!\n\n📞 Admin Hotline: +923216793596",
+                'error_reply_message'             => "⚠️ Hello {name}, we noticed you encountered an issue. Our support team has been automatically alerted on WhatsApp and will assist you shortly!\n\n📞 Admin Hotline: +14155552671",
                 'error_keywords'                  => 'error,issue,problem,not working,kharab,masla,help,admin,complaint,urgent,bug,fail,failed',
             ]);
         }

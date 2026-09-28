@@ -118,7 +118,7 @@
 Thank you for contacting us. Your request is being processed. 
 
 ✅ Instant Delivery
-📞 WhatsApp Support: +923216793596
+📞 WhatsApp Support: +14155552671
 
 Have a great day! ✨</textarea>
                     </div>

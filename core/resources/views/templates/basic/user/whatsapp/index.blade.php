@@ -121,7 +121,7 @@
                 <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="fw-bold mb-1">Recipient WhatsApp Number (with country code) <span class="text-danger">*</span></label>
-                        <input type="text" name="recipient" class="form-control" placeholder="e.g. 923216793596 (no dashes or spaces)" required>
+                        <input type="text" name="recipient" class="form-control" placeholder="e.g. 14155552671 (no dashes or spaces)" required>
                     </div>
                     <div class="mb-3">
                         <label class="fw-bold mb-1">Message Content <span class="text-danger">*</span></label>

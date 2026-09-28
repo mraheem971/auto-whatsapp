@@ -72,7 +72,7 @@
                                     <span class="input-group-text bg-white text-muted fw-bold">+</span>
                                     <input type="text" name="admin_whatsapp_number" class="form-control" 
                                            value="{{ old('admin_whatsapp_number', $settings->admin_whatsapp_number) }}" 
-                                           placeholder="e.g. 923216793596 (country code + number, no dashes)" required>
+                                           placeholder="e.g. 14155552671 (country code + number, no dashes)" required>
                                 </div>
                                 <small class="text-muted">
                                     All urgent system errors, bot issues, and customer error escalations will be sent directly to this WhatsApp number.

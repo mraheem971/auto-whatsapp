@@ -55,7 +55,7 @@
                         </label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted font-monospace"><i class="las la-globe"></i> +</span>
-                            <input type="text" name="phone_number" id="phone_number" class="form-control form-control-lg font-monospace" placeholder="@lang('e.g. 923216793596 or 14155552671')">
+                            <input type="text" name="phone_number" id="phone_number" class="form-control form-control-lg font-monospace" placeholder="@lang('e.g. 14155552671 or 447123456789')">
                         </div>
                         <span class="text-muted d-block mt-1 text-xs">
                             <i class="las la-info-circle me-1"></i> @lang('Include country code without + or spaces (e.g. 92 for PK, 1 for US, 91 for IN).')

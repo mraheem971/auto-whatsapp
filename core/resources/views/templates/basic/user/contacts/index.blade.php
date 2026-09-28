@@ -120,7 +120,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="fw-bold mb-1">WhatsApp Phone Number <span class="text-danger">*</span></label>
-                        <input type="text" name="phone_number" class="form-control" placeholder="e.g. 923216793596" required>
+                        <input type="text" name="phone_number" class="form-control" placeholder="e.g. 14155552671" required>
                     </div>
                     <div class="mb-3">
                         <label class="fw-bold mb-1">Assign to Contact List (Optional)</label>
