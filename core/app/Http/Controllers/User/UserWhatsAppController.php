@@ -83,11 +83,13 @@ class UserWhatsAppController extends Controller
         foreach ($stalePending as $stale) {
             $staleDir = base_path('../baileys-service/sessions/' . $stale->session_id);
             if (is_dir($staleDir)) {
-                \Illuminate\Support\Facades\File::deleteDirectory($staleDir);
+                try {
+                    \Illuminate\Support\Facades\File::deleteDirectory($staleDir);
+                } catch (\Throwable $e) {}
             }
             try {
                 BaileysClient::post("api/sessions/delete/{$stale->session_id}", [], 3);
-            } catch (\Exception $e) {}
+            } catch (\Throwable $e) {}
             $stale->delete();
         }
 
@@ -142,7 +144,7 @@ class UserWhatsAppController extends Controller
                     'error'  => $err,
                 ], 500);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $account->delete();
             return response()->json([
                 'status' => 'error',
@@ -282,12 +284,16 @@ class UserWhatsAppController extends Controller
 
         try {
             BaileysClient::post("api/sessions/delete/{$account->session_id}", [], 5);
-        } catch (\Exception $e) {}
-
-        $sPath = base_path('../baileys-service/sessions/' . $account->session_id);
-        if (is_dir($sPath)) {
-            \Illuminate\Support\Facades\File::deleteDirectory($sPath);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::info("Baileys session delete notice for {$account->session_id}: " . $e->getMessage());
         }
+
+        try {
+            $sPath = base_path('../baileys-service/sessions/' . $account->session_id);
+            if (is_dir($sPath)) {
+                \Illuminate\Support\Facades\File::deleteDirectory($sPath);
+            }
+        } catch (\Throwable $e) {}
 
         $account->delete();
 

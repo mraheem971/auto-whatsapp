@@ -403,10 +403,20 @@ class CampaignDispatcherService
         $artisanPath = base_path('artisan');
         $phpBinary = PHP_BINARY ?: 'php';
 
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            pclose(popen("start /B cmd /c \"\"{$phpBinary}\" \"{$artisanPath}\" campaign:run-single {$campaignId}\"", "r"));
-        } else {
-            @exec("\"{$phpBinary}\" \"{$artisanPath}\" campaign:run-single {$campaignId} > /dev/null 2>&1 &");
+        try {
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                if (function_exists('popen') && function_exists('pclose')) {
+                    @pclose(@popen("start /B cmd /c \"\"{$phpBinary}\" \"{$artisanPath}\" campaign:run-single {$campaignId}\"", "r"));
+                }
+            } else {
+                if (function_exists('exec')) {
+                    @exec("\"{$phpBinary}\" \"{$artisanPath}\" campaign:run-single {$campaignId} > /dev/null 2>&1 &");
+                } elseif (function_exists('shell_exec')) {
+                    @shell_exec("\"{$phpBinary}\" \"{$artisanPath}\" campaign:run-single {$campaignId} > /dev/null 2>&1 &");
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::info("CampaignDispatcherService launchBackgroundProcess notice: " . $e->getMessage());
         }
     }
 
