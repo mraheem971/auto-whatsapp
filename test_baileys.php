@@ -9,39 +9,73 @@ $response = $kernel->handle(
     $request = Illuminate\Http\Request::capture()
 );
 
-$ports = [3333, 3000, 8000, 8001];
 $results = [];
 
-foreach ($ports as $port) {
-    $url = "http://127.0.0.1:{$port}/health";
-    $status = 'failed';
-    $code = 0;
-    $body = null;
-    $err = null;
-
-    try {
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-        $body = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $err = curl_error($ch);
-        curl_close($ch);
-        $status = ($code >= 200 && $code < 400) ? 'ok' : 'http_error';
-    } catch (\Throwable $e) {
-        $err = $e->getMessage();
+// 1. Decode listening TCP ports from /proc/net/tcp
+$listeningPorts = [];
+foreach (['/proc/net/tcp', '/proc/net/tcp6'] as $file) {
+    if (file_exists($file) && is_readable($file)) {
+        $lines = file($file);
+        foreach ($lines as $i => $line) {
+            if ($i === 0) continue; // header
+            $parts = preg_split('/\s+/', trim($line));
+            if (count($parts) >= 4) {
+                $state = $parts[3];
+                if ($state === '0A') { // 0A = TCP_LISTEN
+                    list($hexIp, $hexPort) = explode(':', $parts[1]);
+                    $port = hexdec($hexPort);
+                    $listeningPorts[] = $port;
+                }
+            }
+        }
     }
+}
+$results['listening_ports'] = array_values(array_unique($listeningPorts));
 
-    $results[$port] = [
-        'url' => $url,
-        'status' => $status,
+// 2. Check node/pm2 execution from PHP
+$cmdOutput = [];
+$cmds = [
+    'which_node' => 'which node 2>&1',
+    'which_pm2'  => 'which pm2 2>&1 || find /home/u858498424 -name pm2 2>&1',
+    'ps_node'    => 'ps aux | grep node 2>&1',
+];
+if (function_exists('shell_exec')) {
+    foreach ($cmds as $key => $cmd) {
+        $cmdOutput[$key] = shell_exec("export PATH=/usr/local/bin:/usr/bin:/bin:/opt/alt/alt-nodejs20/root/usr/bin:\$PATH; " . $cmd);
+    }
+}
+$results['shell_commands'] = $cmdOutput;
+
+// 3. Test HTTP health on candidate ports
+$testPorts = array_values(array_unique(array_merge([3333, 3000, 8000, 8001], $listeningPorts)));
+$healthChecks = [];
+foreach ($testPorts as $p) {
+    if ($p < 1000 || $p > 65000) continue;
+    $url = "http://127.0.0.1:{$p}/health";
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 1);
+    $body = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    $healthChecks[$p] = [
         'http_code' => $code,
-        'error' => $err,
-        'body' => $body,
+        'body'      => $body ? substr($body, 0, 100) : null,
+        'error'     => $err ?: null,
     ];
 }
+$results['health_checks'] = $healthChecks;
 
-$results['baileys_client_base_url'] = \App\Services\BaileysClient::getBaseUrl();
-$results['ensure_service'] = \App\Services\BaileysClient::ensureServiceRunning();
+// 4. BaileysClient info
+$results['baileys_client_url'] = \App\Services\BaileysClient::getBaseUrl();
+$results['baileys_online'] = \App\Services\BaileysClient::ensureServiceRunning();
+
+// 5. Tail server.js on live disk
+$serverJs = __DIR__ . '/baileys-service/server.js';
+if (file_exists($serverJs)) {
+    $lines = file($serverJs);
+    $results['server_js_tail'] = array_slice($lines, -20);
+}
 
 echo json_encode($results, JSON_PRETTY_PRINT);
