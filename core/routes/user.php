@@ -132,8 +132,9 @@ Route::middleware('auth')->name('user.')->group(function () {
             // Auto-Reply & Keyword Bots
             Route::controller('UserAutoReplyController')->prefix('autoreply')->name('autoreply.')->group(function () {
                 Route::get('/', 'index')->name('index');
+                Route::get('/edit/{id}', 'edit')->name('edit');
+                Route::match(['GET', 'POST'], '/update/{id}', 'update')->name('update');
                 Route::post('/store', 'store')->name('store');
-                Route::post('/update/{id}', 'update')->name('update');
                 Route::post('/status/{id}', 'statusToggle')->name('status');
                 Route::post('/delete/{id}', 'delete')->name('delete');
             });

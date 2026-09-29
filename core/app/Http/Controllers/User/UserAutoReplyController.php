@@ -144,10 +144,21 @@ class UserAutoReplyController extends Controller
         return back()->withNotify($notify);
     }
 
+    public function edit($id)
+    {
+        $user = auth()->user();
+        AutoReply::where('user_id', $user->id)->findOrFail($id);
+        return redirect()->route('user.autoreply.index', ['edit_id' => $id]);
+    }
+
     public function update(Request $request, $id)
     {
         $user = auth()->user();
         $bot = AutoReply::where('user_id', $user->id)->findOrFail($id);
+
+        if ($request->isMethod('get')) {
+            return redirect()->route('user.autoreply.index', ['edit_id' => $id]);
+        }
 
         $request->validate([
             'name'                    => 'required|string|max:150',
@@ -155,7 +166,8 @@ class UserAutoReplyController extends Controller
             'keywords'                => 'nullable|string',
             'reply_type'              => 'nullable|string|in:text,image,video,document,flow',
             'reply_message'           => 'required|string',
-            'media_url'               => 'nullable|url|max:2000',
+            'media_url'               => 'nullable|string|max:2000',
+            'session_id'              => 'nullable|string',
             'target_type'             => 'required|in:all,all_individual,all_group,saved_contacts,unsaved_contacts,specific_contacts,specific_groups,contact_list',
             'target_contacts'         => 'nullable|string',
             'target_group_ids'        => 'nullable|array',
@@ -189,7 +201,7 @@ class UserAutoReplyController extends Controller
         $bot->keywords                = $keywordsFormatted;
         $bot->reply_type              = $request->reply_type ?: 'text';
         $bot->reply_message           = $request->reply_message;
-        $bot->media_url               = $request->media_url;
+        $bot->media_url               = $request->media_url ?: null;
         $bot->session_id              = !empty($request->session_id) ? $request->session_id : null;
         $bot->target_type             = $request->target_type;
         $bot->target_contacts         = $contactsFormatted;

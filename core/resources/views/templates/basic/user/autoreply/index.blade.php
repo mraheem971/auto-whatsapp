@@ -229,7 +229,28 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @php $botsData = []; @endphp
                             @forelse($botRules as $rule)
+                                @php
+                                    $ruleData = [
+                                        'id'                      => $rule->id,
+                                        'name'                    => $rule->name,
+                                        'match_type'              => $rule->match_type,
+                                        'keywords'                => is_array($rule->keywords_array) ? implode(', ', $rule->keywords_array) : ($rule->keywords ?: ''),
+                                        'reply_type'              => $rule->reply_type ?: 'text',
+                                        'reply_message'           => $rule->reply_message ?: '',
+                                        'media_url'               => $rule->media_url ?: '',
+                                        'session_id'              => $rule->session_id ?: '',
+                                        'target_type'             => $rule->target_type ?: 'all',
+                                        'target_contacts'         => is_array($rule->target_contacts_array) ? implode(', ', $rule->target_contacts_array) : '',
+                                        'target_group_ids'        => $rule->target_group_ids_array ?? [],
+                                        'contact_list_id'         => $rule->contact_list_id ?: '',
+                                        'read_delay_seconds'      => $rule->read_delay_seconds ?? 2,
+                                        'typing_duration_seconds' => $rule->typing_duration_seconds ?? 3,
+                                        'reply_delay_seconds'     => $rule->reply_delay_seconds ?? ($rule->delay_seconds ?? 2),
+                                    ];
+                                    $botsData[$rule->id] = $ruleData;
+                                @endphp
                                 <tr>
                                     <td class="ps-3 py-2">
                                         <div class="fw-bold text-dark-mode-high text-truncate mb-0.5" title="{{ $rule->name }}">{{ $rule->name }}</div>
@@ -351,20 +372,7 @@
                                         <div class="d-inline-flex gap-1">
                                             <button type="button" class="btn btn-outline-primary btn-sm btnEditBot p-1" style="line-height: 1;"
                                                     data-id="{{ $rule->id }}"
-                                                    data-name="{{ $rule->name }}"
-                                                    data-match="{{ $rule->match_type }}"
-                                                    data-keywords="{{ is_array($rule->keywords_array) ? implode(', ', $rule->keywords_array) : $rule->keywords }}"
-                                                    data-type="{{ $rule->reply_type }}"
-                                                    data-message="{{ $rule->reply_message }}"
-                                                    data-media="{{ $rule->media_url }}"
-                                                    data-session="{{ $rule->session_id }}"
-                                                    data-target-type="{{ $rule->target_type ?: 'all' }}"
-                                                    data-target-contacts="{{ is_array($rule->target_contacts_array) ? implode(',', $rule->target_contacts_array) : '' }}"
-                                                    data-target-groups='{{ json_encode($rule->target_group_ids_array ?? []) }}'
-                                                    data-contact-list="{{ $rule->contact_list_id }}"
-                                                    data-seen="{{ $rule->read_delay_seconds ?? 2 }}"
-                                                    data-typing="{{ $rule->typing_duration_seconds ?? 3 }}"
-                                                    data-delay="{{ $rule->reply_delay_seconds ?? ($rule->delay_seconds ?? 2) }}"
+                                                    data-bot-payload="{{ base64_encode(json_encode($ruleData)) }}"
                                                     title="Edit Bot">
                                                 <i class="las la-edit"></i>
                                             </button>
@@ -724,6 +732,8 @@
 
 @push('script')
 <script>
+    const allBotRules = @json($botsData ?? []);
+
     (function ($) {
         "use strict";
 
@@ -749,45 +759,58 @@
             handleTargetTypeToggle(this);
         });
 
-        $('.btnEditBot').on('click', function () {
-            var id = $(this).data('id');
-            var name = $(this).data('name');
-            var match = $(this).data('match');
-            var keywords = $(this).data('keywords');
-            var type = $(this).data('type');
-            var message = $(this).data('message');
-            var media = $(this).data('media');
-            var session = $(this).data('session');
-            var targetType = $(this).data('target-type') || 'all';
-            var targetContacts = $(this).data('target-contacts') || '';
-            var targetGroups = $(this).data('target-groups') || [];
-            var contactList = $(this).data('contact-list') || '';
-            var seen = $(this).data('seen');
-            var typing = $(this).data('typing');
-            var delay = $(this).data('delay');
+        // Robust Edit Bot Modal Populator:
+        // Uses safe pre-serialized bot data so multiline messages, quotes, or special characters never get cleared
+        $(document).on('click', '.btnEditBot', function (e) {
+            e.preventDefault();
+            var $btn = $(this).closest('.btnEditBot');
+            var id = $btn.data('id') || $btn.attr('data-id');
 
-            $('#editName').val(name);
-            $('#editMatch').val(match);
-            $('#editKeywords').val(keywords);
-            $('#editType').val(type);
-            $('#editMessage').val(message);
-            $('#editMedia').val(media);
-            $('#editSession').val(session);
-            $('#editTargetType').val(targetType);
-            $('#editTargetContacts').val(targetContacts);
-            $('#editContactListId').val(contactList);
+            // 1. Try global allBotRules dictionary
+            var bot = (typeof allBotRules !== 'undefined' && allBotRules[id]) ? allBotRules[id] : null;
 
-            if (Array.isArray(targetGroups)) {
-                $('#editTargetGroupIds').val(targetGroups);
+            // 2. Fallback to base64 payload embedded on button
+            if (!bot) {
+                var rawPayload = $btn.attr('data-bot-payload');
+                if (rawPayload) {
+                    try {
+                        bot = JSON.parse(atob(rawPayload));
+                    } catch(err) {
+                        console.warn('[EditBot] Base64 decode failed:', err);
+                    }
+                }
             }
 
-            $('#editSeenDelay').val(seen !== undefined ? seen : 2);
-            $('#editTypingDuration').val(typing !== undefined ? typing : 3);
-            $('#editSendDelay').val(delay !== undefined ? delay : 2);
+            if (!bot) {
+                console.error('[EditBot] Bot record not found for ID:', id);
+                return;
+            }
+
+            // Populate all form fields with existing saved data
+            $('#editName').val(bot.name || '');
+            $('#editMatch').val(bot.match_type || 'contains');
+            $('#editKeywords').val(bot.keywords || '');
+            $('#editType').val(bot.reply_type || 'text');
+            $('#editMessage').val(bot.reply_message || '');
+            $('#editMedia').val(bot.media_url || '');
+            $('#editSession').val(bot.session_id || '');
+            $('#editTargetType').val(bot.target_type || 'all');
+            $('#editTargetContacts').val(bot.target_contacts || '');
+            $('#editContactListId').val(bot.contact_list_id || '');
+
+            if (Array.isArray(bot.target_group_ids)) {
+                $('#editTargetGroupIds').val(bot.target_group_ids);
+            } else {
+                $('#editTargetGroupIds').val([]);
+            }
+
+            $('#editSeenDelay').val(bot.read_delay_seconds !== undefined ? bot.read_delay_seconds : 2);
+            $('#editTypingDuration').val(bot.typing_duration_seconds !== undefined ? bot.typing_duration_seconds : 3);
+            $('#editSendDelay').val(bot.reply_delay_seconds !== undefined ? bot.reply_delay_seconds : 2);
 
             handleTargetTypeToggle($('#editTargetType'));
 
-            var actionUrl = "{{ url('user/autoreply/update') }}/" + id;
+            var actionUrl = "{{ url('user/autoreply/update') }}/" + bot.id;
             $('#editBotForm').attr('action', actionUrl);
 
             $('#editBotModal').modal('show');
@@ -795,6 +818,13 @@
 
         if (window.location.hash === '#createBotModal' || window.location.hash === '#create') {
             $('#createBotModal').modal('show');
+        }
+
+        var autoEditId = "{{ request('edit_id') }}";
+        if (autoEditId) {
+            setTimeout(function() {
+                $('.btnEditBot[data-id="' + autoEditId + '"]').first().trigger('click');
+            }, 250);
         }
 
     })(jQuery);
