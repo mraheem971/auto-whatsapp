@@ -31,11 +31,20 @@ class BaileysClient
             } catch (\Throwable $e) {}
         }
 
-        // Candidate ports (3333 is primary on live server PM2, 3000 is fallback/local)
+        $serverIp = $_SERVER['SERVER_ADDR'] ?? null;
+        if (empty($serverIp) && function_exists('gethostbyname') && function_exists('gethostname')) {
+            $serverIp = @gethostbyname(@gethostname());
+        }
+
+        // Candidate ports (3333 is primary on live PM2, host IP bridges CloudLinux CageFS)
         $candidates = array_unique(array_filter([
             $envUrl,
+            !empty($serverIp) ? "http://{$serverIp}:3333" : null,
+            'http://82.180.152.18:3333',
             'http://127.0.0.1:3333',
             'http://localhost:3333',
+            !empty($serverIp) ? "http://{$serverIp}:3000" : null,
+            'http://82.180.152.18:3000',
             'http://127.0.0.1:3000',
             'http://localhost:3000',
         ]));
@@ -51,8 +60,9 @@ class BaileysClient
             } catch (\Throwable $e) {}
         }
 
-        // Default to live PM2 port 3333 if neither responded yet
-        self::$resolvedBaseUrl = !empty($envUrl) ? $envUrl : 'http://127.0.0.1:3333';
+        // Default to live PM2 host IP port 3333 if neither responded yet
+        $fallback = !empty($serverIp) ? "http://{$serverIp}:3333" : 'http://82.180.152.18:3333';
+        self::$resolvedBaseUrl = !empty($envUrl) ? $envUrl : $fallback;
         return self::$resolvedBaseUrl;
     }
 
