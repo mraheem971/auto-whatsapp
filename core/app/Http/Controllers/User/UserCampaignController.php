@@ -150,8 +150,12 @@ class UserCampaignController extends Controller
         $campaign->contact_list_id      = $listId;
         $campaign->target_type          = $targetType;
         $campaign->message              = $request->message;
-        $campaign->media_url            = $request->media_url;
-        $campaign->media_type           = $request->media_type ?: 'text';
+        if (\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'media_url')) {
+            $campaign->media_url        = $request->media_url;
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'media_type')) {
+            $campaign->media_type       = $request->media_type ?: 'text';
+        }
         $campaign->min_delay            = $minDelay;
         $campaign->max_delay            = $maxDelay;
         $campaign->delay_seconds        = $minDelay;
