@@ -144,7 +144,9 @@ class UserCampaignController extends Controller
         $campaign->user_id              = $user->id;
         $campaign->name                 = $request->name;
         $campaign->session_id           = $request->session_id;
-        $campaign->template_id          = $request->template_id;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'template_id') && $request->filled('template_id')) {
+            $campaign->template_id      = $request->template_id;
+        }
         $campaign->contact_list_id      = $listId;
         $campaign->target_type          = $targetType;
         $campaign->message              = $request->message;
@@ -161,12 +163,14 @@ class UserCampaignController extends Controller
         $campaign->daily_sent_count     = 0;
         $campaign->daily_sent_date      = date('Y-m-d');
         $campaign->status               = 'ready';
-        $campaign->auto_restart     = $request->has('auto_restart') ? 1 : ($request->auto_restart ?? 1);
-        $campaign->loop_count        = 0;
-        $campaign->total_targets     = $recipientsCount;
-        $campaign->sent_count        = 0;
-        $campaign->failed_count      = 0;
-        $campaign->logs              = [];
+        $campaign->auto_restart         = $request->has('auto_restart') ? 1 : ($request->auto_restart ?? 1);
+        $campaign->loop_count           = 0;
+        $campaign->total_targets        = $recipientsCount;
+        $campaign->sent_count           = 0;
+        $campaign->failed_count         = 0;
+        $campaign->logs                 = [];
+        $campaign->save();
+
         if ($request->auto_dispatch || $request->dispatch_mode === 'auto') {
             $campaign->status = 'running';
             $campaign->save();

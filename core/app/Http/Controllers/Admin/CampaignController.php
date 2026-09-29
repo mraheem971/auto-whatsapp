@@ -228,6 +228,8 @@ class CampaignController extends Controller
         $campaign->sent_count       = 0;
         $campaign->failed_count     = 0;
         $campaign->logs             = [];
+        $campaign->save();
+
         if ($request->auto_dispatch || $request->dispatch_mode === 'auto') {
             $campaign->status = 'running';
             $campaign->save();
