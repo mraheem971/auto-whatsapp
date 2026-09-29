@@ -72,11 +72,32 @@ class UserCampaignController extends Controller
         $totalAll = Contact::where('user_id', $user->id)->count();
         $botSettings = UserBotSetting::getSettingsForUser($user->id);
 
+        $groups = Contact::where('user_id', $user->id)
+            ->where(function ($q) {
+                $q->whereNotNull('group_id')->where('group_id', '!=', '')
+                  ->orWhere('type', 'group');
+            })
+            ->selectRaw('COALESCE(NULLIF(group_id, ""), phone_number) as group_id, MAX(COALESCE(NULLIF(group_name, ""), name, "WhatsApp Group")) as group_name, count(*) as member_count')
+            ->groupBy('group_id')
+            ->orderBy('group_name', 'asc')
+            ->get();
+
+        if ($groups->isEmpty()) {
+            $groups = Contact::where('user_id', $user->id)
+                ->whereNotNull('group_id')
+                ->where('group_id', '!=', '')
+                ->selectRaw('MAX(group_name) as group_name, group_id, count(*) as member_count')
+                ->groupBy('group_id')
+                ->orderBy('group_name', 'asc')
+                ->get();
+        }
+
         return view('Template::user.campaigns.create', compact(
             'pageTitle',
             'connectedAccounts',
             'templates',
             'contactLists',
+            'groups',
             'totalContacts',
             'totalGroups',
             'totalAll',
@@ -100,6 +121,7 @@ class UserCampaignController extends Controller
             'name'                => 'required|string|max:150',
             'session_id'          => 'required|string',
             'target_type'         => 'required|string',
+            'target_group_ids'    => 'nullable|array',
             'message'             => 'required|string',
             'min_delay_seconds'   => 'nullable|integer|min:1|max:600',
             'max_delay_seconds'   => 'nullable|integer|min:1|max:600',
@@ -128,6 +150,13 @@ class UserCampaignController extends Controller
         $recipientsCount = 0;
         if ($targetType === 'contact_list' && $listId) {
             $recipientsCount = Contact::where('user_id', $user->id)->where('contact_list_id', $listId)->count();
+        } elseif ($targetType === 'selected_groups') {
+            $selectedGroupIds = $request->target_group_ids ?: [];
+            if (empty($selectedGroupIds)) {
+                $notify[] = ['error', 'Please select at least one WhatsApp group for your campaign.'];
+                return back()->withInput()->withNotify($notify);
+            }
+            $recipientsCount = count($selectedGroupIds);
         } elseif ($targetType === 'groups') {
             $recipientsCount = Contact::where('user_id', $user->id)->where('type', 'group')->count();
         } elseif ($targetType === 'contacts') {
@@ -149,6 +178,9 @@ class UserCampaignController extends Controller
         }
         $campaign->contact_list_id      = $listId;
         $campaign->target_type          = $targetType;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'target_group_ids')) {
+            $campaign->target_group_ids = !empty($request->target_group_ids) ? (is_array($request->target_group_ids) ? json_encode(array_values($request->target_group_ids)) : $request->target_group_ids) : null;
+        }
         $campaign->message              = $request->message;
         if (\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'media_url')) {
             $campaign->media_url        = $request->media_url;
@@ -325,6 +357,29 @@ class UserCampaignController extends Controller
             $groups = Contact::where('user_id', $user->id)->where('type', 'group')->get();
             if ($groups->isEmpty()) {
                 $groups = Contact::where('user_id', $user->id)->whereNotNull('group_id')->where('group_id', '!=', '')->get();
+            }
+            foreach ($groups as $g) {
+                $targetJid = $g->group_id ?: $g->target_jid ?: $g->phone_number;
+                $targets[] = [
+                    'type'       => 'group',
+                    'name'       => $g->name ?: ($g->group_name ?: 'WhatsApp Group'),
+                    'target_jid' => $targetJid,
+                    'phone'      => $g->phone_number ?: $g->group_id,
+                    'group_name' => $g->group_name,
+                ];
+            }
+        } elseif ($targetType === 'selected_groups') {
+            $selectedIds = is_array($campaign->target_group_ids) ? $campaign->target_group_ids : (json_decode($campaign->target_group_ids ?? '[]', true) ?: []);
+            $groups = Contact::where('user_id', $user->id)
+                ->whereIn('group_id', $selectedIds)
+                ->selectRaw('MAX(group_name) as group_name, group_id, MAX(name) as name, MAX(phone_number) as phone_number')
+                ->groupBy('group_id')
+                ->get();
+            if ($groups->isEmpty()) {
+                $groups = Contact::whereIn('group_id', $selectedIds)
+                    ->selectRaw('MAX(group_name) as group_name, group_id, MAX(name) as name, MAX(phone_number) as phone_number')
+                    ->groupBy('group_id')
+                    ->get();
             }
             foreach ($groups as $g) {
                 $targetJid = $g->group_id ?: $g->target_jid ?: $g->phone_number;

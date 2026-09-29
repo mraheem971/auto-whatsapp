@@ -115,10 +115,22 @@ class CampaignDispatcherService
             }
         } elseif ($targetType === 'selected_groups') {
             $selectedIds = is_array($campaign->target_group_ids) ? $campaign->target_group_ids : (json_decode($campaign->target_group_ids ?? '[]', true) ?: []);
-            $groups = Contact::whereIn('group_id', $selectedIds)
+            $query = Contact::query();
+            if ($userId) {
+                $query->where('user_id', $userId);
+            }
+            $groups = $query->whereIn('group_id', $selectedIds)
                 ->selectRaw('MAX(group_name) as group_name, group_id, MAX(name) as name, MAX(phone_number) as phone_number')
                 ->groupBy('group_id')
                 ->get();
+
+            if ($groups->isEmpty()) {
+                $groups = Contact::whereIn('group_id', $selectedIds)
+                    ->selectRaw('MAX(group_name) as group_name, group_id, MAX(name) as name, MAX(phone_number) as phone_number')
+                    ->groupBy('group_id')
+                    ->get();
+            }
+
             foreach ($groups as $g) {
                 $targetJid = self::canonicalJid($g->group_id, 'group');
                 $targets[] = [

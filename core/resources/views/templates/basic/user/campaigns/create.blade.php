@@ -42,6 +42,19 @@
         font-weight: 500 !important;
         font-size: 12.5px !important;
     }
+    .group-select-card {
+        border-color: #cbd5e1 !important;
+        background-color: #ffffff;
+    }
+    .group-select-card:hover {
+        border-color: #25d366 !important;
+        background-color: #f0fdf4 !important;
+    }
+    .group-select-card.selected {
+        border-color: #25d366 !important;
+        background-color: #f0fdf4 !important;
+        box-shadow: 0 0 0 1.5px #25d366 inset;
+    }
 </style>
 @endpush
 
@@ -105,6 +118,7 @@
                                         @if(($totalGroups ?? 0) > 0)
                                             <option value="groups">WhatsApp Groups Only ({{ $totalGroups }} groups)</option>
                                         @endif
+                                        <option value="selected_groups" {{ old('target_type') == 'selected_groups' ? 'selected' : '' }}>🎯 Specific WhatsApp Groups (Pick Targeted Groups)</option>
                                         @if(isset($contactLists) && $contactLists->count() > 0)
                                             <optgroup label="My Contact Lists">
                                                 @foreach($contactLists as $list)
@@ -123,6 +137,63 @@
                                             <option value="{{ $t->id }}" data-message="{{ $t->message }}" data-media="{{ $t->media_url }}" data-type="{{ $t->type }}">{{ $t->name }} ({{ $t->type }})</option>
                                         @endforeach
                                     </select>
+                                </div>
+
+                                <!-- Specific Target Groups Selector Box -->
+                                <div class="col-12 d-none" id="specificGroupsWrapper">
+                                    <div class="card border rounded-3 shadow-none" style="background-color: #f8fafc; border-color: #cbd5e1 !important;">
+                                        <div class="card-header bg-white py-2 px-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="fw-bold text-dark small"><i class="las la-tasks text-primary me-1"></i> Target WhatsApp Groups:</span>
+                                                <span class="badge bg-primary text-white" id="selectedGroupsCount">0 Selected</span>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-xs btn-outline-primary fw-semibold" id="btnSelectAllGroups">
+                                                    <i class="las la-check-double me-1"></i> Select All
+                                                </button>
+                                                <button type="button" class="btn btn-xs btn-outline-secondary fw-semibold" id="btnDeselectAllGroups">
+                                                    <i class="las la-times me-1"></i> Deselect All
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-body p-2 p-sm-3">
+                                            <div class="mb-2">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text bg-white"><i class="las la-search text-muted"></i></span>
+                                                    <input type="text" id="searchGroupInput" class="form-control" placeholder="Search group name or group ID...">
+                                                </div>
+                                            </div>
+                                            <div class="row g-2" id="groupsChecklist" style="max-height: 280px; overflow-y: auto; padding-right: 2px;">
+                                                @forelse($groups as $g)
+                                                    <div class="col-12 col-md-6 col-lg-4 group-item-col">
+                                                        <label class="group-select-card p-2 border rounded-2 bg-white w-100 d-flex align-items-center justify-content-between mb-0" for="grp_{{ $loop->index }}" style="cursor: pointer; transition: all 0.15s ease;">
+                                                            <div class="d-flex align-items-center text-truncate me-2" style="min-width: 0;">
+                                                                <input type="checkbox" name="target_group_ids[]" value="{{ $g->group_id }}" class="form-check-input group-chk me-2 flex-shrink-0" id="grp_{{ $loop->index }}" {{ (is_array(old('target_group_ids')) && in_array($g->group_id, old('target_group_ids'))) ? 'checked' : '' }} style="cursor: pointer; width: 1.15em; height: 1.15em;">
+                                                                <div class="text-truncate">
+                                                                    <strong class="text-dark d-block text-truncate group-name-label" style="font-size: 13px;" title="{{ $g->group_name }}">{{ $g->group_name }}</strong>
+                                                                    <span class="font-monospace text-muted d-block text-truncate" style="font-size: 10.5px;">{{ $g->group_id }}</span>
+                                                                </div>
+                                                            </div>
+                                                            @if(isset($g->member_count) && $g->member_count > 0)
+                                                                <span class="badge bg-light text-secondary border flex-shrink-0" style="font-size: 10.5px;">
+                                                                    <i class="las la-users me-0.5"></i>{{ $g->member_count }}
+                                                                </span>
+                                                            @else
+                                                                <span class="badge bg-light text-secondary border flex-shrink-0" style="font-size: 10.5px;">
+                                                                    <i class="las la-users me-0.5"></i>Group
+                                                                </span>
+                                                            @endif
+                                                        </label>
+                                                    </div>
+                                                @empty
+                                                    <div class="col-12 text-center text-muted py-3">
+                                                        <i class="las la-users-slash fs-3 d-block mb-1 text-secondary"></i>
+                                                        No WhatsApp groups found in your account.
+                                                    </div>
+                                                @endforelse
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="col-12">
@@ -316,6 +387,58 @@
         var antiBanReviewed = false;
         var pendingSubmit = false;
 
+        // Toggle Specific Groups Selector
+        function toggleTargetTypeUI() {
+            var val = $('#targetType').val();
+            if (val === 'selected_groups') {
+                $('#specificGroupsWrapper').removeClass('d-none');
+            } else {
+                $('#specificGroupsWrapper').addClass('d-none');
+            }
+        }
+        $('#targetType').on('change', toggleTargetTypeUI);
+        toggleTargetTypeUI();
+
+        // Update Group Counter & Card Selected Class
+        function updateGroupCounter() {
+            var count = $('.group-chk:checked').length;
+            $('#selectedGroupsCount').text(count + ' Selected');
+            $('.group-chk').each(function() {
+                if ($(this).is(':checked')) {
+                    $(this).closest('.group-select-card').addClass('selected');
+                } else {
+                    $(this).closest('.group-select-card').removeClass('selected');
+                }
+            });
+        }
+        $(document).on('change', '.group-chk', updateGroupCounter);
+        updateGroupCounter();
+
+        // Select All / Deselect All Groups
+        $('#btnSelectAllGroups').on('click', function() {
+            $('.group-item-col:visible .group-chk').prop('checked', true);
+            updateGroupCounter();
+        });
+
+        $('#btnDeselectAllGroups').on('click', function() {
+            $('.group-item-col:visible .group-chk').prop('checked', false);
+            updateGroupCounter();
+        });
+
+        // Filter / Search Groups
+        $('#searchGroupInput').on('keyup input', function() {
+            var q = $(this).val().toLowerCase().trim();
+            $('.group-item-col').each(function() {
+                var name = $(this).find('.group-name-label').text().toLowerCase();
+                var id = $(this).find('.font-monospace').text().toLowerCase();
+                if (!q || name.indexOf(q) !== -1 || id.indexOf(q) !== -1) {
+                    $(this).removeClass('d-none');
+                } else {
+                    $(this).addClass('d-none');
+                }
+            });
+        });
+
         // Sync template
         $('#templateSelect').on('change', function () {
             var $opt = $(this).find(':selected');
@@ -325,8 +448,6 @@
                 $('#mediaType').val($opt.data('type') || 'text');
             }
         });
-
-
 
         // When user opens modal manually
         $('#btnOpenAntiBanModal').on('click', function() {
@@ -405,8 +526,18 @@
             });
         });
 
-        // Before creating campaign: ensure user has set/reviewed Anti-Ban settings
+        // Before creating campaign: validate selection & ensure user has reviewed Anti-Ban
         $('#campaignCreateForm').on('submit', function(e) {
+            if ($('#targetType').val() === 'selected_groups') {
+                var selected = $('.group-chk:checked').length;
+                if (selected === 0) {
+                    e.preventDefault();
+                    notify('error', 'Please select at least one WhatsApp group for your campaign.');
+                    $('#searchGroupInput').focus();
+                    return false;
+                }
+            }
+
             if (!antiBanReviewed) {
                 e.preventDefault();
                 pendingSubmit = true;
