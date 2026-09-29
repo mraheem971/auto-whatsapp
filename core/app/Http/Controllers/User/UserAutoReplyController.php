@@ -144,10 +144,34 @@ class UserAutoReplyController extends Controller
         return back()->withNotify($notify);
     }
 
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
         $user = auth()->user();
-        AutoReply::where('user_id', $user->id)->findOrFail($id);
+        $bot = AutoReply::where('user_id', $user->id)->findOrFail($id);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'bot'     => [
+                    'id'                      => $bot->id,
+                    'name'                    => $bot->name,
+                    'match_type'              => $bot->match_type,
+                    'keywords'                => is_array($bot->keywords_array) ? implode(', ', $bot->keywords_array) : ($bot->keywords ?: ''),
+                    'reply_type'              => $bot->reply_type ?: 'text',
+                    'reply_message'           => $bot->reply_message ?: '',
+                    'media_url'               => $bot->media_url ?: '',
+                    'session_id'              => $bot->session_id ?: '',
+                    'target_type'             => $bot->target_type ?: 'all',
+                    'target_contacts'         => is_array($bot->target_contacts_array) ? implode(', ', $bot->target_contacts_array) : '',
+                    'target_group_ids'        => $bot->target_group_ids_array ?? [],
+                    'contact_list_id'         => $bot->contact_list_id ?: '',
+                    'read_delay_seconds'      => $bot->read_delay_seconds ?? 2,
+                    'typing_duration_seconds' => $bot->typing_duration_seconds ?? 3,
+                    'reply_delay_seconds'     => $bot->reply_delay_seconds ?? ($bot->delay_seconds ?? 2),
+                ],
+            ]);
+        }
+
         return redirect()->route('user.autoreply.index', ['edit_id' => $id]);
     }
 

@@ -233,23 +233,24 @@
                             @forelse($botRules as $rule)
                                 @php
                                     $ruleData = [
-                                        'id'                      => $rule->id,
-                                        'name'                    => $rule->name,
-                                        'match_type'              => $rule->match_type,
+                                        'id'                      => (int)$rule->id,
+                                        'name'                    => (string)($rule->name ?? ''),
+                                        'match_type'              => (string)($rule->match_type ?? 'contains'),
                                         'keywords'                => is_array($rule->keywords_array) ? implode(', ', $rule->keywords_array) : ($rule->keywords ?: ''),
-                                        'reply_type'              => $rule->reply_type ?: 'text',
-                                        'reply_message'           => $rule->reply_message ?: '',
-                                        'media_url'               => $rule->media_url ?: '',
-                                        'session_id'              => $rule->session_id ?: '',
-                                        'target_type'             => $rule->target_type ?: 'all',
-                                        'target_contacts'         => is_array($rule->target_contacts_array) ? implode(', ', $rule->target_contacts_array) : '',
-                                        'target_group_ids'        => $rule->target_group_ids_array ?? [],
-                                        'contact_list_id'         => $rule->contact_list_id ?: '',
-                                        'read_delay_seconds'      => $rule->read_delay_seconds ?? 2,
-                                        'typing_duration_seconds' => $rule->typing_duration_seconds ?? 3,
-                                        'reply_delay_seconds'     => $rule->reply_delay_seconds ?? ($rule->delay_seconds ?? 2),
+                                        'reply_type'              => (string)($rule->reply_type ?: 'text'),
+                                        'reply_message'           => (string)($rule->reply_message ?: ''),
+                                        'media_url'               => (string)($rule->media_url ?: ''),
+                                        'session_id'              => (string)($rule->session_id ?: ''),
+                                        'target_type'             => (string)($rule->target_type ?: 'all'),
+                                        'target_contacts'         => is_array($rule->target_contacts_array) ? implode(', ', $rule->target_contacts_array) : ($rule->target_contacts ?: ''),
+                                        'target_group_ids'        => is_array($rule->target_group_ids_array) ? $rule->target_group_ids_array : [],
+                                        'contact_list_id'         => (string)($rule->contact_list_id ?: ''),
+                                        'read_delay_seconds'      => (int)($rule->read_delay_seconds ?? 2),
+                                        'typing_duration_seconds' => (int)($rule->typing_duration_seconds ?? 3),
+                                        'reply_delay_seconds'     => (int)($rule->reply_delay_seconds ?? ($rule->delay_seconds ?? 2)),
                                     ];
-                                    $botsData[$rule->id] = $ruleData;
+                                    $botsData['bot_' . $rule->id] = $ruleData;
+                                    $botsData[(string)$rule->id] = $ruleData;
                                 @endphp
                                 <tr>
                                     <td class="ps-3 py-2">
@@ -372,7 +373,7 @@
                                         <div class="d-inline-flex gap-1">
                                             <button type="button" class="btn btn-outline-primary btn-sm btnEditBot p-1" style="line-height: 1;"
                                                     data-id="{{ $rule->id }}"
-                                                    data-bot-payload="{{ base64_encode(json_encode($ruleData)) }}"
+                                                    data-bot-payload="{{ base64_encode(json_encode($ruleData, JSON_UNESCAPED_UNICODE)) }}"
                                                     title="Edit Bot">
                                                 <i class="las la-edit"></i>
                                             </button>
@@ -585,11 +586,11 @@
                     <div class="row gy-3">
                         <div class="col-md-7">
                             <label class="fw-bold mb-1">Bot Name <span class="text-danger">*</span></label>
-                            <input type="text" name="name" id="editName" class="form-control" required>
+                            <input type="text" name="name" id="editName" class="form-control exclude" required>
                         </div>
                         <div class="col-md-5">
                             <label class="fw-bold mb-1">Match Type <span class="text-danger">*</span></label>
-                            <select name="match_type" id="editMatch" class="form-select" required>
+                            <select name="match_type" id="editMatch" class="form-select exclude" required>
                                 <option value="contains">Contains Keyword</option>
                                 <option value="exact">Exact Match</option>
                                 <option value="starts_with">Starts With</option>
@@ -598,13 +599,13 @@
                         </div>
                         <div class="col-12">
                             <label class="fw-bold mb-1">Trigger Keywords</label>
-                            <input type="text" name="keywords" id="editKeywords" class="form-control">
+                            <input type="text" name="keywords" id="editKeywords" class="form-control exclude">
                         </div>
 
                         <!-- Target Audience (Edit) -->
                         <div class="col-md-6">
                             <label class="fw-bold mb-1">Target Audience / Chat Scope <span class="text-danger">*</span></label>
-                            <select name="target_type" id="editTargetType" class="form-select targetTypeSelect" data-prefix="edit" required>
+                            <select name="target_type" id="editTargetType" class="form-select targetTypeSelect exclude" data-prefix="edit" required>
                                 <option value="all">All Chats (Direct & Groups)</option>
                                 <option value="all_individual">Direct / 1-to-1 Chats Only</option>
                                 <option value="all_group">Group Chats Only</option>
@@ -618,7 +619,7 @@
 
                         <div class="col-md-6">
                             <label class="fw-bold mb-1">Assigned Account</label>
-                            <select name="session_id" id="editSession" class="form-select">
+                            <select name="session_id" id="editSession" class="form-select exclude">
                                 <option value="">All My Connected Accounts</option>
                                 @foreach($connectedAccounts as $acc)
                                     <option value="{{ $acc->session_id }}">{{ $acc->account_name }} (+{{ $acc->phone_number ?? $acc->session_id }})</option>
@@ -629,12 +630,12 @@
                         <!-- Conditional Target Details (Edit) -->
                         <div class="col-12 conditional-target d-none" id="editSpecificContactsDiv">
                             <label class="fw-bold mb-1">Specific Target Numbers (comma separated)</label>
-                            <input type="text" name="target_contacts" id="editTargetContacts" class="form-control" placeholder="e.g. 923001234567, 923007654321">
+                            <input type="text" name="target_contacts" id="editTargetContacts" class="form-control exclude" placeholder="e.g. 923001234567, 923007654321">
                         </div>
 
                         <div class="col-12 conditional-target d-none" id="editSpecificGroupsDiv">
                             <label class="fw-bold mb-1">Select Target WhatsApp Groups</label>
-                            <select name="target_group_ids[]" id="editTargetGroupIds" class="form-select" multiple style="min-height: 90px;">
+                            <select name="target_group_ids[]" id="editTargetGroupIds" class="form-select exclude" multiple style="min-height: 90px;">
                                 @foreach($groups as $grp)
                                     <option value="{{ $grp->group_id }}">{{ $grp->group_name }}</option>
                                 @endforeach
@@ -643,7 +644,7 @@
 
                         <div class="col-12 conditional-target d-none" id="editContactListDiv">
                             <label class="fw-bold mb-1">Select Contact List</label>
-                            <select name="contact_list_id" id="editContactListId" class="form-select">
+                            <select name="contact_list_id" id="editContactListId" class="form-select exclude">
                                 <option value="">-- Choose Contact List --</option>
                                 @foreach($contactLists as $list)
                                     <option value="{{ $list->id }}">{{ $list->name }} ({{ $list->contacts_count }} contacts)</option>
@@ -653,7 +654,7 @@
 
                         <div class="col-md-12">
                             <label class="fw-bold mb-1">Reply Format</label>
-                            <select name="reply_type" id="editType" class="form-select">
+                            <select name="reply_type" id="editType" class="form-select exclude">
                                 <option value="text">Text Only</option>
                                 <option value="image">Image Attachment</option>
                                 <option value="video">Video Attachment</option>
@@ -663,12 +664,12 @@
 
                         <div class="col-12">
                             <label class="fw-bold mb-1">Reply Message Content <span class="text-danger">*</span></label>
-                            <textarea name="reply_message" id="editMessage" rows="4" class="form-control" required></textarea>
+                            <textarea name="reply_message" id="editMessage" rows="4" class="form-control exclude" required></textarea>
                             <small class="text-muted">Tags supported: <code>@{{name}}</code>, <code>@{{sender_phone}}</code>, <code>@{{time}}</code>, <code>@{{date}}</code></small>
                         </div>
                         <div class="col-12">
                             <label class="fw-bold mb-1">Media URL (Optional)</label>
-                            <input type="url" name="media_url" id="editMedia" class="form-control">
+                            <input type="url" name="media_url" id="editMedia" class="form-control exclude">
                         </div>
 
                         <!-- Human Behavior & Anti-Ban System (Edit) -->
@@ -684,10 +685,10 @@
                                 <div class="row g-3">
                                     <div class="col-md-4">
                                         <label class="fw-bold small mb-1">
-                                            <i class="las la-eye text-primary me-1"></i> Mark as Seen Delay
+                                             <i class="las la-eye text-primary me-1"></i> Mark as Seen Delay
                                         </label>
                                         <div class="input-group">
-                                            <input type="number" name="read_delay_seconds" id="editSeenDelay" class="form-control" min="0" max="60" value="2">
+                                            <input type="number" name="read_delay_seconds" id="editSeenDelay" class="form-control exclude" min="0" max="60" value="2">
                                             <span class="input-group-text">sec</span>
                                         </div>
                                         <small class="text-muted fs-8 d-block mt-1">Delay before turning ticks Blue.</small>
@@ -698,7 +699,7 @@
                                             <i class="las la-keyboard text-success me-1"></i> Typing Animation
                                         </label>
                                         <div class="input-group">
-                                            <input type="number" name="typing_duration_seconds" id="editTypingDuration" class="form-control" min="0" max="60" value="3">
+                                            <input type="number" name="typing_duration_seconds" id="editTypingDuration" class="form-control exclude" min="0" max="60" value="3">
                                             <span class="input-group-text">sec</span>
                                         </div>
                                         <small class="text-muted fs-8 d-block mt-1">Shows "typing..." presence animation.</small>
@@ -709,7 +710,7 @@
                                             <i class="las la-hourglass-half text-warning me-1"></i> Send Message Delay
                                         </label>
                                         <div class="input-group">
-                                            <input type="number" name="reply_delay_seconds" id="editSendDelay" class="form-control" min="0" max="60" value="2">
+                                            <input type="number" name="reply_delay_seconds" id="editSendDelay" class="form-control exclude" min="0" max="60" value="2">
                                             <span class="input-group-text">sec</span>
                                         </div>
                                         <small class="text-muted fs-8 d-block mt-1">Natural pause before dispatch.</small>
@@ -732,7 +733,7 @@
 
 @push('script')
 <script>
-    const allBotRules = @json($botsData ?? []);
+    const allBotRules = @json($botsData ?? (object)[]);
 
     (function ($) {
         "use strict";
@@ -759,61 +760,122 @@
             handleTargetTypeToggle(this);
         });
 
-        // Robust Edit Bot Modal Populator:
-        // Uses safe pre-serialized bot data so multiline messages, quotes, or special characters never get cleared
+        // Safely decode base64 containing UTF-8 characters
+        function safeDecodePayload(str) {
+            if (!str) return null;
+            try {
+                var binary = atob(str);
+                var bytes = new Uint8Array(binary.length);
+                for (var i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                return JSON.parse(new TextDecoder('utf-8').decode(bytes));
+            } catch(e) {
+                try {
+                    return JSON.parse(atob(str));
+                } catch(e2) {
+                    return null;
+                }
+            }
+        }
+
+        // Fill all fields in the edit modal using scoped name selectors
+        function populateEditModal(bot) {
+            if (!bot) return;
+            var $form = $('#editBotForm');
+
+            var actionUrl = "{{ url('user/autoreply/update') }}/" + bot.id;
+            $form.attr('action', actionUrl);
+
+            // Populate all inputs scoped to the form
+            $form.find('[name="name"]').val(bot.name || '');
+            $form.find('[name="match_type"]').val(bot.match_type || 'contains');
+            $form.find('[name="keywords"]').val(bot.keywords || '');
+            $form.find('[name="session_id"]').val(bot.session_id || '');
+            $form.find('[name="target_type"]').val(bot.target_type || 'all');
+            $form.find('[name="target_contacts"]').val(bot.target_contacts || '');
+            $form.find('[name="contact_list_id"]').val(bot.contact_list_id || '');
+
+            var grpIds = Array.isArray(bot.target_group_ids) ? bot.target_group_ids : (typeof bot.target_group_ids === 'string' ? JSON.parse(bot.target_group_ids || '[]') : []);
+            $form.find('[name="target_group_ids[]"]').val(grpIds);
+
+            $form.find('[name="reply_type"]').val(bot.reply_type || 'text');
+            $form.find('[name="reply_message"]').val(bot.reply_message || '');
+            $form.find('[name="media_url"]').val(bot.media_url || '');
+
+            $form.find('[name="read_delay_seconds"]').val(bot.read_delay_seconds !== undefined ? bot.read_delay_seconds : 2);
+            $form.find('[name="typing_duration_seconds"]').val(bot.typing_duration_seconds !== undefined ? bot.typing_duration_seconds : 3);
+            $form.find('[name="reply_delay_seconds"]').val(bot.reply_delay_seconds !== undefined ? bot.reply_delay_seconds : 2);
+
+            // Secondary fallback by element ID
+            $('#editName').val(bot.name || '');
+            $('#editMatch').val(bot.match_type || 'contains');
+            $('#editKeywords').val(bot.keywords || '');
+            $('#editSession').val(bot.session_id || '');
+            $('#editTargetType').val(bot.target_type || 'all');
+            $('#editTargetContacts').val(bot.target_contacts || '');
+            $('#editContactListId').val(bot.contact_list_id || '');
+            $('#editTargetGroupIds').val(grpIds);
+            $('#editType').val(bot.reply_type || 'text');
+            $('#editMessage').val(bot.reply_message || '');
+            $('#editMedia').val(bot.media_url || '');
+            $('#editSeenDelay').val(bot.read_delay_seconds !== undefined ? bot.read_delay_seconds : 2);
+            $('#editTypingDuration').val(bot.typing_duration_seconds !== undefined ? bot.typing_duration_seconds : 3);
+            $('#editSendDelay').val(bot.reply_delay_seconds !== undefined ? bot.reply_delay_seconds : 2);
+
+            handleTargetTypeToggle($form.find('[name="target_type"]'));
+
+            $('#editBotModal').modal('show');
+        }
+
+        // Click handler for Edit Bot button
         $(document).on('click', '.btnEditBot', function (e) {
             e.preventDefault();
             var $btn = $(this).closest('.btnEditBot');
             var id = $btn.data('id') || $btn.attr('data-id');
 
-            // 1. Try global allBotRules dictionary
-            var bot = (typeof allBotRules !== 'undefined' && allBotRules[id]) ? allBotRules[id] : null;
+            // 1. Try global preloaded dictionary
+            var bot = null;
+            if (typeof allBotRules !== 'undefined' && allBotRules) {
+                bot = allBotRules['bot_' + id] || allBotRules[id] || allBotRules[String(id)] || null;
+            }
 
-            // 2. Fallback to base64 payload embedded on button
+            // 2. Try button base64 payload
             if (!bot) {
                 var rawPayload = $btn.attr('data-bot-payload');
                 if (rawPayload) {
-                    try {
-                        bot = JSON.parse(atob(rawPayload));
-                    } catch(err) {
-                        console.warn('[EditBot] Base64 decode failed:', err);
-                    }
+                    bot = safeDecodePayload(rawPayload);
                 }
             }
 
-            if (!bot) {
-                console.error('[EditBot] Bot record not found for ID:', id);
+            // If found in client memory, show modal immediately
+            if (bot && bot.id) {
+                populateEditModal(bot);
                 return;
             }
 
-            // Populate all form fields with existing saved data
-            $('#editName').val(bot.name || '');
-            $('#editMatch').val(bot.match_type || 'contains');
-            $('#editKeywords').val(bot.keywords || '');
-            $('#editType').val(bot.reply_type || 'text');
-            $('#editMessage').val(bot.reply_message || '');
-            $('#editMedia').val(bot.media_url || '');
-            $('#editSession').val(bot.session_id || '');
-            $('#editTargetType').val(bot.target_type || 'all');
-            $('#editTargetContacts').val(bot.target_contacts || '');
-            $('#editContactListId').val(bot.contact_list_id || '');
+            // 3. Fallback: Fetch fresh data from server via AJAX
+            var originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="las la-spinner la-spin"></i>');
 
-            if (Array.isArray(bot.target_group_ids)) {
-                $('#editTargetGroupIds').val(bot.target_group_ids);
-            } else {
-                $('#editTargetGroupIds').val([]);
-            }
-
-            $('#editSeenDelay').val(bot.read_delay_seconds !== undefined ? bot.read_delay_seconds : 2);
-            $('#editTypingDuration').val(bot.typing_duration_seconds !== undefined ? bot.typing_duration_seconds : 3);
-            $('#editSendDelay').val(bot.reply_delay_seconds !== undefined ? bot.reply_delay_seconds : 2);
-
-            handleTargetTypeToggle($('#editTargetType'));
-
-            var actionUrl = "{{ url('user/autoreply/update') }}/" + bot.id;
-            $('#editBotForm').attr('action', actionUrl);
-
-            $('#editBotModal').modal('show');
+            $.ajax({
+                url: "{{ url('user/autoreply/edit') }}/" + id,
+                type: "GET",
+                dataType: "json",
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function (res) {
+                    $btn.prop('disabled', false).html(originalHtml);
+                    if (res && res.success && res.bot) {
+                        populateEditModal(res.bot);
+                    } else {
+                        $('#editBotModal').modal('show');
+                    }
+                },
+                error: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                    $('#editBotModal').modal('show');
+                }
+            });
         });
 
         if (window.location.hash === '#createBotModal' || window.location.hash === '#create') {

@@ -779,9 +779,11 @@
         var inputElements = $('[type=text],[type=password],select,textarea');
         $.each(inputElements, function(index, element) {
             element = $(element);
-            if (element.hasClass('exclude')) return false;
-            element.closest('.form-group').find('label').attr('for', element.attr('name'));
-            element.attr('id', element.attr('name'));
+            if (element.hasClass('exclude')) return true;
+            if (!element.attr('id') && element.attr('name')) {
+                element.closest('.form-group').find('label').attr('for', element.attr('name'));
+                element.attr('id', element.attr('name'));
+            }
         });
 
     })(jQuery);
