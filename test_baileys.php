@@ -11,71 +11,62 @@ $response = $kernel->handle(
 
 $results = [];
 
-// 1. Decode listening TCP ports from /proc/net/tcp
-$listeningPorts = [];
+// 1. Raw /proc/net/tcp entries matching 0D05 (3333) or 0BB8 (3000)
+$rawTcp = [];
 foreach (['/proc/net/tcp', '/proc/net/tcp6'] as $file) {
     if (file_exists($file) && is_readable($file)) {
-        $lines = file($file);
-        foreach ($lines as $i => $line) {
-            if ($i === 0) continue; // header
-            $parts = preg_split('/\s+/', trim($line));
-            if (count($parts) >= 4) {
-                $state = $parts[3];
-                if ($state === '0A') { // 0A = TCP_LISTEN
-                    list($hexIp, $hexPort) = explode(':', $parts[1]);
-                    $port = hexdec($hexPort);
-                    $listeningPorts[] = $port;
-                }
+        foreach (file($file) as $line) {
+            if (stripos($line, ':0D05') !== false || stripos($line, ':0BB8') !== false) {
+                $rawTcp[] = trim($line);
             }
         }
     }
 }
-$results['listening_ports'] = array_values(array_unique($listeningPorts));
+$results['raw_tcp_matches'] = $rawTcp;
 
-// 2. Check node/pm2 execution from PHP
-$cmdOutput = [];
-$cmds = [
-    'which_node' => 'which node 2>&1',
-    'which_pm2'  => 'which pm2 2>&1 || find /home/u858498424 -name pm2 2>&1',
-    'ps_node'    => 'ps aux | grep node 2>&1',
+// 2. Who is PHP running as?
+$results['php_user'] = [
+    'get_current_user' => get_current_user(),
+    'whoami' => function_exists('exec') ? @exec('whoami') : null,
+    'uid' => function_exists('posix_getuid') ? posix_getuid() : null,
+    'euid' => function_exists('posix_geteuid') ? posix_geteuid() : null,
 ];
-if (function_exists('shell_exec')) {
-    foreach ($cmds as $key => $cmd) {
-        $cmdOutput[$key] = shell_exec("export PATH=/usr/local/bin:/usr/bin:/bin:/opt/alt/alt-nodejs20/root/usr/bin:\$PATH; " . $cmd);
+
+// 3. Test various host strings for port 3333 and 3000
+$testHosts = [
+    '127.0.0.1',
+    'localhost',
+    '82.180.152.18',
+    '::1',
+];
+
+$connTests = [];
+foreach ($testHosts as $host) {
+    foreach ([3333, 3000] as $port) {
+        $errno = 0;
+        $errstr = '';
+        $t0 = microtime(true);
+        $fp = @fsockopen($host, $port, $errno, $errstr, 0.5);
+        $elapsed = round((microtime(true) - $t0) * 1000, 2);
+        
+        $connTests["{$host}:{$port}"] = [
+            'connected' => (bool)$fp,
+            'errno'     => $errno,
+            'errstr'    => $errstr,
+            'time_ms'   => $elapsed,
+        ];
+        if ($fp) {
+            fwrite($fp, "GET /health HTTP/1.0\r\nHost: {$host}\r\n\r\n");
+            $response = fread($fp, 256);
+            fclose($fp);
+            $connTests["{$host}:{$port}"]['response'] = substr($response, 0, 100);
+        }
     }
 }
-$results['shell_commands'] = $cmdOutput;
+$results['socket_tests'] = $connTests;
 
-// 3. Test HTTP health on candidate ports
-$testPorts = array_values(array_unique(array_merge([3333, 3000, 8000, 8001], $listeningPorts)));
-$healthChecks = [];
-foreach ($testPorts as $p) {
-    if ($p < 1000 || $p > 65000) continue;
-    $url = "http://127.0.0.1:{$p}/health";
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 1);
-    $body = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err = curl_error($ch);
-    curl_close($ch);
-    $healthChecks[$p] = [
-        'http_code' => $code,
-        'body'      => $body ? substr($body, 0, 100) : null,
-        'error'     => $err ?: null,
-    ];
-}
-$results['health_checks'] = $healthChecks;
-
-// 4. BaileysClient info
-$results['baileys_client_url'] = \App\Services\BaileysClient::getBaseUrl();
-$results['baileys_online'] = \App\Services\BaileysClient::ensureServiceRunning();
-
-// 5. Tail server.js on live disk
-$serverJs = __DIR__ . '/baileys-service/server.js';
-if (file_exists($serverJs)) {
-    $lines = file($serverJs);
-    $results['server_js_tail'] = array_slice($lines, -20);
-}
+// 4. Check if pm2/node can be launched or if it's currently running
+$results['proc_cmdline'] = @file_get_contents('/proc/1120130/cmdline');
+$results['proc_status'] = @file_get_contents('/proc/1120130/status');
 
 echo json_encode($results, JSON_PRETTY_PRINT);
