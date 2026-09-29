@@ -40,6 +40,9 @@ const sessions = new Map();
 const autoReplyRuleCache = new Map(); // sessionId -> { rules, lastFetched }
 const userCooldowns = new Map(); // `${ruleId}_${remoteJid}_${senderPhone}` -> timestamp
 
+// 15-second In-Memory Message Deduplication Store to prevent duplicate sends across concurrent workers/cron
+const recentSentCache = new Map(); // `${sessionId}_${jid}_${hash}` -> timestamp
+
 function getRulesCacheFilePath(sessionId) {
     return path.join(SESSIONS_DIR, `autoreply_rules_${sessionId}.json`);
 }
@@ -1127,6 +1130,31 @@ const handleSendMessage = async (req, res) => {
         } else {
             let cleaned = target.replace(/[^0-9]/g, '');
             jid = `${cleaned}@s.whatsapp.net`;
+        }
+
+        // Deduplication safeguard: prevent duplicate sends to the exact same recipient/group within 15 seconds
+        const dedupeKey = `${sessionId}_${jid}_${(message || '').trim()}_${mediaUrl || ''}`;
+        const now = Date.now();
+        if (recentSentCache.has(dedupeKey)) {
+            const lastSentTime = recentSentCache.get(dedupeKey);
+            if (now - lastSentTime < 15000) {
+                console.log(`[Baileys Deduplication] 🛡️ Duplicate message send suppressed for target ${jid} (${Math.round((now - lastSentTime) / 1000)}s ago)`);
+                return res.json({
+                    success: true,
+                    status: 'success',
+                    message: 'Message already delivered (duplicate suppressed by deduplication filter)',
+                    deduplicated: true,
+                    jid: jid
+                });
+            }
+        }
+        recentSentCache.set(dedupeKey, now);
+
+        // Periodic cleanup of deduplication store
+        if (recentSentCache.size > 1000) {
+            for (const [k, t] of recentSentCache.entries()) {
+                if (now - t > 30000) recentSentCache.delete(k);
+            }
         }
 
         let result;
