@@ -486,20 +486,33 @@ class CampaignDispatcherService
                 ->first();
 
             if ($completedToRestart) {
-                $completedToRestart->status = 'running';
-                $completedToRestart->loop_count = ($completedToRestart->loop_count ?? 0) + 1;
-                $logs = $completedToRestart->logs ?? [];
-                $logs[] = [
-                    'timestamp'  => date('Y-m-d H:i:s'),
-                    'target'     => "Auto-Restart (Round #{$completedToRestart->loop_count})",
-                    'target_jid' => '',
-                    'type'       => 'cycle_reset',
-                    'status'     => 'info',
-                    'message'    => "Campaign completed. Automatically starting again (Round #{$completedToRestart->loop_count}).",
-                ];
-                $completedToRestart->logs = array_slice($logs, -150);
-                $completedToRestart->save();
-                $campaigns = collect([$completedToRestart]);
+                // If this completed campaign belongs to a user whose subscription/trial has expired, do not restart
+                if ($completedToRestart->user_id > 0) {
+                    $u = \App\Models\User::find($completedToRestart->user_id);
+                    if (!$u || !$u->hasActiveSubscription()) {
+                        $completedToRestart->status = 'paused';
+                        $completedToRestart->auto_restart = 0;
+                        $completedToRestart->save();
+                        $completedToRestart = null;
+                    }
+                }
+
+                if ($completedToRestart) {
+                    $completedToRestart->status = 'running';
+                    $completedToRestart->loop_count = ($completedToRestart->loop_count ?? 0) + 1;
+                    $logs = $completedToRestart->logs ?? [];
+                    $logs[] = [
+                        'timestamp'  => date('Y-m-d H:i:s'),
+                        'target'     => "Auto-Restart (Round #{$completedToRestart->loop_count})",
+                        'target_jid' => '',
+                        'type'       => 'cycle_reset',
+                        'status'     => 'info',
+                        'message'    => "Campaign completed. Automatically starting again (Round #{$completedToRestart->loop_count}).",
+                    ];
+                    $completedToRestart->logs = array_slice($logs, -150);
+                    $completedToRestart->save();
+                    $campaigns = collect([$completedToRestart]);
+                }
             }
         }
 
@@ -511,6 +524,26 @@ class CampaignDispatcherService
         $lastResult = null;
 
         foreach ($campaigns as $campaign) {
+            // Subscription Validation: For user-owned campaigns, verify subscription/trial has not expired
+            if ($campaign->user_id > 0) {
+                $campaignUser = \App\Models\User::find($campaign->user_id);
+                if (!$campaignUser || !$campaignUser->hasActiveSubscription()) {
+                    $campaign->status = 'paused';
+                    $existingLogs = $campaign->logs ?? [];
+                    $existingLogs[] = [
+                        'timestamp'  => date('Y-m-d H:i:s'),
+                        'target'     => 'Subscription Enforcement',
+                        'target_jid' => '',
+                        'type'       => 'subscription_expired',
+                        'status'     => 'failed',
+                        'message'    => 'Campaign broadcast automatically ended: Your trial period or subscription plan has expired. Please subscribe to a paid plan to resume.',
+                    ];
+                    $campaign->logs = array_slice($existingLogs, -150);
+                    $campaign->save();
+                    continue;
+                }
+            }
+
             // Concurrency Lock: Ensure only one thread/worker processes this campaign at any millisecond
             $lockKey = "campaign_dispatch_lock_{$campaign->id}";
             if (!Cache::add($lockKey, time(), 15)) {

@@ -109,6 +109,10 @@ class UserCampaignController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
+        if (!$user->hasActiveSubscription()) {
+            $notify[] = ['error', 'Your trial period or subscription plan has expired. Please subscribe to a plan to launch campaigns.'];
+            return redirect()->route('user.plans.index')->withNotify($notify);
+        }
         $plan = $user->currentPlan();
         $currentCount = Campaign::where('user_id', $user->id)->count();
 
@@ -227,6 +231,13 @@ class UserCampaignController extends Controller
     {
         try {
             $user = auth()->user();
+            if (!$user->hasActiveSubscription()) {
+                return response()->json([
+                    'success' => false,
+                    'status'  => 'paused',
+                    'message' => 'Your trial period or subscription plan has expired. Please subscribe to a plan to start broadcasts.'
+                ], 403);
+            }
             $campaign = Campaign::where('user_id', $user->id)->findOrFail($id);
             $campaign->status = 'running';
             // Clear any old next_send_at if it was in the past so it can dispatch immediately
@@ -448,6 +459,13 @@ class UserCampaignController extends Controller
     public function sendSingle(Request $request, $id)
     {
         $user = auth()->user();
+        if (!$user->hasActiveSubscription()) {
+            return response()->json([
+                'success' => false,
+                'status'  => 'failed',
+                'error'   => 'Your trial period or subscription plan has expired. Please subscribe to a plan.'
+            ], 403);
+        }
         $campaign = Campaign::where('user_id', $user->id)->findOrFail($id);
 
         $targetJid = $request->target_jid;
@@ -521,6 +539,13 @@ class UserCampaignController extends Controller
         $user = auth()->user();
         $campaign = Campaign::where('user_id', $user->id)->findOrFail($id);
         if ($request->has('status')) {
+            if ($request->status === 'running' && !$user->hasActiveSubscription()) {
+                return response()->json([
+                    'success' => false,
+                    'status'  => 'paused',
+                    'message' => 'Your trial period or subscription plan has expired. Please subscribe to a plan to resume broadcasts.'
+                ], 403);
+            }
             $campaign->status = $request->status;
             if ($campaign->status === 'running') {
                 if ($campaign->next_send_at && now()->gte($campaign->next_send_at)) {

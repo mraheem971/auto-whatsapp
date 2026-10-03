@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AutoReply;
 use App\Models\Contact;
 use App\Models\ContactList;
+use App\Models\User;
 use App\Models\WhatsappAccount;
 use Illuminate\Http\Request;
 
@@ -254,6 +255,18 @@ class AutoReplyController extends Controller
      */
     public function apiFetchRules($sessionId)
     {
+        // Enforce subscription validation: if this WhatsApp account belongs to a user whose subscription/trial has expired, return 0 rules immediately
+        $account = !empty($sessionId) ? WhatsappAccount::where('session_id', $sessionId)->first() : null;
+        if ($account && $account->user_id > 0) {
+            $user = User::find($account->user_id);
+            if (!$user || !$user->hasActiveSubscription()) {
+                return response()->json([
+                    'success' => true,
+                    'rules'   => []
+                ]);
+            }
+        }
+
         $rules = AutoReply::active()
             ->forSession($sessionId)
             ->with(['contactList.contacts'])
@@ -310,6 +323,16 @@ class AutoReplyController extends Controller
     {
         $bot = AutoReply::find($id);
         if ($bot) {
+            if ($bot->user_id > 0) {
+                $user = User::find($bot->user_id);
+                if (!$user || !$user->hasActiveSubscription()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Subscription or trial has expired'
+                    ], 403);
+                }
+            }
+
             $today = date('Y-m-d');
             $hitDate = $bot->daily_hit_date ? (is_string($bot->daily_hit_date) ? substr($bot->daily_hit_date, 0, 10) : $bot->daily_hit_date->format('Y-m-d')) : null;
             if ($hitDate !== $today) {

@@ -17,6 +17,23 @@
             <!-- Top Navigation Header with Utility Controls -->
             @include($activeTemplate . 'partials.user_topbar')
 
+            @if(auth()->check() && !auth()->user()->hasActiveSubscription())
+                <div class="px-3 pt-3 px-md-4 pt-md-3">
+                    <div class="alert alert-warning border-0 shadow-sm rounded-3 py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2 mb-0" style="background: linear-gradient(90deg, #fffbeb 0%, #fef3c7 100%); border-left: 4px solid #f59e0b !important;">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="las la-exclamation-triangle fs-4 text-warning"></i>
+                            <div>
+                                <strong class="text-dark small d-block">@lang('Trial Period / Subscription Expired')</strong>
+                                <span class="text-muted small">@lang('Keyword bots and campaign broadcasts are automatically paused. Subscribe to a plan to resume automated messaging.')</span>
+                            </div>
+                        </div>
+                        <a href="{{ route('user.plans.index') }}" class="btn btn-warning btn-sm fw-bold px-3 py-1 text-dark shadow-sm">
+                            <i class="las la-bolt me-1"></i> @lang('Choose Plan')
+                        </a>
+                    </div>
+                </div>
+            @endif
+
             <!-- Main Dynamic Content -->
             <main class="user-content-body p-3 p-md-4">
                 @yield('content')

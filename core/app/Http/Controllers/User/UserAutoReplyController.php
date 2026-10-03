@@ -68,6 +68,10 @@ class UserAutoReplyController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
+        if (!$user->hasActiveSubscription()) {
+            $notify[] = ['error', 'Your trial period or subscription plan has expired. Please subscribe to a plan to create keyword bots.'];
+            return redirect()->route('user.plans.index')->withNotify($notify);
+        }
         $plan = $user->currentPlan();
         $currentCount = AutoReply::where('user_id', $user->id)->count();
 
@@ -250,6 +254,12 @@ class UserAutoReplyController extends Controller
     {
         $user = auth()->user();
         $bot = AutoReply::where('user_id', $user->id)->findOrFail($id);
+
+        if ($bot->status == 0 && !$user->hasActiveSubscription()) {
+            $notify[] = ['error', 'Your trial period or subscription plan has expired. Please subscribe to a plan to activate keyword bots.'];
+            return redirect()->route('user.plans.index')->withNotify($notify);
+        }
+
         $bot->status = ($bot->status == 1) ? 0 : 1;
         $bot->save();
 

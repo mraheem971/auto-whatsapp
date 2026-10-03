@@ -35,6 +35,10 @@ class UserWhatsAppController extends Controller
     {
         $pageTitle = 'Link New WhatsApp Account';
         $user = auth()->user();
+        if (!$user->hasActiveSubscription()) {
+            $notify[] = ['error', 'Your trial period or subscription plan has expired. Please subscribe to a plan to link WhatsApp accounts.'];
+            return redirect()->route('user.plans.index')->withNotify($notify);
+        }
         $plan = $user->currentPlan();
         $currentCount = WhatsappAccount::where('user_id', $user->id)->active()->count();
 
@@ -55,6 +59,12 @@ class UserWhatsAppController extends Controller
         ]);
 
         $user = auth()->user();
+        if (!$user->hasActiveSubscription()) {
+            return response()->json([
+                'status' => 'error',
+                'error'  => 'Your trial period or subscription plan has expired. Please subscribe to a plan to link accounts.',
+            ], 403);
+        }
         $plan = $user->currentPlan();
         $currentCount = WhatsappAccount::where('user_id', $user->id)->active()->count();
 

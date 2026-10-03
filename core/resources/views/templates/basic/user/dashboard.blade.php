@@ -16,6 +16,10 @@
                                 <span class="badge badge--warning">
                                     <i class="las la-crown me-1"></i>{{ $plan->name }}
                                 </span>
+                            @else
+                                <span class="badge badge--danger">
+                                    <i class="las la-exclamation-circle me-1"></i>@lang('Plan Expired')
+                                </span>
                             @endif
                         </div>
                         <h4 class="card-title mb-1 text-dark">@lang('Welcome back'), {{ $user->fullname }}!</h4>
@@ -224,12 +228,28 @@
                                 </span>
                             </div>
                             <div class="my-2">
-                                <h3 class="text-dark mb-0 text-truncate" title="{{ $plan->name ?? __('Free Tier') }}">{{ $plan->name ?? __('Free Tier') }}</h3>
+                                @if($plan)
+                                    <h3 class="text-dark mb-0 text-truncate" title="{{ $plan->name }}">{{ $plan->name }}</h3>
+                                @else
+                                    <h3 class="text-danger mb-0 text-truncate" title="@lang('Expired')">@lang('Expired')</h3>
+                                @endif
                             </div>
                             <div>
-                                <small class="text-warning">
-                                    <i class="las la-shield-alt me-1"></i>{{ __('Anti-Ban Protected') }}
-                                </small>
+                                @if($plan)
+                                    @if($activeSubscription && $activeSubscription->expires_at)
+                                        <small class="text-muted">
+                                            <i class="las la-clock me-1"></i>@lang('Expires') {{ showDateTime($activeSubscription->expires_at, 'd M, Y') }}
+                                        </small>
+                                    @else
+                                        <small class="text-success">
+                                            <i class="las la-shield-alt me-1"></i>{{ __('Anti-Ban Protected') }}
+                                        </small>
+                                    @endif
+                                @else
+                                    <small class="text-danger fw-bold">
+                                        <i class="las la-arrow-circle-right me-1"></i>@lang('Click to Subscribe')
+                                    </small>
+                                @endif
                             </div>
                         </div>
                     </div>

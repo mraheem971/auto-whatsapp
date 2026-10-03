@@ -118,10 +118,26 @@ class User extends Authenticatable
             ->latest();
     }
 
+    public function latestSubscription()
+    {
+        return $this->hasOne(UserSubscription::class, 'user_id')->latest();
+    }
+
+    public function hasActiveSubscription(): bool
+    {
+        $sub = $this->activeSubscription;
+        return $sub ? $sub->isValid() : false;
+    }
+
+    public function isSubscriptionExpired(): bool
+    {
+        return !$this->hasActiveSubscription();
+    }
+
     public function currentPlan()
     {
         $sub = $this->activeSubscription;
-        return $sub ? $sub->plan : Plan::where('price', 0)->first();
+        return ($sub && $sub->isValid()) ? $sub->plan : null;
     }
 
     public function botSettings()

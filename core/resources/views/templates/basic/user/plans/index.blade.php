@@ -14,6 +14,11 @@
                         <span class="badge bg-secondary small">Expires {{ showDateTime($activeSubscription->expires_at) }}</span>
                     @endif
                 </div>
+            @else
+                <div class="d-inline-flex align-items-center gap-2 bg-light px-3 py-2 rounded-pill border border-danger shadow-xs mb-3">
+                    <span class="text-danger small fw-bold"><i class="las la-exclamation-circle me-1"></i>No Active Plan / Trial Expired</span>
+                    <span class="text-muted small">&bull; Subscribe to any plan below to activate your bots and campaigns.</span>
+                </div>
             @endif
 
             {{-- Billing Cycle Filter Tabs --}}
@@ -115,12 +120,21 @@
                                         <i class="las la-check me-1"></i> Currently Active
                                     </button>
                                 @elseif($plan->price == 0)
-                                    <form action="{{ route('user.plans.subscribe', $plan->id) }}" method="POST" onsubmit="return confirm('Start Free Trial for {{ $plan->name }}?')">
-                                        @csrf
-                                        <button type="submit" class="btn btn-outline--base w-100 py-2 fw-bold">
-                                            <i class="las la-rocket me-1"></i> Start Free Trial
+                                    @php
+                                        $alreadyUsedTrial = auth()->check() && auth()->user()->subscriptions()->where('plan_id', $plan->id)->exists();
+                                    @endphp
+                                    @if($alreadyUsedTrial)
+                                        <button class="btn btn-outline-secondary w-100 py-2 disabled" disabled title="Free trial already utilized">
+                                            <i class="las la-history me-1"></i> Trial Used / Expired
                                         </button>
-                                    </form>
+                                    @else
+                                        <form action="{{ route('user.plans.subscribe', $plan->id) }}" method="POST" onsubmit="return confirm('Start Free Trial for {{ $plan->name }}?')">
+                                            @csrf
+                                            <button type="submit" class="btn btn-outline--base w-100 py-2 fw-bold">
+                                                <i class="las la-rocket me-1"></i> Start Free Trial
+                                            </button>
+                                        </form>
+                                    @endif
                                 @else
                                     <button type="button" class="btn {{ $plan->is_featured ? 'btn--base' : ($isYearly ? 'btn-danger' : 'btn-outline--base') }} w-100 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#subscribeModal_{{ $plan->id }}">
                                         <i class="las la-bolt me-1"></i> Subscribe Now
