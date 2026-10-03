@@ -12,7 +12,33 @@ class Campaign extends Model
         'logs'            => 'array',
         'next_send_at'    => 'datetime',
         'daily_sent_date' => 'date',
+        'sleep_mode'      => 'boolean',
     ];
+
+    public function isInSleepBreak(): bool
+    {
+        if (!$this->sleep_mode) {
+            return false;
+        }
+        $start = $this->sleep_start_time ?: '22:00';
+        $end = $this->sleep_end_time ?: '08:00';
+        $currentTime = now()->format('H:i');
+
+        if ($start <= $end) {
+            return ($currentTime >= $start && $currentTime < $end);
+        }
+        return ($currentTime >= $start || $currentTime < $end);
+    }
+
+    public function getSleepResumeTime()
+    {
+        $end = $this->sleep_end_time ?: '08:00';
+        $resume = now()->setTimeFromTimeString($end);
+        if (now()->gte($resume)) {
+            $resume->addDay();
+        }
+        return $resume;
+    }
 
     public function getSecondsUntilNextAttribute()
     {

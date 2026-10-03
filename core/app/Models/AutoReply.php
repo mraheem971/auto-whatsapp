@@ -16,10 +16,22 @@ class AutoReply extends Model
     protected $casts = [
         'status'                  => 'boolean',
         'hit_count'               => 'integer',
+        'daily_hit_count'         => 'integer',
+        'daily_hit_date'          => 'date',
         'read_delay_seconds'      => 'integer',
         'typing_duration_seconds' => 'integer',
         'reply_delay_seconds'     => 'integer',
     ];
+
+    public function getTodayHitCountAttribute(): int
+    {
+        $today = date('Y-m-d');
+        $hitDate = $this->daily_hit_date ? (is_string($this->daily_hit_date) ? substr($this->daily_hit_date, 0, 10) : $this->daily_hit_date->format('Y-m-d')) : null;
+        if ($hitDate !== $today) {
+            return 0;
+        }
+        return (int) ($this->attributes['daily_hit_count'] ?? 0);
+    }
 
     public function account()
     {

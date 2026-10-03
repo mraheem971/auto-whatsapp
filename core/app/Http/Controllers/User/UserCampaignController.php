@@ -194,6 +194,9 @@ class UserCampaignController extends Controller
         $campaign->delay_after_count    = $request->filled('delay_after_count') ? (int)$request->delay_after_count : ($botSettings->delay_after_count ?? 50);
         $campaign->delay_after_duration = $request->filled('delay_after_duration') ? (int)$request->delay_after_duration : ($botSettings->delay_after_duration ?? 5);
         $campaign->reset_after_count    = $request->filled('reset_after_count') ? (int)$request->reset_after_count : ($botSettings->reset_after_count ?? 100);
+        $campaign->sleep_mode           = $request->has('sleep_mode') ? (int)$request->sleep_mode : ($botSettings->sleep_mode ?? 0);
+        $campaign->sleep_start_time     = $request->filled('sleep_start_time') ? $request->sleep_start_time : ($botSettings->sleep_start_time ?? '22:00');
+        $campaign->sleep_end_time       = $request->filled('sleep_end_time') ? $request->sleep_end_time : ($botSettings->sleep_end_time ?? '08:00');
         $campaign->batch_sent_count     = 0;
         $campaign->daily_limit          = ($request->filled('daily_limit') && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
         $campaign->daily_sent_count     = 0;
@@ -547,6 +550,15 @@ class UserCampaignController extends Controller
         if ($request->has('reset_after_count')) {
             $campaign->reset_after_count = max(1, (int)$request->reset_after_count);
         }
+        if ($request->has('sleep_mode')) {
+            $campaign->sleep_mode = (bool)$request->sleep_mode;
+        }
+        if ($request->filled('sleep_start_time')) {
+            $campaign->sleep_start_time = $request->sleep_start_time;
+        }
+        if ($request->filled('sleep_end_time')) {
+            $campaign->sleep_end_time = $request->sleep_end_time;
+        }
         if ($request->has('daily_limit')) {
             $campaign->daily_limit = ($request->daily_limit !== null && $request->daily_limit !== '' && (int)$request->daily_limit > 0) ? (int)$request->daily_limit : null;
         }
@@ -561,6 +573,9 @@ class UserCampaignController extends Controller
             'delay_after_count'      => $campaign->delay_after_count,
             'delay_after_duration'   => $campaign->delay_after_duration,
             'reset_after_count'      => $campaign->reset_after_count,
+            'sleep_mode'             => (bool)$campaign->sleep_mode,
+            'sleep_start_time'       => $campaign->sleep_start_time ?: '22:00',
+            'sleep_end_time'         => $campaign->sleep_end_time ?: '08:00',
             'batch_sent_count'       => $campaign->batch_sent_count,
             'seconds_until_next'     => $campaign->seconds_until_next,
             'daily_limit'            => (int)($campaign->daily_limit ?? 0),
@@ -587,16 +602,28 @@ class UserCampaignController extends Controller
         $settings->delay_after_count    = (int) $request->delay_after_count;
         $settings->delay_after_duration = (int) $request->delay_after_duration;
         $settings->reset_after_count    = (int) $request->reset_after_count;
+        if ($request->has('sleep_mode')) {
+            $settings->sleep_mode = (bool)$request->sleep_mode;
+        }
+        if ($request->filled('sleep_start_time')) {
+            $settings->sleep_start_time = $request->sleep_start_time;
+        }
+        if ($request->filled('sleep_end_time')) {
+            $settings->sleep_end_time = $request->sleep_end_time;
+        }
         $settings->save();
 
         return response()->json([
             'success'              => true,
-            'message'              => 'Anti-Ban Human Behaviour rules saved successfully!',
+            'message'              => 'Anti-Ban Human Behaviour & Break Time rules saved successfully!',
             'min_delay_seconds'    => $settings->min_delay_seconds,
             'max_delay_seconds'    => $settings->max_delay_seconds,
             'delay_after_count'    => $settings->delay_after_count,
             'delay_after_duration' => $settings->delay_after_duration,
             'reset_after_count'    => $settings->reset_after_count,
+            'sleep_mode'           => (bool)$settings->sleep_mode,
+            'sleep_start_time'     => $settings->sleep_start_time ?: '22:00',
+            'sleep_end_time'       => $settings->sleep_end_time ?: '08:00',
         ]);
     }
 

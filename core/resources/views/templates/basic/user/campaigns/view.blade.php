@@ -43,7 +43,7 @@
                             <li class="list-group-item px-0">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="text-muted fw-semibold text-danger">
-                                        <i class="las la-user-shield me-1"></i> Anti-Ban Behaviour
+                                        <i class="las la-user-shield me-1"></i> Anti-Ban & Break Time
                                     </span>
                                     <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" id="btnOpenAntiBanModal" data-bs-toggle="modal" data-bs-target="#antiBanSettingsModal" style="font-size: 11px;">
                                         <i class="las la-sliders-h me-1"></i> Configure
@@ -55,15 +55,19 @@
                                         <span class="fw-bold text-success" id="displayDelayRange">{{ $campaign->min_delay_seconds }}s - {{ $campaign->max_delay_seconds }}s</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-muted" style="font-size: 11px;">Batch Pause:</span>
-                                        <span class="fw-bold text-dark" id="displayBatchPause">Pause {{ $campaign->delay_after_duration }}s after {{ $campaign->delay_after_count }} msgs</span>
+                                        <span class="text-muted" style="font-size: 11px;"><i class="las la-coffee text-warning me-1"></i>Break Time:</span>
+                                        <span class="fw-bold text-dark" id="displayBatchPause">{{ $campaign->delay_after_duration >= 60 ? (round($campaign->delay_after_duration / 60, 1) . 'm (' . $campaign->delay_after_duration . 's)') : ($campaign->delay_after_duration . 's') }} after {{ $campaign->delay_after_count }} msgs</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted" style="font-size: 11px;">Night Break:</span>
+                                        <span class="fw-bold text-dark" id="displaySleepSchedule">{{ $campaign->sleep_mode ? (($campaign->sleep_start_time ?: '22:00') . ' - ' . ($campaign->sleep_end_time ?: '08:00')) : 'Off' }}</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <span class="text-muted" style="font-size: 11px;">Cycle Reset:</span>
                                         <span class="fw-bold text-dark" id="displayResetCount">Reset after {{ $campaign->reset_after_count }} msgs</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-muted" style="font-size: 11px;">Current Batch Sent:</span>
+                                        <span class="text-muted" style="font-size: 11px;">Current Batch:</span>
                                         <span class="badge bg-secondary" id="displayBatchSent">{{ $campaign->batch_sent_count ?? 0 }} / {{ $campaign->delay_after_count }}</span>
                                     </div>
                                 </div>
@@ -168,51 +172,99 @@
     </div>
 </div>
 
-<!-- Anti-Ban Human Behaviour Modal Matching Screenshot -->
+<!-- Exact Anti-Ban Human Behaviour & Break Time Modal -->
 <div class="modal fade" id="antiBanSettingsModal" tabindex="-1" aria-labelledby="antiBanModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 8px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.18);">
-            <div class="modal-header border-0 pb-0 pt-3 px-3 px-sm-4 bg-transparent d-flex justify-content-between align-items-center">
-                <h5 class="modal-title fw-bold text-dark fs-6" id="antiBanModalLabel">Anti-Ban Human Behaviour</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.18);">
+            <div class="modal-header pb-2 pt-3 px-3 px-sm-4 border-bottom d-flex justify-content-between align-items-center" style="background-color: #075e54; color: #fff;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="las la-shield-alt fs-5 text-warning"></i>
+                    <h5 class="modal-title fw-bold text-white fs-6 mb-0" id="antiBanModalLabel">Anti-Ban & Break Time Settings</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body px-3 px-sm-4 pt-3 pb-2">
+            <div class="modal-body px-3 px-sm-4 pt-3 pb-3">
                 <form id="antiBanModalForm">
+                    <!-- Section 1: Per-Message Random Delay -->
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold text-dark mb-1">
-                            Per Message Minimum Delay (Seconds) <span class="text-danger">*</span>
+                        <label class="form-label small fw-bold text-dark mb-1">
+                            <i class="las la-stopwatch text-primary me-1"></i> Per-Message Random Delay
                         </label>
-                        <input type="number" id="modalMinDelay" class="form-control form-control-sm" value="{{ $campaign->min_delay_seconds }}" min="1" max="600" required>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="small text-muted mb-0" style="font-size: 11px;">Min Delay (Seconds) <span class="text-danger">*</span></label>
+                                <input type="number" id="modalMinDelay" class="form-control form-control-sm" value="{{ $campaign->min_delay_seconds }}" min="1" max="600" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="small text-muted mb-0" style="font-size: 11px;">Max Delay (Seconds) <span class="text-danger">*</span></label>
+                                <input type="number" id="modalMaxDelay" class="form-control form-control-sm" value="{{ $campaign->max_delay_seconds }}" min="1" max="600" required>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-dark mb-1">
-                            Per Message Maximum Delay (Seconds) <span class="text-danger">*</span>
-                        </label>
-                        <input type="number" id="modalMaxDelay" class="form-control form-control-sm" value="{{ $campaign->max_delay_seconds }}" min="1" max="600" required>
+
+                    <!-- Section 2: Batch Break Time -->
+                    <div class="mb-3 p-3 rounded-3 border border-warning-subtle bg-warning bg-opacity-10">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <label class="form-label small fw-bold text-dark mb-0">
+                                <i class="las la-coffee text-warning me-1 fs-5"></i> Campaign Break Time (Batch Pause)
+                            </label>
+                            <span class="badge bg-warning text-dark px-2 py-0.5" style="font-size: 10px;">Anti-Ban</span>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="small text-dark fw-semibold mb-0" style="font-size: 11px;">Take Break After (Messages) <span class="text-danger">*</span></label>
+                                <input type="number" id="modalDelayAfterCount" class="form-control form-control-sm bg-white" value="{{ $campaign->delay_after_count }}" min="1" max="5000" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="small text-dark fw-semibold mb-0" style="font-size: 11px;">Break Duration (Seconds) <span class="text-danger">*</span></label>
+                                <input type="number" id="modalDelayAfterDuration" class="form-control form-control-sm bg-white" value="{{ $campaign->delay_after_duration }}" min="1" max="3600" required>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-1 mt-1 mb-2">
+                            <span class="small text-muted me-1" style="font-size: 11px;">Quick Break Presets:</span>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btnBreakPresetView" data-seconds="30" style="font-size: 11px;">30s</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btnBreakPresetView" data-seconds="60" style="font-size: 11px;">1m</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btnBreakPresetView" data-seconds="120" style="font-size: 11px;">2m</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btnBreakPresetView" data-seconds="300" style="font-size: 11px;">5m</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btnBreakPresetView" data-seconds="600" style="font-size: 11px;">10m</button>
+                        </div>
+                        <div class="mt-2">
+                            <label class="small text-muted mb-0" style="font-size: 11px;">Reset Batch Cycle After (Messages) <span class="text-danger">*</span></label>
+                            <input type="number" id="modalResetAfterCount" class="form-control form-control-sm bg-white" value="{{ $campaign->reset_after_count }}" min="1" max="10000" required>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-dark mb-1">
-                            Delay After Count <span class="text-danger">*</span>
-                        </label>
-                        <input type="number" id="modalDelayAfterCount" class="form-control form-control-sm" value="{{ $campaign->delay_after_count }}" min="1" max="5000" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-dark mb-1">
-                            Delay After Duration (Seconds) <span class="text-danger">*</span>
-                        </label>
-                        <input type="number" id="modalDelayAfterDuration" class="form-control form-control-sm" value="{{ $campaign->delay_after_duration }}" min="1" max="3600" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-dark mb-1">
-                            Reset After Count <span class="text-danger">*</span>
-                        </label>
-                        <input type="number" id="modalResetAfterCount" class="form-control form-control-sm" value="{{ $campaign->reset_after_count }}" min="1" max="10000" required>
+
+                    <!-- Section 3: Scheduled Night Break / Sleep Mode -->
+                    <div class="mb-2 p-3 rounded-3 border bg-light">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div>
+                                <label class="form-check-label fw-bold text-dark small mb-0" for="modalSleepModeView" style="cursor: pointer;">
+                                    <i class="las la-moon text-primary me-1"></i> Scheduled Night Break (Sleep Mode)
+                                </label>
+                                <small class="text-muted d-block" style="font-size: 11px;">Rest campaign late at night and resume automatically in the morning.</small>
+                            </div>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" id="modalSleepModeView" value="1" {{ $campaign->sleep_mode ? 'checked' : '' }} style="cursor: pointer; width: 2.2em; height: 1.15em;">
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-2 {{ $campaign->sleep_mode ? '' : 'd-none' }}" id="sleepTimeInputsViewWrapper">
+                            <div class="col-6">
+                                <label class="small text-muted mb-0" style="font-size: 11px;">Break Start Time (Sleep)</label>
+                                <input type="time" id="modalSleepStartView" class="form-control form-control-sm" value="{{ $campaign->sleep_start_time ?: '22:00' }}">
+                            </div>
+                            <div class="col-6">
+                                <label class="small text-muted mb-0" style="font-size: 11px;">Break End Time (Resume)</label>
+                                <input type="time" id="modalSleepEndView" class="form-control form-control-sm" value="{{ $campaign->sleep_end_time ?: '08:00' }}">
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer border-0 pt-0 px-3 px-sm-4 pb-3 d-flex justify-content-end gap-2 bg-transparent">
-                <button type="button" class="btn" data-bs-dismiss="modal" style="border: 1px solid #e6535c; color: #e6535c; background: #fff; border-radius: 4px; padding: 7px 22px; font-weight: 500;">Close</button>
-                <button type="button" class="btn text-white" id="btnSaveAntiBanModal" style="background-color: #e6535c; border-color: #e6535c; border-radius: 4px; padding: 7px 24px; font-weight: 500;">Save</button>
+            <div class="modal-footer border-top pt-2 px-3 px-sm-4 pb-3 d-flex justify-content-end gap-2 bg-light rounded-bottom-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-sm text-white px-4" id="btnSaveAntiBanModal" style="background-color: #075e54; font-weight: 600;">
+                    <i class="las la-check-circle me-1"></i> Save Settings Live
+                </button>
             </div>
         </div>
     </div>
@@ -483,6 +535,24 @@
             });
         });
 
+        // Toggle sleep mode inputs in view modal
+        $('#modalSleepModeView').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#sleepTimeInputsViewWrapper').removeClass('d-none');
+            } else {
+                $('#sleepTimeInputsViewWrapper').addClass('d-none');
+            }
+        });
+
+        // Quick Break Presets in view modal
+        $(document).on('click', '.btnBreakPresetView', function(e) {
+            e.preventDefault();
+            var sec = $(this).data('seconds');
+            $('#modalDelayAfterDuration').val(sec);
+            $('.btnBreakPresetView').removeClass('btn-warning text-dark fw-bold').addClass('btn-outline-secondary');
+            $(this).removeClass('btn-outline-secondary').addClass('btn-warning text-dark fw-bold');
+        });
+
         // Save Anti-Ban Settings dynamically from Modal
         $('#btnSaveAntiBanModal').on('click', function () {
             var minVal = parseInt($('#modalMinDelay').val()) || 30;
@@ -490,6 +560,9 @@
             var delayCount = parseInt($('#modalDelayAfterCount').val()) || 50;
             var delayDuration = parseInt($('#modalDelayAfterDuration').val()) || 5;
             var resetCount = parseInt($('#modalResetAfterCount').val()) || 100;
+            var sleepMode = $('#modalSleepModeView').is(':checked') ? 1 : 0;
+            var sleepStart = $('#modalSleepStartView').val() || '22:00';
+            var sleepEnd = $('#modalSleepEndView').val() || '08:00';
 
             if (maxVal < minVal) maxVal = minVal;
 
@@ -502,21 +575,26 @@
                 max_delay: maxVal,
                 delay_after_count: delayCount,
                 delay_after_duration: delayDuration,
-                reset_after_count: resetCount
+                reset_after_count: resetCount,
+                sleep_mode: sleepMode,
+                sleep_start_time: sleepStart,
+                sleep_end_time: sleepEnd
             }, function (res) {
-                $btn.prop('disabled', false).text('Save');
+                $btn.prop('disabled', false).html('<i class="las la-check-circle me-1"></i> Save Settings Live');
                 $('#displayDelayRange').text(minVal + 's - ' + maxVal + 's');
-                $('#displayBatchPause').text('Pause ' + delayDuration + 's after ' + delayCount + ' msgs');
+                var breakLabel = delayDuration >= 60 ? (Math.round((delayDuration / 60) * 10) / 10) + 'm (' + delayDuration + 's)' : delayDuration + 's';
+                $('#displayBatchPause').text(breakLabel + ' after ' + delayCount + ' msgs');
+                $('#displaySleepSchedule').text(sleepMode ? (sleepStart + ' - ' + sleepEnd) : 'Off');
                 $('#displayResetCount').text('Reset after ' + resetCount + ' msgs');
                 $('#delayRangeNotice').text('(' + minVal + 's - ' + maxVal + 's delay)');
 
                 var modalEl = bootstrap.Modal.getInstance(document.getElementById('antiBanSettingsModal'));
                 if (modalEl) modalEl.hide();
 
-                notify('success', 'Anti-Ban Human Behaviour settings updated live!');
-                log('🛡 Anti-Ban settings updated live: ' + minVal + 's-' + maxVal + 's delay, pause ' + delayDuration + 's after ' + delayCount + ' msgs, reset at ' + resetCount + ' msgs.', 'info');
+                notify('success', 'Anti-Ban & Break Time settings updated live!');
+                log('🛡 Anti-Ban & Break settings updated live: ' + minVal + 's-' + maxVal + 's delay, break ' + breakLabel + ' after ' + delayCount + ' msgs' + (sleepMode ? (', quiet hours ' + sleepStart + '-' + sleepEnd) : '') + '.', 'info');
             }).fail(function (xhr) {
-                $btn.prop('disabled', false).text('Save');
+                $btn.prop('disabled', false).html('<i class="las la-check-circle me-1"></i> Save Settings Live');
                 notify('error', 'Failed to update anti-ban settings.');
             });
         });

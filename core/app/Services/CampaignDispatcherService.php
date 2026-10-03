@@ -372,17 +372,19 @@ class CampaignDispatcherService
                         'message'    => "Reset cycle reached ({$campaign->reset_after_count} messages). Resetting batch cycle and cooling down for {$pauseSec}s.",
                     ];
                 }
-                // 3. Check Delay After Count rule (e.g. after 50 messages, take pause of delay_after_duration)
+                // 3. Check Break Time After Count rule (e.g. after 50 messages, take pause of delay_after_duration)
                 elseif ($campaign->delay_after_count > 0 && ($freshBatchCount % $campaign->delay_after_count === 0)) {
                     $pauseSec = $campaign->delay_after_duration ?: 5;
                     $campaign->next_send_at = now()->addSeconds($pauseSec);
+                    $breakMinutes = round($pauseSec / 60, 1);
+                    $breakLabel = $pauseSec >= 60 ? "{$breakMinutes}m ({$pauseSec}s)" : "{$pauseSec}s";
                     $currentLogs[] = [
                         'timestamp'  => date('Y-m-d H:i:s'),
-                        'target'     => 'Anti-Ban Batch Pause',
+                        'target'     => 'Anti-Ban Break Time',
                         'target_jid' => '',
-                        'type'       => 'batch_pause',
+                        'type'       => 'break_time',
                         'status'     => 'info',
-                        'message'    => "Batch of {$campaign->delay_after_count} messages reached ({$freshBatchCount} sent). Pausing for {$pauseSec}s cooldown.",
+                        'message'    => "Anti-Ban Break Time: Batch of {$campaign->delay_after_count} messages reached ({$freshBatchCount} sent). Taking {$breakLabel} break before continuing.",
                     ];
                 }
                 // 4. Regular per-message random delay
@@ -564,6 +566,30 @@ class CampaignDispatcherService
                             continue;
                         }
                     }
+                }
+
+                // Check Campaign Scheduled Break Time / Sleep Mode (Quiet Hours)
+                if (method_exists($campaign, 'isInSleepBreak') && $campaign->isInSleepBreak()) {
+                    $resumeTime = $campaign->getSleepResumeTime();
+                    if (!$campaign->next_send_at || now()->gte($campaign->next_send_at) || now()->diffInSeconds($campaign->next_send_at, false) < 60) {
+                        $campaign->next_send_at = $resumeTime;
+                        $campaign->save();
+                    }
+
+                    $secondsUntilResume = max(0, now()->diffInSeconds($campaign->next_send_at, false));
+                    $lastResult = [
+                        'campaign_id'        => $campaign->id,
+                        'campaign_name'      => $campaign->name,
+                        'status'             => $campaign->status,
+                        'cooldown_active'    => true,
+                        'break_time_active'  => true,
+                        'sleep_mode'         => true,
+                        'seconds_until_next' => $secondsUntilResume,
+                        'min_delay'          => $minDelay,
+                        'max_delay'          => $maxDelay,
+                        'message'            => "Anti-Ban Break Time: Campaign is resting until {$campaign->sleep_end_time}. Resumes automatically.",
+                    ];
+                    continue;
                 }
 
                 // 3. Target message limit per day check

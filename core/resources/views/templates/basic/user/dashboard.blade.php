@@ -124,9 +124,12 @@
                             <div class="my-2">
                                 <h3 class="text-dark mb-0">{{ number_format($messagesToday) }}</h3>
                             </div>
-                            <div>
-                                <small class="text-warning">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                                <small class="text-warning fw-bold">
                                     <i class="las la-bolt me-1"></i>{{ __('Delivered Today') }}
+                                </small>
+                                <small class="text-muted" style="font-size: 11px;">
+                                    <i class="las la-sync me-1 text-success" title="{{ __('Refreshes daily at midnight') }}"></i>{{ __('Camp: ') . ($campaignMessagesToday ?? 0) }} &bull; {{ __('Bots: ') . ($botHitsToday ?? 0) }}
                                 </small>
                             </div>
                         </div>

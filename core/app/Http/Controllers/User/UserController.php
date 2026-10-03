@@ -39,8 +39,24 @@ class UserController extends Controller
                                 })->count();
         $totalGroups            = \App\Models\Contact::where('user_id', $userId)->where('type', 'group')->count();
         
-        $campaignMessagesToday  = \App\Models\Campaign::where('user_id', $userId)->whereDate('updated_at', \Carbon\Carbon::today())->sum('sent_count');
-        $messagesToday          = (int)$campaignMessagesToday;
+        // Count campaign messages delivered TODAY only (using daily_sent_date so it resets automatically every day)
+        $campaignMessagesToday  = (int)\App\Models\Campaign::where('user_id', $userId)
+            ->whereDate('daily_sent_date', \Carbon\Carbon::today())
+            ->sum('daily_sent_count');
+
+        // Count auto-reply bot hits delivered TODAY only
+        $botHitsToday           = (int)\App\Models\AutoReply::where('user_id', $userId)
+            ->whereDate('daily_hit_date', \Carbon\Carbon::today())
+            ->sum('daily_hit_count');
+
+        // Count direct messages delivered TODAY
+        $directMessagesToday    = (int)\App\Models\DeviceMessage::where('user_id', $userId)
+            ->whereDate('created_at', \Carbon\Carbon::today())
+            ->whereIn('status', ['sent', 'delivered'])
+            ->count();
+
+        // Total Messages Delivered Today (Campaigns + Bots + Direct) - Automatically resets everyday at midnight!
+        $messagesToday          = $campaignMessagesToday + $botHitsToday + $directMessagesToday;
 
         $totalDeposit           = Deposit::where('user_id', $userId)->where('status', Status::PAYMENT_SUCCESS)->sum('amount');
 
@@ -63,7 +79,7 @@ class UserController extends Controller
             ? round(($totalCampaignSent / ($totalCampaignSent + $totalCampaignFailed)) * 100, 1) 
             : 100;
 
-        // 7-Day Trend Chart Series
+        // 7-Day Trend Chart Series (Daily actuals with automatic day-by-day rollover)
         $chartDates            = [];
         $chartCampaignMessages = [];
         $chartBotHits          = [];
@@ -74,18 +90,14 @@ class UserController extends Controller
 
             // Campaign broadcast messages for date
             $dayCampaignSent = \App\Models\Campaign::where('user_id', $userId)
-                ->whereDate('updated_at', $dateObj)
-                ->sum('sent_count');
+                ->whereDate('daily_sent_date', $dateObj)
+                ->sum('daily_sent_count');
             $chartCampaignMessages[] = (int)$dayCampaignSent;
 
             // Bot triggered hits for date
             $dayBotHits = \App\Models\AutoReply::where('user_id', $userId)
-                ->whereDate('updated_at', $dateObj)
-                ->sum('hit_count');
-            // If today, ensure total current hits are reflected
-            if ($i === 0 && $dayBotHits == 0 && $totalBotHits > 0) {
-                $dayBotHits = $totalBotHits;
-            }
+                ->whereDate('daily_hit_date', $dateObj)
+                ->sum('daily_hit_count');
             $chartBotHits[] = (int)$dayBotHits;
         }
 
@@ -116,6 +128,9 @@ class UserController extends Controller
             'totalContacts',
             'totalGroups',
             'messagesToday',
+            'campaignMessagesToday',
+            'botHitsToday',
+            'directMessagesToday',
             'totalDeposit',
             'activeSubscription',
             'plan',

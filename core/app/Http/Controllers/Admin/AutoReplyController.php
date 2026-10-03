@@ -310,8 +310,21 @@ class AutoReplyController extends Controller
     {
         $bot = AutoReply::find($id);
         if ($bot) {
+            $today = date('Y-m-d');
+            $hitDate = $bot->daily_hit_date ? (is_string($bot->daily_hit_date) ? substr($bot->daily_hit_date, 0, 10) : $bot->daily_hit_date->format('Y-m-d')) : null;
+            if ($hitDate !== $today) {
+                $bot->daily_hit_date = $today;
+                $bot->daily_hit_count = 1;
+            } else {
+                $bot->increment('daily_hit_count');
+            }
             $bot->increment('hit_count');
-            return response()->json(['success' => true, 'hit_count' => $bot->hit_count]);
+            $bot->save();
+            return response()->json([
+                'success'         => true,
+                'hit_count'       => $bot->hit_count,
+                'today_hit_count' => $bot->today_hit_count
+            ]);
         }
         return response()->json(['success' => false], 404);
     }
