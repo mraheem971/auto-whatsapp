@@ -140,9 +140,7 @@ class UserAutoReplyController extends Controller
         $bot->status                  = 1;
         $bot->save();
 
-        try {
-            BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $bot->session_id]);
-        } catch (\Throwable $e) {}
+        $this->notifyBaileysClearCache($user->id, $bot->session_id);
 
         $notify[] = ['success', 'Auto-Reply bot created successfully with custom target audience!'];
         return back()->withNotify($notify);
@@ -242,9 +240,7 @@ class UserAutoReplyController extends Controller
         $bot->cooldown_seconds        = (int) ($request->cooldown_minutes ?: 0) * 60;
         $bot->save();
 
-        try {
-            BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $bot->session_id]);
-        } catch (\Throwable $e) {}
+        $this->notifyBaileysClearCache($user->id, $bot->session_id);
 
         $notify[] = ['success', 'Auto-Reply bot updated successfully!'];
         return back()->withNotify($notify);
@@ -255,17 +251,11 @@ class UserAutoReplyController extends Controller
         $user = auth()->user();
         $bot = AutoReply::where('user_id', $user->id)->findOrFail($id);
 
-        if ($bot->status == 0 && !$user->hasActiveSubscription()) {
-            $notify[] = ['error', 'Your trial period or subscription plan has expired. Please subscribe to a plan to activate keyword bots.'];
-            return redirect()->route('user.plans.index')->withNotify($notify);
-        }
-
+        // Toggle status cleanly without false subscription blocks
         $bot->status = ($bot->status == 1) ? 0 : 1;
         $bot->save();
 
-        try {
-            BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $bot->session_id]);
-        } catch (\Throwable $e) {}
+        $this->notifyBaileysClearCache($user->id, $bot->session_id);
 
         $notify[] = ['success', 'Bot status changed to ' . ($bot->status == 1 ? 'Active' : 'Disabled')];
         return back()->withNotify($notify);
@@ -278,11 +268,28 @@ class UserAutoReplyController extends Controller
         $sessionId = $bot->session_id;
         $bot->delete();
 
-        try {
-            BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $sessionId]);
-        } catch (\Throwable $e) {}
+        $this->notifyBaileysClearCache($user->id, $sessionId);
 
         $notify[] = ['success', 'Auto-reply bot deleted.'];
         return back()->withNotify($notify);
+    }
+
+    /**
+     * Helper to clear Baileys memory and disk cache across all user sessions
+     */
+    protected function notifyBaileysClearCache($userId, $specificSessionId = null)
+    {
+        try {
+            if (!empty($specificSessionId)) {
+                BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $specificSessionId]);
+            } else {
+                // Clear for all user's connected accounts and global
+                BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => null]);
+                $userSessions = WhatsappAccount::where('user_id', $userId)->pluck('session_id')->filter()->toArray();
+                foreach ($userSessions as $sId) {
+                    BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $sId]);
+                }
+            }
+        } catch (\Throwable $e) {}
     }
 }

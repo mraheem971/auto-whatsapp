@@ -66,6 +66,25 @@ function writeRulesToDisk(sessionId, rules) {
     } catch (e) {}
 }
 
+function removeRulesFromDisk(sessionId) {
+    try {
+        if (sessionId) {
+            const filePath = getRulesCacheFilePath(sessionId);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        } else {
+            // Remove all autoreply_rules_*.json files
+            const files = fs.readdirSync(SESSIONS_DIR);
+            for (const f of files) {
+                if (f.startsWith('autoreply_rules_') && f.endsWith('.json')) {
+                    try { fs.unlinkSync(path.join(SESSIONS_DIR, f)); } catch (e) {}
+                }
+            }
+        }
+    } catch (e) {}
+}
+
 function getCoreAppUrl() {
     const envPaths = [
         path.join(__dirname, '..', 'core', '.env'),
@@ -129,11 +148,19 @@ async function getActiveAutoReplies(sessionId) {
 
     const baseUrl = await probeLaravelUrl();
     const coreAppUrl = getCoreAppUrl();
-    const candidateUrls = [baseUrl, coreAppUrl, 'https://iamraheem.com', 'http://127.0.0.1:8000', 'http://localhost:8000'].filter(Boolean);
+    const candidateUrls = Array.from(new Set([
+        baseUrl,
+        coreAppUrl,
+        'https://iamraheem.com',
+        'http://127.0.0.1',
+        'http://localhost',
+        'http://127.0.0.1:8000',
+        'http://localhost:8000'
+    ].filter(Boolean)));
     
     for (const url of candidateUrls) {
         try {
-            const res = await fetch(`${url}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(2500) });
+            const res = await fetch(`${url}/api/autoreply/rules/${sessionId}`, { signal: AbortSignal.timeout(6000) });
             if (res.ok) {
                 const data = await res.json().catch(() => null);
                 if (data && data.success && Array.isArray(data.rules)) {
@@ -434,12 +461,25 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         return;
     }
 
-    // Variable substitutions
+    // Check rule cooldown per sender to prevent spamming
+    const cooldownSecs = parseInt(targetRule.cooldown_seconds, 10) || 0;
+    if (cooldownSecs > 0) {
+        const cdKey = `${targetRule.id}_${remoteJid}_${senderPhone}`;
+        const lastSentAt = userCooldowns.get(cdKey) || 0;
+        const now = Date.now();
+        if (now - lastSentAt < cooldownSecs * 1000) {
+            console.log(`[Baileys AutoReply] ⏳ Cooldown active for Rule #${targetRule.id} on ${senderPhone} (remaining: ${Math.ceil((cooldownSecs * 1000 - (now - lastSentAt)) / 1000)}s)`);
+            return;
+        }
+        userCooldowns.set(cdKey, now);
+    }
+
+    // Variable substitutions supporting {name}, {{name}}, @name, {sender_phone}, {{sender_phone}}, @sender_phone, {time}, {date}
     const processedText = (targetRule.reply_message || '')
-        .replace(/\{name\}/g, senderName)
-        .replace(/\{sender_phone\}/g, senderPhone)
-        .replace(/\{time\}/g, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
-        .replace(/\{date\}/g, new Date().toLocaleDateString());
+        .replace(/\{\{name\}\}|\{name\}|@name/gi, senderName)
+        .replace(/\{\{sender_phone\}\}|\{sender_phone\}|@sender_phone/gi, senderPhone)
+        .replace(/\{\{time\}\}|\{time\}/gi, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+        .replace(/\{\{date\}\}|\{date\}/gi, new Date().toLocaleDateString());
 
     console.log(`[Baileys AutoReply MATCHED] Rule "${targetRule.name}" (ID #${targetRule.id}) -> Starting response flow for ${remoteJid}`);
 
@@ -1543,10 +1583,14 @@ app.post('/api/autoreply/clear-cache', (req, res) => {
     const { sessionId } = req.body || {};
     if (sessionId) {
         autoReplyRuleCache.delete(sessionId);
+        removeRulesFromDisk(sessionId);
+        // Pre-fetch fresh rules in background
+        getActiveAutoReplies(sessionId).catch(() => {});
     } else {
         autoReplyRuleCache.clear();
+        removeRulesFromDisk();
     }
-    console.log(`[AutoReply Cache] 🔄 Cache cleared for ${sessionId || 'all sessions'}`);
+    console.log(`[AutoReply Cache] 🔄 Cache cleared (memory & disk) for ${sessionId || 'all sessions'}`);
     res.json({ success: true, message: 'AutoReply cache cleared' });
 });
 

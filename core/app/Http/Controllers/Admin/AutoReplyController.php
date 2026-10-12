@@ -212,6 +212,10 @@ class AutoReplyController extends Controller
         $bot->status                  = $request->status ? 1 : 0;
         $bot->save();
 
+        try {
+            \App\Services\BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $bot->session_id]);
+        } catch (\Throwable $e) {}
+
         $notify[] = ['success', 'Auto-reply bot rule updated successfully!'];
         return back()->withNotify($notify);
     }
@@ -219,7 +223,12 @@ class AutoReplyController extends Controller
     public function delete($id)
     {
         $bot = AutoReply::where(function($q) { $q->whereNull('user_id')->orWhere('user_id', 0); })->findOrFail($id);
+        $sessionId = $bot->session_id;
         $bot->delete();
+
+        try {
+            \App\Services\BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $sessionId]);
+        } catch (\Throwable $e) {}
 
         $notify[] = ['success', 'Bot rule deleted successfully!'];
         return back()->withNotify($notify);
@@ -231,10 +240,31 @@ class AutoReplyController extends Controller
         $bot->status = !$bot->status;
         $bot->save();
 
+        try {
+            \App\Services\BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $bot->session_id]);
+        } catch (\Throwable $e) {}
+
         return response()->json([
             'success' => true,
             'status'  => $bot->status,
             'message' => 'Bot status updated to ' . ($bot->status ? 'Active' : 'Inactive')
+        ]);
+    }
+
+    /**
+     * API: Clear Cache endpoint on Laravel to ensure Baileys cache is invalidated
+     */
+    public function apiClearCache(Request $request)
+    {
+        $sessionId = $request->input('sessionId') ?: $request->input('session_id');
+        try {
+            \App\Services\BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $sessionId]);
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'success' => true,
+            'message' => 'AutoReply cache cleared successfully',
+            'session_id' => $sessionId
         ]);
     }
 
@@ -307,6 +337,7 @@ class AutoReplyController extends Controller
                 'read_delay_seconds'      => (int) ($r->read_delay_seconds ?? 0),
                 'typing_duration_seconds' => (int) ($r->typing_duration_seconds ?? 0),
                 'reply_delay_seconds'     => (int) ($r->reply_delay_seconds ?? 0),
+                'cooldown_seconds'        => (int) ($r->cooldown_seconds ?? 0),
             ];
         });
 

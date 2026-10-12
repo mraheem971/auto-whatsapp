@@ -13,6 +13,7 @@ Route::get('cron', 'CronController@cron')->name('cron');
 Route::get('api/autoreply/ping', 'Admin\AutoReplyController@apiPing')->name('api.autoreply.ping');
 Route::get('api/autoreply/rules/{sessionId}', 'Admin\AutoReplyController@apiFetchRules')->name('api.autoreply.rules');
 Route::match(['GET', 'POST'], 'api/autoreply/log-hit/{id}', 'Admin\AutoReplyController@apiLogHit')->name('api.autoreply.log_hit');
+Route::match(['GET', 'POST'], 'api/autoreply/clear-cache', 'Admin\AutoReplyController@apiClearCache')->name('api.autoreply.clear_cache');
 
 
 // WhatsApp Message Sending REST API Endpoints
