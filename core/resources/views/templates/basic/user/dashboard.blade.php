@@ -487,7 +487,7 @@
                             </div>
                             <div class="progress" style="height: 8px;">
                                 @php
-                                    $limit = $plan->account_limit ?: 1;
+                                    $limit = ($plan && $plan->account_limit) ? $plan->account_limit : 1;
                                     $pct = min(100, round(($connectedAccountsCount / $limit) * 100));
                                 @endphp
                                 <div class="progress-bar bg--base" role="progressbar" style="width: {{ $pct }}%;" aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100"></div>

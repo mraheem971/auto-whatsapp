@@ -15,6 +15,8 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use App\Models\UserNotificationPermission;
+use App\Models\Plan;
+use App\Models\UserSubscription;
 use Illuminate\Foundation\Auth\RegistersUsers;
 
 class RegisterController extends Controller
@@ -120,6 +122,32 @@ class RegisterController extends Controller
         $adminNotification->title     = 'New member registered';
         $adminNotification->click_url = urlPath('admin.users.detail', $user->id);
         $adminNotification->save();
+
+        // Automatically assign free trial / starter plan to newly registered users
+        try {
+            $trialPlan = Plan::active()
+                ->where(function ($q) {
+                    $q->where('price', 0)->orWhere('name', 'like', '%trial%')->orWhere('name', 'like', '%free%');
+                })
+                ->orderBy('price', 'asc')
+                ->first();
+
+            // If no free/trial plan exists, find the lowest priced active plan to use as default starter trial
+            if (!$trialPlan) {
+                $trialPlan = Plan::active()->orderBy('price', 'asc')->first();
+            }
+
+            if ($trialPlan) {
+                $sub = new UserSubscription();
+                $sub->user_id     = $user->id;
+                $sub->plan_id     = $trialPlan->id;
+                $sub->paid_amount = 0;
+                $sub->starts_at   = now();
+                $sub->expires_at  = $trialPlan->duration_days ? now()->addDays($trialPlan->duration_days) : now()->addDays(7);
+                $sub->status      = 1;
+                $sub->save();
+            }
+        } catch (\Throwable $e) {}
 
 
         //Login Log Create
