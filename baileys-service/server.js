@@ -116,6 +116,7 @@ async function probeLaravelUrl() {
     const candidates = [
         process.env.LARAVEL_URL,
         coreAppUrl,
+        'https://socialmate.iamraheem.com',
         'https://iamraheem.com',
         'http://127.0.0.1:8000',
         'http://localhost:8000',
@@ -136,7 +137,7 @@ async function probeLaravelUrl() {
             }
         } catch (e) {}
     }
-    return coreAppUrl || 'https://iamraheem.com';
+    return coreAppUrl || 'https://socialmate.iamraheem.com';
 }
 
 async function getActiveAutoReplies(sessionId) {
@@ -151,6 +152,7 @@ async function getActiveAutoReplies(sessionId) {
     const candidateUrls = Array.from(new Set([
         baseUrl,
         coreAppUrl,
+        'https://socialmate.iamraheem.com',
         'https://iamraheem.com',
         'http://127.0.0.1',
         'http://localhost',
