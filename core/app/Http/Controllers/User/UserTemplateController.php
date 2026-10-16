@@ -80,7 +80,7 @@ class UserTemplateController extends Controller
         $user = auth()->user();
         $template = MessageTemplate::where('user_id', $user->id)->findOrFail($id);
 
-        if ($request->ajax() || $request->wantsJson()) {
+        if ($request->ajax() || $request->wantsJson() || $request->has('json') || $request->header('Accept') === 'application/json') {
             return response()->json([
                 'success'  => true,
                 'template' => [

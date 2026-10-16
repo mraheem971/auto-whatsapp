@@ -8,6 +8,8 @@ class MessageTemplate extends Model
 {
     protected $guarded = ['id'];
 
+    protected $appends = ['name', 'type'];
+
     public function getNameAttribute()
     {
         return $this->attributes['title'] ?? ($this->attributes['name'] ?? '');

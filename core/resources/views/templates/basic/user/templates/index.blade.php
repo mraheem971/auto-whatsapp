@@ -30,17 +30,22 @@
                         </thead>
                         <tbody>
                             @forelse($templates as $tmpl)
-                                <tr>
+                                <tr class="template-item-row" data-id="{{ $tmpl->id }}">
                                     <td>
-                                        <div class="fw-bold text-dark">{{ $tmpl->name }}</div>
+                                        <div class="fw-bold text-dark template-item-name">{{ $tmpl->name }}</div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-secondary text-capitalize">{{ $tmpl->type }}</span>
+                                        <span class="badge bg-secondary text-capitalize template-item-type">{{ $tmpl->type }}</span>
                                     </td>
                                     <td>
                                         <div class="text-muted small text-truncate" style="max-width: 350px;">
                                             {{ $tmpl->message }}
                                         </div>
+                                        {{-- Safe hidden containers for complete raw data --}}
+                                        <textarea class="d-none raw-tmpl-message">{{ $tmpl->message }}</textarea>
+                                        <input type="hidden" class="raw-tmpl-name" value="{{ $tmpl->name }}">
+                                        <input type="hidden" class="raw-tmpl-type" value="{{ $tmpl->type }}">
+                                        <input type="hidden" class="raw-tmpl-media" value="{{ $tmpl->media_url }}">
                                     </td>
                                     <td>
                                         <div class="small text-muted">{{ showDateTime($tmpl->created_at) }}</div>
@@ -49,10 +54,6 @@
                                         <div class="d-flex gap-2">
                                             <button type="button" class="btn btn-outline-primary btn-sm btnEditTemplate"
                                                     data-id="{{ $tmpl->id }}"
-                                                    data-name="{{ $tmpl->name }}"
-                                                    data-type="{{ $tmpl->type }}"
-                                                    data-media="{{ $tmpl->media_url }}"
-                                                    data-template='@json($tmpl)'
                                                     title="Edit Template">
                                                 <i class="las la-edit"></i>
                                             </button>
@@ -212,51 +213,49 @@
             e.preventDefault();
             var $btn = $(this);
             var id = $btn.data('id');
-            var tmplData = $btn.data('template');
+            var $row = $btn.closest('tr');
 
-            // Set Form action url
-            var actionUrl = "{{ url('user/templates/update') }}/" + id;
+            // 1. Immediately read from safe hidden row elements
+            var name = '';
+            var type = 'text';
+            var message = '';
+            var media = '';
+
+            if ($row.length) {
+                name = $row.find('.raw-tmpl-name').val() || $.trim($row.find('.template-item-name').text());
+                type = $row.find('.raw-tmpl-type').val() || $.trim($row.find('.template-item-type').text()) || 'text';
+                message = $row.find('.raw-tmpl-message').val() || '';
+                media = $row.find('.raw-tmpl-media').val() || '';
+            }
+
+            // Set Form action url using named route template
+            var actionUrl = "{{ route('user.templates.update', ':id') }}".replace(':id', id);
             $('#editTemplateForm').attr('action', actionUrl);
 
-            // Populate from data-template JSON object if available
-            if (tmplData && typeof tmplData === 'object') {
-                var tName = tmplData.name || tmplData.title || '';
-                var tType = tmplData.type || tmplData.category || 'text';
-                var tMsg = tmplData.message || '';
-                var tMedia = tmplData.media_url || '';
+            // Populate form fields immediately
+            $('#editTmplName').val(name);
+            $('#editTmplType').val(type.toLowerCase());
+            $('#editTmplMessage').val(message);
+            $('#editTmplMedia').val(media);
 
-                $('#editTmplName').val(tName);
-                $('#editTmplType').val(tType);
-                $('#editTmplMessage').val(tMsg);
-                $('#editTmplMedia').val(tMedia);
+            // Open modal immediately with content visible
+            $('#editTemplateModal').modal('show');
 
-                $('#editTemplateModal').modal('show');
-            } else {
-                // Read from individual data attributes
-                var name = $btn.data('name') || '';
-                var type = $btn.data('type') || 'text';
-                var message = $btn.data('message') || '';
-                var media = $btn.data('media') || '';
-
-                $('#editTmplName').val(name);
-                $('#editTmplType').val(type);
-                $('#editTmplMessage').val(message);
-                $('#editTmplMedia').val(media);
-
-                $('#editTemplateModal').modal('show');
-
-                // Asynchronous fetch for latest DB state as fallback
+            // Fallback: If message was empty for any unexpected reason, fetch via AJAX
+            if (!message) {
+                var editUrl = "{{ route('user.templates.edit', ':id') }}".replace(':id', id);
                 $.ajax({
-                    url: "{{ url('user/templates/edit') }}/" + id,
+                    url: editUrl,
+                    data: { json: 1 },
                     type: 'GET',
                     dataType: 'json',
                     success: function (res) {
                         if (res && res.success && res.template) {
                             var t = res.template;
-                            $('#editTmplName').val(t.name || t.title || '');
-                            $('#editTmplType').val(t.type || t.category || 'text');
-                            $('#editTmplMessage').val(t.message || '');
-                            $('#editTmplMedia').val(t.media_url || '');
+                            if (t.name) $('#editTmplName').val(t.name);
+                            if (t.type) $('#editTmplType').val(t.type.toLowerCase());
+                            if (t.message) $('#editTmplMessage').val(t.message);
+                            if (t.media_url) $('#editTmplMedia').val(t.media_url);
                         }
                     }
                 });
@@ -272,16 +271,19 @@
                 $targetBtn.trigger('click');
             } else {
                 // Fetch directly if not in current page pagination
+                var fetchUrl = "{{ route('user.templates.edit', ':id') }}".replace(':id', editId);
+                var updateUrl = "{{ route('user.templates.update', ':id') }}".replace(':id', editId);
                 $.ajax({
-                    url: "{{ url('user/templates/edit') }}/" + editId,
+                    url: fetchUrl,
+                    data: { json: 1 },
                     type: 'GET',
                     dataType: 'json',
                     success: function (res) {
                         if (res && res.success && res.template) {
                             var t = res.template;
-                            $('#editTemplateForm').attr('action', "{{ url('user/templates/update') }}/" + editId);
+                            $('#editTemplateForm').attr('action', updateUrl);
                             $('#editTmplName').val(t.name || t.title || '');
-                            $('#editTmplType').val(t.type || t.category || 'text');
+                            $('#editTmplType').val((t.type || t.category || 'text').toLowerCase());
                             $('#editTmplMessage').val(t.message || '');
                             $('#editTmplMedia').val(t.media_url || '');
                             $('#editTemplateModal').modal('show');
