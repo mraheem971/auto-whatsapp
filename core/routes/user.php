@@ -142,6 +142,7 @@ Route::middleware('auth')->name('user.')->group(function () {
             // Message Templates
             Route::controller('UserTemplateController')->prefix('templates')->name('templates.')->group(function () {
                 Route::get('/', 'index')->name('index');
+                Route::get('/edit/{id}', 'edit')->name('edit');
                 Route::post('/store', 'store')->name('store');
                 Route::post('/update/{id}', 'update')->name('update');
                 Route::post('/delete/{id}', 'delete')->name('delete');

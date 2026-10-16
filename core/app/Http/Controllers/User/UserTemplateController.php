@@ -52,25 +52,50 @@ class UserTemplateController extends Controller
         }
 
         $request->validate([
-            'name'     => 'nullable|string|max:150',
-            'title'    => 'nullable|string|max:150',
-            'type'     => 'nullable|string',
-            'category' => 'nullable|string|max:100',
-            'message'  => 'required|string',
+            'name'      => 'nullable|string|max:150',
+            'title'     => 'nullable|string|max:150',
+            'type'      => 'nullable|string',
+            'category'  => 'nullable|string|max:100',
+            'message'   => 'required|string',
+            'media_url' => 'nullable|url|max:2000',
         ]);
 
         $title = $request->name ?: ($request->title ?: 'Untitled Template');
         $category = $request->category ?: ($request->type ?: 'text');
 
         $template = new MessageTemplate();
-        $template->user_id  = $user->id;
-        $template->title    = $title;
-        $template->category = $category;
-        $template->message  = $request->message;
+        $template->user_id   = $user->id;
+        $template->title     = $title;
+        $template->category  = $category;
+        $template->message   = $request->message;
+        $template->media_url = $request->media_url ?: null;
         $template->save();
 
         $notify[] = ['success', 'Message template created successfully!'];
         return back()->withNotify($notify);
+    }
+
+    public function edit(Request $request, $id)
+    {
+        $user = auth()->user();
+        $template = MessageTemplate::where('user_id', $user->id)->findOrFail($id);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success'  => true,
+                'template' => [
+                    'id'        => $template->id,
+                    'name'      => $template->name ?: $template->title,
+                    'title'     => $template->title ?: $template->name,
+                    'type'      => $template->type ?: ($template->category ?: 'text'),
+                    'category'  => $template->category ?: ($template->type ?: 'text'),
+                    'message'   => $template->message ?: '',
+                    'media_url' => $template->media_url ?: '',
+                ]
+            ]);
+        }
+
+        return redirect()->route('user.templates.index', ['edit_id' => $id]);
     }
 
     public function update(Request $request, $id)
@@ -79,19 +104,21 @@ class UserTemplateController extends Controller
         $template = MessageTemplate::where('user_id', $user->id)->findOrFail($id);
 
         $request->validate([
-            'name'     => 'nullable|string|max:150',
-            'title'    => 'nullable|string|max:150',
-            'type'     => 'nullable|string',
-            'category' => 'nullable|string|max:100',
-            'message'  => 'required|string',
+            'name'      => 'nullable|string|max:150',
+            'title'     => 'nullable|string|max:150',
+            'type'      => 'nullable|string',
+            'category'  => 'nullable|string|max:100',
+            'message'   => 'required|string',
+            'media_url' => 'nullable|url|max:2000',
         ]);
 
         $title = $request->name ?: ($request->title ?: $template->title);
         $category = $request->category ?: ($request->type ?: $template->category);
 
-        $template->title    = $title;
-        $template->category = $category;
-        $template->message  = $request->message;
+        $template->title     = $title;
+        $template->category  = $category;
+        $template->message   = $request->message;
+        $template->media_url = $request->media_url ?: null;
         $template->save();
 
         $notify[] = ['success', 'Message template updated successfully!'];

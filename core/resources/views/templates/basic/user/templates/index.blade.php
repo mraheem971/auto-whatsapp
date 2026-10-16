@@ -51,8 +51,8 @@
                                                     data-id="{{ $tmpl->id }}"
                                                     data-name="{{ $tmpl->name }}"
                                                     data-type="{{ $tmpl->type }}"
-                                                    data-message="{{ $tmpl->message }}"
                                                     data-media="{{ $tmpl->media_url }}"
+                                                    data-template='@json($tmpl)'
                                                     title="Edit Template">
                                                 <i class="las la-edit"></i>
                                             </button>
@@ -150,7 +150,7 @@
                     <div class="row gy-3">
                         <div class="col-md-8">
                             <label class="fw-bold mb-1">Template Name <span class="text-danger">*</span></label>
-                            <input type="text" name="name" id="editTmplName" class="form-control" required>
+                            <input type="text" name="name" id="editTmplName" class="form-control" placeholder="e.g. Order Confirmation" required>
                         </div>
                         <div class="col-md-4">
                             <label class="fw-bold mb-1">Media Format</label>
@@ -162,16 +162,27 @@
                             </select>
                         </div>
                         <div class="col-12">
-                            <label class="fw-bold mb-1">Template Content <span class="text-danger">*</span></label>
-                            <textarea name="message" id="editTmplMessage" rows="5" class="form-control" required></textarea>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="fw-bold mb-0">Template Content <span class="text-danger">*</span></label>
+                                <span class="text-muted small">Supports personalizations</span>
+                            </div>
+                            <textarea name="message" id="editTmplMessage" rows="6" class="form-control" placeholder="Enter your template message..." required></textarea>
+                            <div class="d-flex flex-wrap align-items-center gap-1 mt-2">
+                                <span class="text-muted small me-1">Click to insert:</span>
+                                <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btn-insert-var" data-var="@{{name}}"><code>@{{name}}</code></button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btn-insert-var" data-var="@{{phone}}"><code>@{{phone}}</code></button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btn-insert-var" data-var="@{{date}}"><code>@{{date}}</code></button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btn-insert-var" data-var="@{{time}}"><code>@{{time}}</code></button>
+                            </div>
                         </div>
-                        <div class="col-12">
+                        <div class="col-12" id="editMediaWrapper">
                             <label class="fw-bold mb-1">Media URL (Optional)</label>
-                            <input type="url" name="media_url" id="editTmplMedia" class="form-control">
+                            <input type="url" name="media_url" id="editTmplMedia" class="form-control" placeholder="https://example.com/banner.jpg">
+                            <small class="text-muted">Direct link to image (JPG, PNG), video (MP4) or document (PDF)</small>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn--base"><i class="las la-save me-1"></i> Update Template</button>
                 </div>
@@ -186,23 +197,99 @@
     (function ($) {
         "use strict";
 
-        $('.btnEditTemplate').on('click', function () {
-            var id = $(this).data('id');
-            var name = $(this).data('name');
-            var type = $(this).data('type');
-            var message = $(this).data('message');
-            var media = $(this).data('media');
+        // Insert variable tag into active textarea
+        $(document).on('click', '.btn-insert-var', function () {
+            var tag = $(this).data('var');
+            var $txt = $('#editTmplMessage');
+            var caretPos = $txt[0].selectionStart;
+            var textAreaTxt = $txt.val();
+            $txt.val(textAreaTxt.substring(0, caretPos) + tag + textAreaTxt.substring(caretPos));
+            $txt.focus();
+        });
 
-            $('#editTmplName').val(name);
-            $('#editTmplType').val(type);
-            $('#editTmplMessage').val(message);
-            $('#editTmplMedia').val(media);
+        // Edit Template Button Handler
+        $(document).on('click', '.btnEditTemplate', function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var id = $btn.data('id');
+            var tmplData = $btn.data('template');
 
+            // Set Form action url
             var actionUrl = "{{ url('user/templates/update') }}/" + id;
             $('#editTemplateForm').attr('action', actionUrl);
 
-            $('#editTemplateModal').modal('show');
+            // Populate from data-template JSON object if available
+            if (tmplData && typeof tmplData === 'object') {
+                var tName = tmplData.name || tmplData.title || '';
+                var tType = tmplData.type || tmplData.category || 'text';
+                var tMsg = tmplData.message || '';
+                var tMedia = tmplData.media_url || '';
+
+                $('#editTmplName').val(tName);
+                $('#editTmplType').val(tType);
+                $('#editTmplMessage').val(tMsg);
+                $('#editTmplMedia').val(tMedia);
+
+                $('#editTemplateModal').modal('show');
+            } else {
+                // Read from individual data attributes
+                var name = $btn.data('name') || '';
+                var type = $btn.data('type') || 'text';
+                var message = $btn.data('message') || '';
+                var media = $btn.data('media') || '';
+
+                $('#editTmplName').val(name);
+                $('#editTmplType').val(type);
+                $('#editTmplMessage').val(message);
+                $('#editTmplMedia').val(media);
+
+                $('#editTemplateModal').modal('show');
+
+                // Asynchronous fetch for latest DB state as fallback
+                $.ajax({
+                    url: "{{ url('user/templates/edit') }}/" + id,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res && res.success && res.template) {
+                            var t = res.template;
+                            $('#editTmplName').val(t.name || t.title || '');
+                            $('#editTmplType').val(t.type || t.category || 'text');
+                            $('#editTmplMessage').val(t.message || '');
+                            $('#editTmplMedia').val(t.media_url || '');
+                        }
+                    }
+                });
+            }
         });
+
+        // Direct edit via URL query parameter (e.g. ?edit_id=12)
+        var urlParams = new URLSearchParams(window.location.search);
+        var editId = urlParams.get('edit_id');
+        if (editId) {
+            var $targetBtn = $('.btnEditTemplate[data-id="' + editId + '"]');
+            if ($targetBtn.length) {
+                $targetBtn.trigger('click');
+            } else {
+                // Fetch directly if not in current page pagination
+                $.ajax({
+                    url: "{{ url('user/templates/edit') }}/" + editId,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res && res.success && res.template) {
+                            var t = res.template;
+                            $('#editTemplateForm').attr('action', "{{ url('user/templates/update') }}/" + editId);
+                            $('#editTmplName').val(t.name || t.title || '');
+                            $('#editTmplType').val(t.type || t.category || 'text');
+                            $('#editTmplMessage').val(t.message || '');
+                            $('#editTmplMedia').val(t.media_url || '');
+                            $('#editTemplateModal').modal('show');
+                        }
+                    }
+                });
+            }
+        }
 
         if (window.location.hash === '#createTemplateModal' || window.location.hash === '#create') {
             $('#createTemplateModal').modal('show');
