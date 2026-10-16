@@ -1622,9 +1622,28 @@ async function processRunningCampaignsCron() {
     }
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Baileys WhatsApp Service running on http://0.0.0.0:${PORT} (internal:${PORT})`);
-    restoreSavedSessions();
-    setInterval(processRunningCampaignsCron, 5000);
-});
+function startServer(portToTry) {
+    const server = app.listen(portToTry, '0.0.0.0', () => {
+        console.log(`[Baileys Service] 🚀 Baileys WhatsApp Service running on http://0.0.0.0:${portToTry} (PORT=${portToTry})`);
+        restoreSavedSessions();
+        setInterval(processRunningCampaignsCron, 5000);
+    });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.warn(`[Baileys Service] ⚠️ Port ${portToTry} in use, trying next available port...`);
+            const fallbackPorts = [3333, 3000, 3001, 3334, 3002];
+            const nextPort = fallbackPorts.find(p => p !== portToTry);
+            if (nextPort) {
+                setTimeout(() => startServer(nextPort), 1000);
+            } else {
+                console.error(`[Baileys Service] ❌ All fallback ports are in use!`);
+            }
+        } else {
+            console.error('[Baileys Service Server Error]:', err);
+        }
+    });
+}
+
+startServer(PORT);
 
