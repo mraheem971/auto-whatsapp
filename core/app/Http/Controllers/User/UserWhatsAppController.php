@@ -88,8 +88,12 @@ class UserWhatsAppController extends Controller
 
         $sessionId = 'usr_' . $user->id . '_' . time() . '_' . Str::random(6);
 
-        // Remove stale pending accounts for this user
-        $stalePending = WhatsappAccount::where('user_id', $user->id)->where('status', 0)->get();
+        // Remove stale abandoned pending accounts for this user (only unlinked attempts that never connected and are older than 15 minutes)
+        $stalePending = WhatsappAccount::where('user_id', $user->id)
+            ->where('status', 0)
+            ->whereNull('last_connected_at')
+            ->where('created_at', '<', now()->subMinutes(15))
+            ->get();
         foreach ($stalePending as $stale) {
             $staleDir = base_path('../baileys-service/sessions/' . $stale->session_id);
             if (is_dir($staleDir)) {

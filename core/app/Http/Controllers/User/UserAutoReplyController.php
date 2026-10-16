@@ -7,6 +7,7 @@ use App\Models\AutoReply;
 use App\Models\Contact;
 use App\Models\ContactList;
 use App\Models\WhatsappAccount;
+use App\Services\BaileysClient;
 use Illuminate\Http\Request;
 
 class UserAutoReplyController extends Controller

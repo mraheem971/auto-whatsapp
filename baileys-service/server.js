@@ -457,24 +457,30 @@ async function processIncomingAutoReply(sessionId, sock, msg) {
         }
     }
 
+    // Fallback rule safety: Never fire fallback rules in group chats unless explicitly set to groups
+    if (!matchedRule && fallbackRule) {
+        if (isGroup && fallbackRule.target_type !== 'all_group' && fallbackRule.target_type !== 'specific_groups') {
+            return;
+        }
+    }
+
     const targetRule = matchedRule || fallbackRule;
     if (!targetRule) {
         // No match -> leave unseen (no blue tick)
         return;
     }
 
-    // Check rule cooldown per sender to prevent spamming
-    const cooldownSecs = parseInt(targetRule.cooldown_seconds, 10) || 0;
-    if (cooldownSecs > 0) {
-        const cdKey = `${targetRule.id}_${remoteJid}_${senderPhone}`;
-        const lastSentAt = userCooldowns.get(cdKey) || 0;
-        const now = Date.now();
-        if (now - lastSentAt < cooldownSecs * 1000) {
-            console.log(`[Baileys AutoReply] ⏳ Cooldown active for Rule #${targetRule.id} on ${senderPhone} (remaining: ${Math.ceil((cooldownSecs * 1000 - (now - lastSentAt)) / 1000)}s)`);
-            return;
-        }
-        userCooldowns.set(cdKey, now);
+    // Minimum anti-loop flood protection: At least 20 seconds between replies to the exact same chat
+    const configuredCooldownSecs = parseInt(targetRule.cooldown_seconds, 10) || 0;
+    const effectiveCooldownSecs = Math.max(configuredCooldownSecs, 20); // Minimum 20s flood protection
+    const cdKey = `${targetRule.id}_${remoteJid}`;
+    const lastSentAt = userCooldowns.get(cdKey) || 0;
+    const now = Date.now();
+    if (now - lastSentAt < effectiveCooldownSecs * 1000) {
+        console.log(`[Baileys AutoReply] ⏳ Anti-flood cooldown active for Rule #${targetRule.id} on ${remoteJid} (remaining: ${Math.ceil((effectiveCooldownSecs * 1000 - (now - lastSentAt)) / 1000)}s)`);
+        return;
     }
+    userCooldowns.set(cdKey, now);
 
     // Variable substitutions supporting {name}, {{name}}, @name, {sender_phone}, {{sender_phone}}, @sender_phone, {time}, {date}
     const processedText = (targetRule.reply_message || '')
@@ -505,22 +511,9 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
 
         if (msg.key && msg.key.id && msg.key.remoteJid) {
             try {
-                // Send explicit 'read' receipt to WhatsApp server to turn ticks blue for sender
-                await sock.sendReceipt(
-                    msg.key.remoteJid,
-                    msg.key.participant || undefined,
-                    [msg.key.id],
-                    'read'
-                ).catch(() => {});
-                // Also send read-self to sync status across our own linked devices
-                await sock.sendReceipt(
-                    msg.key.remoteJid,
-                    msg.key.participant || undefined,
-                    [msg.key.id],
-                    'read-self'
-                ).catch(() => {});
+                // Official, safe Baileys API to mark messages as seen without protocol conflicts
                 await sock.readMessages([msg.key]).catch(() => {});
-                console.log(`[AutoReply Flow] 👁️ Step 1: ✅ BLUE TICK (seen) receipt delivered for ${remoteJid}`);
+                console.log(`[AutoReply Flow] 👁️ Step 1: ✅ Message marked as read for ${remoteJid}`);
             } catch (readErr) {
                 console.error('[AutoReply Flow Read Receipt Error]:', readErr?.message || readErr);
             }
@@ -661,7 +654,8 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
-        browser: Browsers.ubuntu('Chrome'),
+        browser: Browsers.macOS('Desktop'),
+        markOnlineOnConnect: false,
         generateHighQualityLinkPreview: true,
         syncFullHistory: false,
         connectTimeoutMs: 60000,
@@ -866,37 +860,25 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
                 }
             }, 5000);
 
-            // 30s heartbeat presence timer
-            if (sessionData.presenceTimer) clearInterval(sessionData.presenceTimer);
-            sessionData.presenceTimer = setInterval(() => {
-                if (sessionData.status === 'connected' && sock.ws?.isOpen) {
-                    sock.sendPresenceUpdate('available').catch(() => {});
-                }
-            }, 30000);
         }
 
         if (connection === 'close') {
-            if (sessionData.presenceTimer) {
-                clearInterval(sessionData.presenceTimer);
-                sessionData.presenceTimer = null;
-            }
-
             const statusCode = lastDisconnect?.error?.output?.statusCode;
             const isLoggedOut = statusCode === DisconnectReason.loggedOut;
-            const shouldReconnect = !isLoggedOut && statusCode !== 401;
+            // 515 (Restart Required), 408 (Timeout), 428 (Precondition/Closed), 503, or undefined network drops
+            const shouldReconnect = (!isLoggedOut && statusCode !== 401) || statusCode === 515 || statusCode === 408 || statusCode === 428 || !statusCode;
 
-            console.log(`[Baileys][${new Date().toLocaleTimeString()}] ⚠️ Session "${sessionId}" closed. StatusCode: ${statusCode || 'unknown'}. Reconnecting: ${shouldReconnect || (statusCode === 515 || statusCode === 408)}`);
+            console.log(`[Baileys][${new Date().toLocaleTimeString()}] ⚠️ Session "${sessionId}" closed. StatusCode: ${statusCode || 'unknown'}. Reconnecting: ${shouldReconnect}`);
 
-            // 515 (Restart Required) or 408 (Timeout) or transient errors -> reconnect cleanly
-            if (shouldReconnect || statusCode === 515 || statusCode === 408 || !statusCode) {
+            if (shouldReconnect) {
                 if (!sessionData.isReconnecting) {
                     sessionData.isReconnecting = true;
                     sessionData.status = 'reconnecting';
                     setTimeout(() => {
                         if (sessions.has(sessionId)) {
-                            initBaileysSession(sessionId, accountName).catch(console.error);
+                            initBaileysSession(sessionId, accountName, phoneNumber, usePairingCode).catch(console.error);
                         }
-                    }, 2500);
+                    }, 3000);
                 }
             } else {
                 sessionData.status = 'disconnected';
@@ -907,20 +889,11 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
                 dispatchNotificationEvent('session_disconnect', {
                     session_id: sessionId,
                     title: `WhatsApp Session "${sessionId}" Disconnected`,
-                    details: `Session disconnected. Status code: ${statusCode || 'unknown'}. Authentication unlinked or expired.`
+                    details: `Session disconnected. Status code: ${statusCode || 'unknown'}.`
                 });
 
-                // Only wipe folder if truly logged out and was not just connected in the last 2 minutes
-                const timeSinceConnected = Date.now() - (sessionData.connectedAt || 0);
-                if (isLoggedOut && timeSinceConnected > 120000) {
-                    console.log(`[Baileys] Session "${sessionId}" was unlinked. Deleting session directory.`);
-                    const sPath = path.join(SESSIONS_DIR, sessionId);
-                    if (fs.existsSync(sPath)) {
-                        try { fs.rmSync(sPath, { recursive: true, force: true }); } catch (e) {}
-                    }
-                    sessions.delete(sessionId);
-                    autoReplyRuleCache.delete(sessionId);
-                }
+                // Keep credentials preserved on disk so user can reconnect or recover without loss
+                console.log(`[Baileys] Session "${sessionId}" entered disconnected state. Keeping credentials safely on disk.`);
             }
             sessionData.lastUpdated = new Date();
         }
@@ -1146,15 +1119,8 @@ const handleSendMessage = async (req, res) => {
         }
 
         if (!session || !session.socket || session.status !== 'connected') {
-            // Notify Laravel to immediately sync DB status to 0 (Disconnected)
-            dispatchNotificationEvent('session_disconnect', {
-                session_id: sessionId,
-                title: `WhatsApp Session "${sessionId}" Offline`,
-                details: `Session is not connected or was disconnected.`
-            });
-
-            return res.status(400).json({ 
-                error: 'WhatsApp session is not connected. Please scan the QR code or reconnect your account.' 
+            return res.status(503).json({ 
+                error: 'WhatsApp session is not connected or is temporarily reconnecting. Please wait a moment.' 
             });
         }
 

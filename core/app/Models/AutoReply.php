@@ -66,13 +66,19 @@ class AutoReply extends Model
             $account = !empty($sessionId) ? WhatsappAccount::where('session_id', $sessionId)->first() : null;
 
             if ($account && $account->user_id > 0) {
-                // User account: ONLY match this specific user's rules
-                $q->where('user_id', $account->user_id)
-                  ->where(function ($sq) use ($sessionId) {
-                      $sq->whereNull('session_id')
-                         ->orWhere('session_id', '')
-                         ->orWhere('session_id', $sessionId);
-                  });
+                // User account: match this user's rules across sessions,
+                // excluding only if explicitly bound to another active account of this user
+                $otherActiveSessions = WhatsappAccount::where('user_id', $account->user_id)
+                    ->where('session_id', '!=', $sessionId)
+                    ->where('status', 1)
+                    ->pluck('session_id')
+                    ->filter()
+                    ->toArray();
+
+                $q->where('user_id', $account->user_id);
+                if (!empty($otherActiveSessions)) {
+                    $q->whereNotIn('session_id', $otherActiveSessions);
+                }
             } else {
                 // Admin account: ONLY match admin rules (user_id is null or 0)
                 $q->where(function ($adminQ) {

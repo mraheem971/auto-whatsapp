@@ -42,6 +42,15 @@ class NotificationApiController extends Controller
                     if ($request->filled('jid')) $acc->jid = $request->jid;
                     $acc->last_connected_at = now();
                     $acc->save();
+
+                    // Dynamically bind existing user auto replies to this connected session
+                    if ($acc->user_id > 0) {
+                        \App\Models\AutoReply::where('user_id', $acc->user_id)
+                            ->update(['session_id' => $sessionId]);
+                        try {
+                            \App\Services\BaileysClient::post('api/autoreply/clear-cache', ['sessionId' => $sessionId]);
+                        } catch (\Throwable $e) {}
+                    }
                 }
             }
             return response()->json(['success' => true, 'event' => 'session_connected_recorded']);
