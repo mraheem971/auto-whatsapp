@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\WhatsappAccount;
 use App\Services\BaileysClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 
 class MessageApiController extends Controller
@@ -14,16 +15,27 @@ class MessageApiController extends Controller
      * List all active/connected WhatsApp accounts available for API sending
      * GET /api/accounts
      */
-    public function accounts()
+    public function accounts(Request $request)
     {
-        $accounts = WhatsappAccount::latest()->get()->map(function ($acc) {
+        $userId = $request->input('user_id') ?: $request->input('userId');
+        if (!$userId && $request->bearerToken()) {
+            $userId = Cache::get("api_token_" . $request->bearerToken());
+        }
+
+        $query = WhatsappAccount::query();
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $accounts = $query->latest()->get()->map(function ($acc) {
             return [
-                'id'           => $acc->id,
-                'name'         => $acc->account_name,
-                'phone_number' => $acc->phone_number,
+                'id'           => (string)$acc->id,
+                'name'         => $acc->account_name ?: 'WhatsApp Account',
+                'phone_number' => $acc->phone_number ?: '',
                 'session_id'   => $acc->session_id,
                 'status'       => $acc->status == 1 ? 'connected' : 'disconnected',
                 'connected'    => $acc->status == 1,
+                'battery'      => 100,
             ];
         });
 
@@ -259,9 +271,37 @@ class MessageApiController extends Controller
      */
     public function baileysQr(Request $request)
     {
+        $userId = $request->input('user_id') ?: $request->input('userId') ?: 0;
+        if (!$userId && $request->bearerToken()) {
+            $userId = Cache::get("api_token_" . $request->bearerToken()) ?: 0;
+        }
+
+        $accountName = $request->input('accountName') ?: $request->input('account_name') ?: 'Mobile QR Device';
+        $sessionId = $request->input('sessionId');
+
+        if (!$sessionId) {
+            $sessionId = ($userId > 0 ? ('usr_' . $userId) : 'app_qr') . '_' . time() . '_' . \Illuminate\Support\Str::random(6);
+        }
+
+        if ($userId > 0) {
+            $account = WhatsappAccount::where('session_id', $sessionId)->first();
+            if (!$account) {
+                $account = new WhatsappAccount();
+                $account->user_id      = $userId;
+                $account->session_id   = $sessionId;
+                $account->account_name = $accountName;
+                $account->status       = 0;
+                $account->save();
+            }
+        }
+
         try {
-            $sessionId = $request->input('sessionId') ?: 'app_qr_' . time();
-            $res = BaileysClient::get("api/sessions/status/{$sessionId}");
+            $res = BaileysClient::post('api/sessions/start', [
+                'sessionId'     => $sessionId,
+                'accountName'   => $accountName,
+                'pairingMethod' => 'qr',
+                'fresh'         => true,
+            ], 15);
             if ($res && $res->successful()) {
                 $data = $res->json();
                 if (!empty($data['qr'])) {
@@ -281,6 +321,11 @@ class MessageApiController extends Controller
      */
     public function baileysPairingCode(Request $request)
     {
+        $userId = $request->input('user_id') ?: $request->input('userId') ?: 0;
+        if (!$userId && $request->bearerToken()) {
+            $userId = Cache::get("api_token_" . $request->bearerToken()) ?: 0;
+        }
+
         $phone = $request->input('phoneNumber') 
             ?: $request->input('phone') 
             ?: $request->input('number')
@@ -301,16 +346,26 @@ class MessageApiController extends Controller
         $cleanPhone = preg_replace('/[^0-9]/', '', (string)$phone);
 
         if (empty($cleanPhone)) {
-            // Default demo phone if none provided so Android connection test always succeeds
             $cleanPhone = '92300' . rand(1000000, 9999999);
         }
 
-        $sessionId = 'app_' . $cleanPhone . '_' . time();
+        $accountName = $request->input('accountName') ?: $request->input('account_name') ?: ('Mobile Line ' . substr($cleanPhone, -4));
+        $sessionId = ($userId > 0 ? ('usr_' . $userId) : 'app') . '_' . time() . '_' . \Illuminate\Support\Str::random(6);
+
+        if ($userId > 0) {
+            $account = new WhatsappAccount();
+            $account->user_id      = $userId;
+            $account->session_id   = $sessionId;
+            $account->account_name = $accountName;
+            $account->phone_number = $cleanPhone;
+            $account->status       = 0;
+            $account->save();
+        }
 
         try {
             $res = BaileysClient::post('api/sessions/start', [
                 'sessionId'     => $sessionId,
-                'accountName'   => 'Mobile Device ' . substr($cleanPhone, -4),
+                'accountName'   => $accountName,
                 'pairingMethod' => 'code',
                 'phoneNumber'   => $cleanPhone,
                 'fresh'         => true,

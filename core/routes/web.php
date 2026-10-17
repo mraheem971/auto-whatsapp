@@ -16,6 +16,15 @@ Route::match(['GET', 'POST'], 'api/autoreply/log-hit/{id}', 'Admin\AutoReplyCont
 Route::match(['GET', 'POST'], 'api/autoreply/clear-cache', 'Admin\AutoReplyController@apiClearCache')->name('api.autoreply.clear_cache');
 
 
+// User Auth & Mobile App REST API Endpoints
+Route::post('api/user/login', 'Api\UserApiController@login')->name('api.user.login');
+Route::post('api/login', 'Api\UserApiController@login')->name('api.login');
+Route::post('api/user/register', 'Api\UserApiController@register')->name('api.user.register');
+Route::post('api/register', 'Api\UserApiController@register')->name('api.register');
+Route::get('api/user/profile', 'Api\UserApiController@profile')->name('api.user.profile');
+Route::get('api/user/accounts', 'Api\UserApiController@accounts')->name('api.user.accounts');
+Route::post('api/user/accounts/delete/{id}', 'Api\UserApiController@deleteAccount')->name('api.user.accounts.delete');
+
 // WhatsApp Message Sending REST API Endpoints
 Route::get('api', 'Api\MessageApiController@health')->name('api.root');
 Route::get('api/health', 'Api\MessageApiController@health')->name('api.health');
