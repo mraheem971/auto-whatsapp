@@ -139,6 +139,7 @@ class UserApiController extends Controller
         $user->sv        = Status::YES;
         $user->ts        = Status::DISABLE;
         $user->tv        = Status::ENABLE;
+        $user->profile_complete = Status::YES;
         $user->save();
 
         try {

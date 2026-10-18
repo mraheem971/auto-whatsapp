@@ -17,6 +17,13 @@ class RegistrationStep
     public function handle(Request $request, Closure $next)
     {
         $user = auth()->user();
+        if ($user && $user->ev) {
+            if (!$user->profile_complete) {
+                $user->profile_complete = 1;
+                $user->save();
+            }
+            return $next($request);
+        }
         if (!$user->profile_complete) {
             if ($request->is('api/*')) {
                 $notify[] = 'Please complete your profile to go next';

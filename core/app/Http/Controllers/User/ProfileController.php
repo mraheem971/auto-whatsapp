@@ -73,7 +73,7 @@ class ProfileController extends Controller
 
         $passwordValidation = Password::min(6);
         if (gs('secure_password')) {
-            $passwordValidation = $passwordValidation->mixedCase()->numbers()->symbols()->uncompromised();
+            $passwordValidation = $passwordValidation->mixedCase()->numbers()->symbols();
         }
 
         $request->validate([

@@ -28,20 +28,18 @@ class AuthorizationController extends Controller
         if (!$user->status) {
             $pageTitle = 'Banned';
             $type = 'ban';
-        }elseif(!$user->ev) {
+        } elseif (!$user->ev) {
             $type = 'email';
             $pageTitle = 'Verify Email';
             $notifyTemplate = 'EVER_CODE';
-        }elseif (!$user->sv) {
-            $type = 'sms';
-            $pageTitle = 'Verify Mobile Number';
-            $notifyTemplate = 'SVER_CODE';
-        }elseif (!$user->tv && $user->ts && !empty($user->tsc)) {
-            $pageTitle = '2FA Verification';
-            $type = '2fa';
-        }else{
-            if (!$user->tv && (!$user->ts || empty($user->tsc))) {
-                $user->tv = 1;
+        } else {
+            // Gmail is verified - automatically mark mobile, KYC, 2FA, and profile complete
+            if (!$user->sv || !$user->kv || !$user->tv || $user->ts || !$user->profile_complete) {
+                $user->sv = Status::VERIFIED;
+                $user->kv = Status::VERIFIED;
+                $user->tv = Status::ENABLE;
+                $user->ts = Status::DISABLE;
+                $user->profile_complete = Status::YES;
                 $user->save();
             }
             return to_route('user.home');
@@ -100,6 +98,11 @@ class AuthorizationController extends Controller
 
         if ($user->ver_code == $request->code) {
             $user->ev = Status::VERIFIED;
+            $user->sv = Status::VERIFIED;
+            $user->kv = Status::VERIFIED;
+            $user->tv = Status::ENABLE;
+            $user->ts = Status::DISABLE;
+            $user->profile_complete = Status::YES;
             $user->ver_code = null;
             $user->ver_code_send_at = null;
             $user->save();

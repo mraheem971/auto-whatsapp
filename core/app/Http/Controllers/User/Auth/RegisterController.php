@@ -41,7 +41,7 @@ class RegisterController extends Controller
         $passwordValidation = Password::min(6);
 
         if (gs('secure_password')) {
-            $passwordValidation = $passwordValidation->mixedCase()->numbers()->symbols()->uncompromised();
+            $passwordValidation = $passwordValidation->mixedCase()->numbers()->symbols();
         }
 
         $agree = 'nullable';
@@ -49,16 +49,18 @@ class RegisterController extends Controller
             $agree = 'required';
         }
 
-        $validate     = Validator::make($data, [
-            'firstname' => 'required',
-            'lastname'  => 'required',
-            'email'     => 'required|string|email|unique:users',
+        $validate = Validator::make($data, [
+            'firstname' => 'required|string|max:40',
+            'lastname'  => 'required|string|max:40',
+            'email'     => 'required|string|email|max:90|unique:users',
             'password'  => ['required', 'confirmed', $passwordValidation],
             'captcha'   => 'sometimes|required',
             'agree'     => $agree
         ], [
             'firstname.required' => 'The first name field is required',
-            'lastname.required' => 'The last name field is required'
+            'lastname.required'  => 'The last name field is required',
+            'password.min'       => 'The password must be at least 6 characters.',
+            'password.confirmed' => 'The password confirmation does not match.',
         ]);
 
         return $validate;
@@ -95,18 +97,37 @@ class RegisterController extends Controller
             $referUser = null;
         }
 
-        //User Create
-        $user            = new User();
-        $user->email     = strtolower($data['email']);
-        $user->firstname = $data['firstname'];
-        $user->lastname  = $data['lastname'];
-        $user->password  = Hash::make($data['password']);
-        $user->ref_by    = $referUser ? $referUser->id : 0;
-        $user->kv = gs('kv') ? Status::NO : Status::YES;
-        $user->ev = gs('ev') ? Status::NO : Status::YES;
-        $user->sv = gs('sv') ? Status::NO : Status::YES;
-        $user->ts = Status::DISABLE;
+        $email = strtolower(trim($data['email']));
+
+        // Generate clean unique username
+        $baseUsername = preg_replace('/[^a-z0-9]/', '', explode('@', $email)[0]);
+        if (empty($baseUsername)) {
+            $baseUsername = 'user';
+        }
+        $username = $baseUsername . rand(100, 9999);
+        while (User::where('username', $username)->exists()) {
+            $username = $baseUsername . rand(1000, 99999);
+        }
+
+        // User Create
+        $user                   = new User();
+        $user->email            = $email;
+        $user->firstname        = trim($data['firstname']);
+        $user->lastname         = trim($data['lastname']);
+        $user->username         = $username;
+        $user->password         = Hash::make($data['password']);
+        $user->ref_by           = $referUser ? $referUser->id : 0;
+        $user->status           = Status::USER_ACTIVE;
+        $user->profile_complete = Status::YES;
+
+        // Auto-verify mobile, KYC, and 2FA upon registration
+        $user->kv = Status::YES;
+        $user->sv = Status::YES;
         $user->tv = Status::ENABLE;
+        $user->ts = Status::DISABLE;
+
+        // Only Gmail (email) requires verification if email verification is enabled
+        $user->ev = gs('ev') ? Status::NO : Status::YES;
         $user->save();
 
         $userSocialMedia = new UserSocialMedia();

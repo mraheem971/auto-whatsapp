@@ -18,6 +18,17 @@ class CheckStatus
     {
         if (Auth::check()) {
             $user = auth()->user();
+
+            // When email (Gmail) is verified, ensure mobile, KYC, and profile completion are automatically verified
+            if ($user->ev) {
+                if (!$user->sv || !$user->kv || !$user->profile_complete) {
+                    $user->sv = 1;
+                    $user->kv = 1;
+                    $user->profile_complete = 1;
+                    $user->save();
+                }
+            }
+
             $is2faActive = ($user->ts && !empty($user->tsc));
             $is2faVerified = $is2faActive ? $user->tv : true;
 
