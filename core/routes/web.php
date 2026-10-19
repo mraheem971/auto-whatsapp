@@ -25,6 +25,18 @@ Route::get('api/user/profile', 'Api\UserApiController@profile')->name('api.user.
 Route::get('api/user/accounts', 'Api\UserApiController@accounts')->name('api.user.accounts');
 Route::post('api/user/accounts/delete/{id}', 'Api\UserApiController@deleteAccount')->name('api.user.accounts.delete');
 
+// Comprehensive user data synchronization for Android app
+Route::match(['GET', 'POST'], 'api/user/sync-all', 'Api\UserApiController@syncAll')->name('api.user.sync_all');
+Route::match(['GET', 'POST'], 'api/sync-all', 'Api\UserApiController@syncAll');
+Route::get('api/user/auto-replies', 'Api\UserApiController@autoReplies')->name('api.user.auto_replies');
+Route::post('api/user/auto-replies/save', 'Api\UserApiController@saveAutoReply')->name('api.user.auto_replies.save');
+Route::match(['GET', 'POST'], 'api/user/auto-replies/delete/{id}', 'Api\UserApiController@deleteAutoReply')->name('api.user.auto_replies.delete');
+Route::get('api/user/templates', 'Api\UserApiController@templates')->name('api.user.templates');
+Route::post('api/user/templates/save', 'Api\UserApiController@saveTemplate')->name('api.user.templates.save');
+Route::match(['GET', 'POST'], 'api/user/templates/delete/{id}', 'Api\UserApiController@deleteTemplate')->name('api.user.templates.delete');
+Route::get('api/user/campaigns', 'Api\UserApiController@campaigns')->name('api.user.campaigns');
+Route::get('api/user/contacts', 'Api\UserApiController@contacts')->name('api.user.contacts');
+
 // WhatsApp Message Sending REST API Endpoints
 Route::get('api', 'Api\MessageApiController@health')->name('api.root');
 Route::get('api/health', 'Api\MessageApiController@health')->name('api.health');
