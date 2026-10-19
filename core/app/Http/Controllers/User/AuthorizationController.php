@@ -11,12 +11,12 @@ use App\Lib\Intended;
 
 class AuthorizationController extends Controller
 {
-    protected function checkCodeValidity($user,$addMin = 2)
+    protected function checkCodeValidity($user, $addSeconds = 30)
     {
         if (!$user->ver_code_send_at){
             return false;
         }
-        if ($user->ver_code_send_at->addMinutes($addMin) < Carbon::now()) {
+        if ($user->ver_code_send_at->addSeconds($addSeconds) < Carbon::now()) {
             return false;
         }
         return true;
@@ -25,6 +25,16 @@ class AuthorizationController extends Controller
     public function authorizeForm()
     {
         $user = auth()->user();
+
+        try {
+            $gs = \App\Models\GeneralSetting::first();
+            if ($gs && (empty($gs->email_from) || str_contains($gs->email_from, 'viserlab.com'))) {
+                $gs->email_from = 'noreply@iamraheem.com';
+                $gs->email_from_name = 'SocialMate';
+                $gs->save();
+            }
+        } catch (\Throwable $e) {}
+
         if (!$user->status) {
             $pageTitle = 'Banned';
             $type = 'ban';
@@ -63,8 +73,8 @@ class AuthorizationController extends Controller
         $user = auth()->user();
 
         if ($this->checkCodeValidity($user)) {
-            $targetTime = $user->ver_code_send_at->addMinutes(2)->timestamp;
-            $delay = $targetTime - time();
+            $targetTime = $user->ver_code_send_at->addSeconds(30)->timestamp;
+            $delay = max(1, $targetTime - time());
             throw ValidationException::withMessages(['resend' => 'Please try after ' . $delay . ' seconds']);
         }
 
@@ -95,8 +105,9 @@ class AuthorizationController extends Controller
         ]);
 
         $user = auth()->user();
+        $enteredCode = preg_replace('/[^0-9a-zA-Z]/', '', trim((string)$request->code));
 
-        if ($user->ver_code == $request->code) {
+        if ($user->ver_code && $user->ver_code == $enteredCode) {
             $user->ev = Status::VERIFIED;
             $user->sv = Status::VERIFIED;
             $user->kv = Status::VERIFIED;

@@ -41,7 +41,7 @@
                                     <div class="col-sm-6 form-group">
                                         <label class="form--label" for="your-password">@lang('Password')</label>
                                         <div class="position-relative">
-                                            <input class="form-control form--control @if (gs('secure_password')) secure-password @endif" id="password" name="password" type="password" required>
+                                            <input class="form-control form--control" id="password" name="password" type="password" required placeholder="@lang('Enter password')">
                                             <span class="password-show-hide fas fa-eye toggle-password fa-eye-slash" id="#password"></span>
                                         </div>
                                     </div>
@@ -124,11 +124,6 @@
 @endif
 @endsection
 
-@if (gs('secure_password'))
-    @push('script-lib')
-        <script src="{{ asset('assets/global/js/secure_password.js') }}"></script>
-    @endpush
-@endif
 @push('script')
     <script>
         "use strict";

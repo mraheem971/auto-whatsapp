@@ -8,6 +8,9 @@
                 <form action="{{route('user.verify.email')}}" method="POST" class="submit-form">
                     @csrf
                     <p class="verification-text">@lang('A 6 digit verification code sent to your email address'):  {{ showEmailAddress(auth()->user()->email) }}</p>
+                    <div class="alert alert-info py-2 px-3 small my-2 text-start" role="alert" style="font-size: 13px;">
+                        <i class="las la-info-circle me-1"></i> @lang('Please check both your <strong>Inbox</strong> and <strong>Spam / Junk</strong> folders. If not received yet, you can click "Try again" below after the timer.')
+                    </div>
 
                     @include($activeTemplate.'partials.verification_code')
 
@@ -34,14 +37,23 @@
 
 @push('script')
 <script>
-    var distance =Number("{{@$user->ver_code_send_at->addMinutes(2)->timestamp-time()}}");
-    var x = setInterval(function() {
-        distance--;
-        document.getElementById("countdown").innerHTML = distance;
+    var distance = Number("{{ @$user->ver_code_send_at ? max(0, @$user->ver_code_send_at->addSeconds(30)->timestamp - time()) : 0 }}");
+    function updateCountdown() {
         if (distance <= 0) {
-            clearInterval(x);
             document.querySelector('.countdown-wrapper').classList.add('d-none');
             document.querySelector('.try-again-link').classList.remove('d-none');
+        } else {
+            document.getElementById("countdown").innerHTML = distance;
+            document.querySelector('.countdown-wrapper').classList.remove('d-none');
+            document.querySelector('.try-again-link').classList.add('d-none');
+        }
+    }
+    updateCountdown();
+    var x = setInterval(function() {
+        distance--;
+        updateCountdown();
+        if (distance <= 0) {
+            clearInterval(x);
         }
     }, 1000);
 </script>

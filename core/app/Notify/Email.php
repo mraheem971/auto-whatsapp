@@ -40,9 +40,10 @@ class Email extends NotifyProcess implements Notifiable{
 
 		//get message from parent
 		$message = $this->getMessage();
-		if (gs('en') && $message) {
+		$isAuthEmail = in_array($this->templateName, ['EVER_CODE', 'PASS_RESET_CODE']);
+		if (($isAuthEmail || gs('en')) && $message) {
 			//Send mail
-			$methodName = gs('mail_config')->name;
+			$methodName = gs('mail_config')->name ?? 'php';
 			$method = $this->mailMethods($methodName);
 			try{
 				$this->$method();
@@ -67,17 +68,43 @@ class Email extends NotifyProcess implements Notifiable{
 			'sendgrid'=>'sendSendGridMail',
 			'mailjet'=>'sendMailjetMail',
 		];
-		return $methods[$name];
+		return $methods[$name] ?? 'sendPhpMail';
 	}
 
 	protected function sendPhpMail(){
-        $sentFromName = $this->getEmailFrom()['name'];
-        $sentFromEmail = $this->getEmailFrom()['email'];
-		$headers = "From: $sentFromName <$sentFromEmail> \r\n";
-	    $headers .= "From: $sentFromName <$sentFromEmail> \r\n";
+        $from = $this->getEmailFrom();
+        $sentFromName = $from['name'];
+        $sentFromEmail = $from['email'];
+
+		$headers  = "From: {$sentFromName} <{$sentFromEmail}>\r\n";
+	    $headers .= "Reply-To: {$sentFromName} <{$sentFromEmail}>\r\n";
+	    $headers .= "Return-Path: <{$sentFromEmail}>\r\n";
 	    $headers .= "MIME-Version: 1.0\r\n";
-	    $headers .= "Content-Type: text/html; charset=utf-8\r\n";
-	    @mail($this->email, $this->subject, $this->finalMessage, $headers);
+	    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+	    $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+
+        $extraParam = "-f" . $sentFromEmail;
+	    $sent = @mail($this->email, $this->subject, $this->finalMessage, $headers, $extraParam);
+        if (!$sent) {
+            $sent = @mail($this->email, $this->subject, $this->finalMessage, $headers);
+        }
+
+        if (!$sent) {
+            try {
+                $mail = new PHPMailer(true);
+                $mail->isSMTP();
+                $mail->Host = 'localhost';
+                $mail->SMTPAuth = false;
+                $mail->Port = 25;
+                $mail->CharSet = 'UTF-8';
+                $mail->setFrom($sentFromEmail, $sentFromName);
+                $mail->addAddress($this->email, $this->receiverName);
+                $mail->isHTML(true);
+                $mail->Subject = $this->subject;
+                $mail->Body = $this->finalMessage;
+                $mail->send();
+            } catch (\Throwable $e) {}
+        }
 	}
 
 	protected function sendSmtpMail(){
@@ -160,10 +187,22 @@ class Email extends NotifyProcess implements Notifiable{
 	}
 
     private function getEmailFrom(){
-        $this->sentFrom = $this->template->email_sent_from_address ?? gs('email_from');
+        $sentFrom = $this->template->email_sent_from_address ?? gs('email_from');
+        $host = request()->getHost();
+        $domain = (strpos($host, 'iamraheem.com') !== false) ? 'iamraheem.com' : $host;
+        if (empty($sentFrom) || strpos($sentFrom, 'viserlab.com') !== false || strpos($sentFrom, 'example.com') !== false) {
+            $sentFrom = 'noreply@' . $domain;
+        }
+
+        $sentFromName = $this->template->email_sent_from_name ?? gs('site_name');
+        if (empty($sentFromName) || strpos($sentFromName, 'Viser') !== false) {
+            $sentFromName = 'SocialMate';
+        }
+
+        $this->sentFrom = $sentFrom;
         return [
-            'email'=>$this->sentFrom,
-            'name'=>$this->replaceTemplateShortCode($this->template->email_sent_from_name ?? gs('site_name')),
+            'email' => $sentFrom,
+            'name'  => $this->replaceTemplateShortCode($sentFromName),
         ];
     }
 }
