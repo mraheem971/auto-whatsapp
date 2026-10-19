@@ -59,6 +59,36 @@ class UserApiController extends Controller
             ], 403);
         }
 
+        // Ensure user is fully verified when successfully authenticating via API
+        $userUpdated = false;
+        if (!$user->ev) {
+            $user->ev = Status::YES;
+            $userUpdated = true;
+        }
+        if (!$user->sv) {
+            $user->sv = Status::YES;
+            $userUpdated = true;
+        }
+        if (!$user->kv) {
+            $user->kv = Status::YES;
+            $userUpdated = true;
+        }
+        if (!$user->profile_complete) {
+            $user->profile_complete = Status::YES;
+            $userUpdated = true;
+        }
+        if ($user->ts) {
+            $user->ts = Status::DISABLE;
+            $userUpdated = true;
+        }
+        if (!$user->tv) {
+            $user->tv = Status::ENABLE;
+            $userUpdated = true;
+        }
+        if ($userUpdated) {
+            $user->save();
+        }
+
         // Generate persistent API access token
         $token = 'tok_' . Str::random(40) . '_' . time();
         Cache::put("api_token_{$token}", $user->id, now()->addDays(90));
