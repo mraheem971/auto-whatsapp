@@ -457,7 +457,7 @@ class UserApiController extends Controller
         }
 
         $tpl->title = $request->input('title') ?: ($request->input('name') ?: 'Template');
-        $tpl->content = $request->input('bodyText') ?: ($request->input('content') ?: '');
+        $tpl->message = $request->input('bodyText') ?: ($request->input('content') ?: ($request->input('message') ?: ''));
         $tpl->category = $request->input('category') ?: 'marketing';
         $tpl->save();
 

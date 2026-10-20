@@ -68,7 +68,9 @@ class UserTemplateController extends Controller
         $template->title     = $title;
         $template->category  = $category;
         $template->message   = $request->message;
-        $template->media_url = $request->media_url ?: null;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('message_templates', 'media_url')) {
+            $template->media_url = $request->media_url ?: null;
+        }
         $template->save();
 
         $notify[] = ['success', 'Message template created successfully!'];
@@ -118,7 +120,9 @@ class UserTemplateController extends Controller
         $template->title     = $title;
         $template->category  = $category;
         $template->message   = $request->message;
-        $template->media_url = $request->media_url ?: null;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('message_templates', 'media_url')) {
+            $template->media_url = $request->media_url ?: null;
+        }
         $template->save();
 
         $notify[] = ['success', 'Message template updated successfully!'];

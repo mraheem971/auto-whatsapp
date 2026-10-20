@@ -8,7 +8,7 @@ class MessageTemplate extends Model
 {
     protected $guarded = ['id'];
 
-    protected $appends = ['name', 'type'];
+    protected $appends = ['name', 'type', 'media_url'];
 
     public function getNameAttribute()
     {
@@ -28,5 +28,31 @@ class MessageTemplate extends Model
     public function setTypeAttribute($value)
     {
         $this->attributes['category'] = $value;
+    }
+
+    public function getContentAttribute()
+    {
+        return $this->attributes['message'] ?? ($this->attributes['content'] ?? '');
+    }
+
+    public function setContentAttribute($value)
+    {
+        $this->attributes['message'] = $value;
+    }
+
+    public function getMediaUrlAttribute()
+    {
+        return $this->attributes['media_url'] ?? '';
+    }
+
+    public function setMediaUrlAttribute($value)
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasColumn($this->getTable(), 'media_url')) {
+                $this->attributes['media_url'] = $value;
+            }
+        } catch (\Throwable $e) {
+            // Silently fallback if schema check fails
+        }
     }
 }
