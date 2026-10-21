@@ -618,7 +618,7 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
         accountName: accountName || sessionId,
         status: 'initializing',
         pairingMethod: usePairingCode ? 'code' : 'qr',
-        targetPhone: phoneNumber ? phoneNumber.toString().replace(/[^0-9]/g, '') : null,
+        targetPhone: phoneNumber ? phoneNumber.toString().replace(/[^0-9]/g, '').replace(/^0+/, '') : null,
         pairingCode: null,
         pairingError: null,
         qr: null,
@@ -638,7 +638,7 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
 
     sessionData.pairingMethod = usePairingCode ? 'code' : 'qr';
     if (phoneNumber) {
-        sessionData.targetPhone = phoneNumber.toString().replace(/[^0-9]/g, '');
+        sessionData.targetPhone = phoneNumber.toString().replace(/[^0-9]/g, '').replace(/^0+/, '');
     }
     sessionData.status = 'initializing';
     sessionData.isReconnecting = false;
@@ -654,7 +654,7 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
-        browser: Browsers.macOS('Desktop'),
+        browser: Browsers.ubuntu('Chrome'),
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: true,
         syncFullHistory: false,
@@ -677,11 +677,37 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
     // Handle Direct Phone Number Pairing Code if requested
     if (usePairingCode && sessionData.targetPhone && !sock.authState.creds.registered) {
         sessionData.status = 'requesting_pairing_code';
-        setTimeout(async () => {
+        (async () => {
             try {
+                // Wait for WebSocket connection to open (sock.ws.readyState === 1)
+                // Check up to 15 seconds (30 iterations * 500ms)
+                let waitIterations = 0;
+                while ((!sock?.ws || sock?.ws?.readyState !== 1) && waitIterations < 30) {
+                    if (sessionData.status === 'connected') return;
+                    await new Promise(r => setTimeout(r, 500));
+                    waitIterations++;
+                }
+
                 if (sessionData.status !== 'connected' && sock && !sock.authState.creds.registered) {
                     console.log(`[Baileys] 📲 Requesting 8-digit Pairing Code for phone: +${sessionData.targetPhone}...`);
-                    const code = await sock.requestPairingCode(sessionData.targetPhone);
+                    
+                    let code = null;
+                    let lastErr = null;
+                    for (let attempt = 1; attempt <= 3; attempt++) {
+                        try {
+                            code = await sock.requestPairingCode(sessionData.targetPhone);
+                            if (code) break;
+                        } catch (err) {
+                            lastErr = err;
+                            console.warn(`[Baileys] Pairing code attempt ${attempt}/3 failed:`, err?.message || err);
+                            if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+                        }
+                    }
+
+                    if (!code && lastErr) {
+                        throw lastErr;
+                    }
+
                     // Format code into 4-4 format (e.g. ABCD-1234)
                     const formatted = code ? (code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code) : code;
                     sessionData.pairingCode = formatted;
@@ -697,7 +723,7 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
                 sessionData.status = 'pairing_error';
                 sessionData.lastUpdated = new Date();
             }
-        }, 2000);
+        })();
     }
 
     sock.ev.on('creds.update', async () => {
@@ -797,22 +823,26 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-            sessionData.qr = qr;
-            sessionData.status = 'qr_ready';
-            console.log(`[Baileys][${new Date().toLocaleTimeString()}] 📲 New QR code generated for session: "${sessionId}". Ready to scan!`);
-            try {
-                sessionData.qrImage = await QRCode.toDataURL(qr, {
-                    width: 300,
-                    margin: 2,
-                    color: {
-                        dark: '#111b21',
-                        light: '#ffffff'
-                    }
-                });
-            } catch (err) {
-                console.error('Error generating QR image:', err);
+            if (!usePairingCode && sessionData.pairingMethod !== 'code') {
+                sessionData.qr = qr;
+                sessionData.status = 'qr_ready';
+                console.log(`[Baileys][${new Date().toLocaleTimeString()}] 📲 New QR code generated for session: "${sessionId}". Ready to scan!`);
+                try {
+                    sessionData.qrImage = await QRCode.toDataURL(qr, {
+                        width: 300,
+                        margin: 2,
+                        color: {
+                            dark: '#111b21',
+                            light: '#ffffff'
+                        }
+                    });
+                } catch (err) {
+                    console.error('Error generating QR image:', err);
+                }
+                sessionData.lastUpdated = new Date();
+            } else {
+                console.log(`[Baileys] Session "${sessionId}" requested Pairing Code. QR code event ignored.`);
             }
-            sessionData.lastUpdated = new Date();
         }
 
         if (connection === 'connecting') {
@@ -823,9 +853,12 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
 
         if (connection === 'open') {
             sessionData.status = 'connected';
+            sessionData.isReconnecting = false;
             sessionData.connectedAt = Date.now();
             sessionData.qr = null;
             sessionData.qrImage = null;
+            sessionData.pairingCode = null;
+            sessionData.pairingError = null;
 
             const userJid = sock.user?.id || '';
             const phone = userJid ? userJid.split(':')[0].split('@')[0] : '';
@@ -948,11 +981,11 @@ const handleStartSession = async (req, res) => {
 
         session = await initBaileysSession(sessionId, accountName, phoneNumber, usePairingCode);
 
-        // Wait up to 6 seconds for initial QR or Pairing Code if not already ready
+        // Wait up to 10 seconds for initial QR or Pairing Code if not already ready
         let attempts = 0;
         if (usePairingCode) {
-            while (!session.pairingCode && !session.pairingError && attempts < 30 && session.status !== 'connected') {
-                await new Promise(resolve => setTimeout(resolve, 200));
+            while (!session.pairingCode && !session.pairingError && attempts < 40 && session.status !== 'connected') {
+                await new Promise(resolve => setTimeout(resolve, 250));
                 attempts++;
             }
         } else {

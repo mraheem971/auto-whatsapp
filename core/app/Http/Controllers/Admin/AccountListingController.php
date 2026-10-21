@@ -50,11 +50,21 @@ class AccountListingController extends Controller
         $pairingMethod = $request->pairing_method ?: 'qr';
         $phoneNumber   = $request->phone_number ? preg_replace('/[^0-9]/', '', $request->phone_number) : null;
 
-        if ($pairingMethod === 'code' && empty($phoneNumber)) {
-            return response()->json([
-                'status' => 'error',
-                'error'  => 'Please enter your full WhatsApp phone number (with country code) to generate a pairing code.',
-            ], 422);
+        if ($pairingMethod === 'code') {
+            if (empty($phoneNumber)) {
+                return response()->json([
+                    'status' => 'error',
+                    'error'  => 'Please enter your full WhatsApp phone number (with country code) to generate a pairing code.',
+                ], 422);
+            }
+            $cleanPhone = ltrim($phoneNumber, '0');
+            if (strlen($cleanPhone) < 9) {
+                return response()->json([
+                    'status' => 'error',
+                    'error'  => 'Please include your country code without "+" or "00" (e.g. 923001234567 or 14155552671).',
+                ], 422);
+            }
+            $phoneNumber = $cleanPhone;
         }
 
         $sessionId = 'wa_' . time() . '_' . Str::random(8);

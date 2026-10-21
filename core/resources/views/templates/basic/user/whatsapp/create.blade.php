@@ -62,8 +62,10 @@
 
                                 <div class="mb-4 d-none" id="phoneNumberWrapper">
                                     <label class="fw-bold mb-1">WhatsApp Phone Number (with Country Code) <span class="text-danger">*</span></label>
-                                    <input type="text" name="phone_number" id="phoneNumberInput" class="form-control" placeholder="e.g. 14155552671 (no dashes or spaces)">
-                                    <small class="text-muted">Enter the phone number registered with your WhatsApp.</small>
+                                    <input type="text" name="phone_number" id="phoneNumberInput" class="form-control" placeholder="e.g. 923001234567 or 14155552671">
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="las la-info-circle text-primary"></i> Enter your phone number with country code, without spaces, +, or leading 00 (e.g. <code>923001234567</code>).
+                                    </small>
                                 </div>
 
                                 <button type="submit" class="btn btn--base w-100 py-2" id="btnInitSession">
@@ -86,10 +88,30 @@
 
                             <!-- Pairing Code Display -->
                             <div id="pairingCodeContainer" class="d-none">
-                                <h5 class="fw-bold mb-2">Enter Pairing Code in WhatsApp</h5>
-                                <p class="text-muted small mb-3">WhatsApp sent a notification or open: Linked Devices &rarr; Link with phone number instead.</p>
-                                <div class="p-3 bg-light border rounded d-inline-block mb-3">
-                                    <span class="fs-1 fw-bold font-monospace text-primary tracking-widest" id="pairingCodeText">------</span>
+                                <div class="card border-0 bg-light p-3 p-md-4 mb-3 rounded-4 shadow-sm mx-auto" style="max-width: 520px;">
+                                    <h5 class="fw-bold mb-1 text-dark">Enter Pairing Code in WhatsApp</h5>
+                                    <p class="text-muted small mb-3">A notification may have arrived on your phone, or link manually using the code below:</p>
+                                    
+                                    <div class="d-flex align-items-center justify-content-center gap-2 mb-3">
+                                        <div class="px-4 py-2 bg-white border border-2 border-primary rounded-3 shadow-sm">
+                                            <span class="fs-1 fw-bold font-monospace text-primary tracking-widest" id="pairingCodeText">
+                                                <span class="spinner-border spinner-border-sm text-primary me-2"></span>Generating...
+                                            </span>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary px-3 py-2 d-flex align-items-center gap-1" id="btnCopyPairingCode" title="Copy Pairing Code" style="height: 58px;">
+                                            <i class="las la-copy fs-4"></i> <span id="copyBtnText" class="fw-bold">Copy</span>
+                                        </button>
+                                    </div>
+
+                                    <div class="text-start bg-white p-3 rounded-3 border small">
+                                        <h6 class="fw-bold mb-2 text-dark"><i class="las la-mobile-alt text-primary me-1"></i> How to link on your phone:</h6>
+                                        <ol class="mb-0 ps-3 text-muted">
+                                            <li class="mb-1">Open <strong>WhatsApp</strong> on your phone</li>
+                                            <li class="mb-1">Go to <strong>Settings</strong> &rarr; <strong>Linked Devices</strong> &rarr; <strong>Link a Device</strong></li>
+                                            <li class="mb-1">Tap <strong>"Link with phone number instead"</strong> at the bottom</li>
+                                            <li>Enter the 8-character pairing code shown above</li>
+                                        </ol>
+                                    </div>
                                 </div>
                             </div>
 
@@ -135,6 +157,7 @@
 
         var pollInterval = null;
         var currentSessionId = null;
+        var activeMethod = 'qr';
 
         $('input[name="pairing_method"]').on('change', function () {
             if ($(this).val() === 'code') {
@@ -146,10 +169,43 @@
             }
         });
 
+        $(document).on('click', '#btnCopyPairingCode', function () {
+            var rawText = $('#pairingCodeText').text().trim().replace(/[^a-zA-Z0-9]/g, '');
+            if (rawText && rawText.length === 8) {
+                var codeText = $('#pairingCodeText').text().trim();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(codeText).then(function () {
+                        $('#copyBtnText').text('Copied!');
+                        setTimeout(function () { $('#copyBtnText').text('Copy'); }, 2000);
+                    });
+                } else {
+                    var temp = $('<input>');
+                    $('body').append(temp);
+                    temp.val(codeText).select();
+                    document.execCommand('copy');
+                    temp.remove();
+                    $('#copyBtnText').text('Copied!');
+                    setTimeout(function () { $('#copyBtnText').text('Copy'); }, 2000);
+                }
+            }
+        });
+
         $('#initWhatsAppForm').on('submit', function (e) {
             e.preventDefault();
             var $btn = $('#btnInitSession');
             var originalText = $btn.html();
+
+            activeMethod = $('input[name="pairing_method"]:checked').val() || 'qr';
+
+            if (activeMethod === 'code') {
+                var rawPhone = ($('#phoneNumberInput').val() || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
+                if (rawPhone.length < 9) {
+                    notify('error', 'Please enter a valid phone number with country code (e.g. 923001234567).');
+                    return false;
+                }
+                $('#phoneNumberInput').val(rawPhone);
+            }
+
             $btn.prop('disabled', true).html('<i class="las la-spinner la-spin me-1"></i> Connecting to WhatsApp...');
 
             $.ajax({
@@ -160,20 +216,31 @@
                     $btn.prop('disabled', false).html(originalText);
                     if (res.status === 'success') {
                         currentSessionId = res.sessionId;
+                        activeMethod = res.pairingMethod || activeMethod;
+
                         $('#setupFormSection').addClass('d-none');
                         $('#connectionDisplaySection').removeClass('d-none');
 
-                        if (res.pairingMethod === 'code' && res.pairingCode) {
-                            $('#pairingCodeContainer').removeClass('d-none');
+                        if (activeMethod === 'code') {
                             $('#qrContainer').addClass('d-none');
-                            $('#pairingCodeText').text(res.pairingCode);
-                        } else if (res.qrImage) {
-                            $('#qrContainer').removeClass('d-none');
+                            $('#pairingCodeContainer').removeClass('d-none');
+                            if (res.pairingCode) {
+                                $('#pairingCodeText').text(res.pairingCode);
+                                $('#connectionStatusText').text('Enter this code in WhatsApp on your phone...');
+                            } else {
+                                $('#pairingCodeText').html('<span class="spinner-border spinner-border-sm text-primary me-2"></span>Generating...');
+                                $('#connectionStatusText').text('Requesting 8-digit pairing code from WhatsApp...');
+                            }
+                        } else {
                             $('#pairingCodeContainer').addClass('d-none');
-                            $('#qrImage').attr('src', res.qrImage);
+                            $('#qrContainer').removeClass('d-none');
+                            if (res.qrImage) {
+                                $('#qrImage').attr('src', res.qrImage);
+                            }
+                            $('#connectionStatusText').text('Waiting for QR code scan on your phone...');
                         }
 
-                        startPolling(currentSessionId);
+                        startPolling(currentSessionId, activeMethod);
                     } else {
                         notify('error', res.error || 'Failed to initialize session.');
                     }
@@ -186,7 +253,7 @@
             });
         });
 
-        function startPolling(sessionId) {
+        function startPolling(sessionId, method) {
             if (pollInterval) clearInterval(pollInterval);
 
             pollInterval = setInterval(function () {
@@ -202,16 +269,29 @@
                                 $('#successAccountDetails').text('Connected as +' + (res.user.phone || '') + ' (' + (res.user.name || '') + ')');
                             }
                             notify('success', 'WhatsApp account connected successfully!');
-                        } else if (res.status === 'qr_ready' && res.qrImage) {
-                            $('#qrImage').attr('src', res.qrImage);
-                            $('#qrContainer').removeClass('d-none');
-                            $('#pairingCodeContainer').addClass('d-none');
-                        } else if (res.status === 'pairing_code_ready' && res.pairingCode) {
-                            $('#pairingCodeText').text(res.pairingCode);
-                            $('#pairingCodeContainer').removeClass('d-none');
+                            return;
+                        }
+
+                        if (method === 'code') {
                             $('#qrContainer').addClass('d-none');
-                        } else if (res.status === 'pairing_error') {
-                            $('#connectionStatusText').html('<span class="text-danger fw-bold"><i class="las la-exclamation-triangle me-1"></i>' + (res.pairingError || 'Pairing error. Verify your phone number.') + '</span>');
+                            $('#pairingCodeContainer').removeClass('d-none');
+
+                            if (res.pairingCode) {
+                                $('#pairingCodeText').text(res.pairingCode);
+                                $('#connectionStatusText').text('Enter code on WhatsApp: Linked Devices > Link with phone number');
+                            } else if (res.status === 'pairing_error') {
+                                $('#connectionStatusText').html('<span class="text-danger fw-bold"><i class="las la-exclamation-triangle me-1"></i>' + (res.pairingError || 'Pairing error. Verify your phone number.') + '</span>');
+                            } else {
+                                $('#connectionStatusText').text('Generating 8-digit pairing code...');
+                            }
+                        } else {
+                            $('#pairingCodeContainer').addClass('d-none');
+                            $('#qrContainer').removeClass('d-none');
+
+                            if (res.status === 'qr_ready' && res.qrImage) {
+                                $('#qrImage').attr('src', res.qrImage);
+                                $('#connectionStatusText').text('Scan the QR code with WhatsApp on your phone...');
+                            }
                         }
                     }
                 });
