@@ -61,11 +61,22 @@
                                 </div>
 
                                 <div class="mb-4 d-none" id="phoneNumberWrapper">
-                                    <label class="fw-bold mb-1">WhatsApp Phone Number (with Country Code) <span class="text-danger">*</span></label>
-                                    <input type="text" name="phone_number" id="phoneNumberInput" class="form-control" placeholder="e.g. 923001234567 or 14155552671">
-                                    <small class="text-muted d-block mt-1">
-                                        <i class="las la-info-circle text-primary"></i> Enter your phone number with country code, without spaces, +, or leading 00 (e.g. <code>923001234567</code>).
-                                    </small>
+                                    <label class="fw-bold mb-1">WhatsApp Phone Number <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted font-monospace"><i class="las la-globe me-1 text-primary"></i> +</span>
+                                        <input type="text" name="phone_number" id="phoneNumberInput" class="form-control form-control-lg font-monospace" placeholder="e.g. 923216793596 or 03216793596" autocomplete="tel">
+                                    </div>
+                                    <div id="phoneHelperText" class="mt-2 small text-muted">
+                                        <i class="las la-info-circle text-primary"></i> Enter your WhatsApp number with country code (e.g. <code>923216793596</code> or local <code>03216793596</code>).
+                                    </div>
+                                    <div id="phoneLiveBadge" class="mt-2 d-none">
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                                            <i class="lab la-whatsapp me-1"></i> Linking with: <strong id="phoneFormattedPreview">+92 321 6793596</strong>
+                                        </span>
+                                    </div>
+                                    <div id="phoneInlineError" class="mt-2 text-danger small d-none">
+                                        <i class="las la-exclamation-circle me-1"></i> <span id="phoneInlineErrorText"></span>
+                                    </div>
                                 </div>
 
                                 <button type="submit" class="btn btn--base w-100 py-2" id="btnInitSession">
@@ -159,13 +170,64 @@
         var currentSessionId = null;
         var activeMethod = 'qr';
 
+        function normalizePhone(val) {
+            if (!val) return '';
+            var clean = val.toString().replace(/[^0-9]/g, '');
+            if (clean.startsWith('00')) clean = clean.substring(2);
+            // Auto-convert Pakistan domestic 03XXXXXXXXX (11 digits) -> 923XXXXXXXXX
+            if (/^03[0-9]{9}$/.test(clean)) {
+                clean = '92' + clean.substring(1);
+            } else if (/^3[0-9]{9}$/.test(clean)) {
+                clean = '92' + clean;
+            } else {
+                clean = clean.replace(/^0+/, '');
+            }
+            return clean;
+        }
+
+        function formatPhonePreview(clean) {
+            if (!clean || clean.length < 9) return '';
+            if (clean.startsWith('92') && clean.length === 12) {
+                return '+92 ' + clean.substring(2, 5) + ' ' + clean.substring(5);
+            }
+            if (clean.startsWith('1') && clean.length === 11) {
+                return '+1 (' + clean.substring(1, 4) + ') ' + clean.substring(4, 7) + '-' + clean.substring(7);
+            }
+            if (clean.length > 3) {
+                return '+' + clean.substring(0, clean.length - 7) + ' ' + clean.substring(clean.length - 7, clean.length - 4) + ' ' + clean.substring(clean.length - 4);
+            }
+            return '+' + clean;
+        }
+
+        function updatePhonePreview() {
+            var raw = ($('#phoneNumberInput').val() || '').trim();
+            if (window.iziToast) iziToast.destroy();
+            $('#phoneInlineError').addClass('d-none');
+
+            var clean = normalizePhone(raw);
+            if (clean.length >= 9) {
+                var formatted = formatPhonePreview(clean);
+                $('#phoneFormattedPreview').text(formatted);
+                $('#phoneLiveBadge').removeClass('d-none');
+            } else {
+                $('#phoneLiveBadge').addClass('d-none');
+            }
+        }
+
+        $('#phoneNumberInput').on('input propertychange change paste keyup', function () {
+            updatePhonePreview();
+        });
+
         $('input[name="pairing_method"]').on('change', function () {
             if ($(this).val() === 'code') {
                 $('#phoneNumberWrapper').removeClass('d-none');
-                $('#phoneNumberInput').attr('required', true);
+                $('#phoneNumberInput').attr('required', true).focus();
+                updatePhonePreview();
             } else {
                 $('#phoneNumberWrapper').addClass('d-none');
                 $('#phoneNumberInput').removeAttr('required');
+                $('#phoneInlineError').addClass('d-none');
+                $('#phoneLiveBadge').addClass('d-none');
             }
         });
 
@@ -192,18 +254,27 @@
 
         $('#initWhatsAppForm').on('submit', function (e) {
             e.preventDefault();
+            if (window.iziToast) iziToast.destroy();
+
             var $btn = $('#btnInitSession');
             var originalText = $btn.html();
 
             activeMethod = $('input[name="pairing_method"]:checked').val() || 'qr';
 
             if (activeMethod === 'code') {
-                var rawPhone = ($('#phoneNumberInput').val() || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
-                if (rawPhone.length < 9) {
-                    notify('error', 'Please enter a valid phone number with country code (e.g. 923001234567).');
+                var rawInput = ($('#phoneNumberInput').val() || '').trim();
+                var clean = normalizePhone(rawInput);
+
+                if (!clean || clean.length < 9) {
+                    $('#phoneInlineError').removeClass('d-none');
+                    $('#phoneInlineErrorText').text('Please enter a valid phone number with country code (e.g. 923216793596 or local 03216793596).');
+                    $('#phoneNumberInput').focus();
                     return false;
                 }
-                $('#phoneNumberInput').val(rawPhone);
+
+                // Place the clean normalized number into input so it is submitted cleanly
+                $('#phoneNumberInput').val(clean);
+                $('#phoneInlineError').addClass('d-none');
             }
 
             $btn.prop('disabled', true).html('<i class="las la-spinner la-spin me-1"></i> Connecting to WhatsApp...');

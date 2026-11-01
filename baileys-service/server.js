@@ -592,6 +592,19 @@ async function executeHumanLikeResponseFlow(sock, remoteJid, msg, targetRule, pr
 
 const logger = pino({ level: 'silent' });
 
+function normalizeWhatsAppPhone(phone) {
+    if (!phone) return null;
+    let cleaned = phone.toString().replace(/[^0-9]/g, '').replace(/^00+/, '');
+    if (/^03[0-9]{9}$/.test(cleaned)) {
+        cleaned = '92' + cleaned.slice(1);
+    } else if (/^3[0-9]{9}$/.test(cleaned)) {
+        cleaned = '92' + cleaned;
+    } else {
+        cleaned = cleaned.replace(/^0+/, '');
+    }
+    return cleaned;
+}
+
 async function initBaileysSession(sessionId, accountName, phoneNumber = null, usePairingCode = false) {
     // If session already exists, cleanly tear down previous socket and listeners
     const existing = sessions.get(sessionId);
@@ -618,7 +631,7 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
         accountName: accountName || sessionId,
         status: 'initializing',
         pairingMethod: usePairingCode ? 'code' : 'qr',
-        targetPhone: phoneNumber ? phoneNumber.toString().replace(/[^0-9]/g, '').replace(/^0+/, '') : null,
+        targetPhone: normalizeWhatsAppPhone(phoneNumber),
         pairingCode: null,
         pairingError: null,
         qr: null,
@@ -638,7 +651,7 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
 
     sessionData.pairingMethod = usePairingCode ? 'code' : 'qr';
     if (phoneNumber) {
-        sessionData.targetPhone = phoneNumber.toString().replace(/[^0-9]/g, '').replace(/^0+/, '');
+        sessionData.targetPhone = normalizeWhatsAppPhone(phoneNumber);
     }
     sessionData.status = 'initializing';
     sessionData.isReconnecting = false;

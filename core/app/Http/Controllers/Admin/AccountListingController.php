@@ -57,11 +57,23 @@ class AccountListingController extends Controller
                     'error'  => 'Please enter your full WhatsApp phone number (with country code) to generate a pairing code.',
                 ], 422);
             }
-            $cleanPhone = ltrim($phoneNumber, '0');
+
+            // Strip leading 00 if international format was prefixed with 00 (e.g. 00923216793596 -> 923216793596)
+            $cleanPhone = preg_replace('/^00+/', '', $phoneNumber);
+
+            // Auto-detect domestic Pakistan mobile format (e.g. 03216793596 [11 digits] or 3216793596 [10 digits])
+            if (preg_match('/^03[0-9]{9}$/', $cleanPhone)) {
+                $cleanPhone = '92' . substr($cleanPhone, 1);
+            } elseif (preg_match('/^3[0-9]{9}$/', $cleanPhone)) {
+                $cleanPhone = '92' . $cleanPhone;
+            } else {
+                $cleanPhone = ltrim($cleanPhone, '0');
+            }
+
             if (strlen($cleanPhone) < 9) {
                 return response()->json([
                     'status' => 'error',
-                    'error'  => 'Please include your country code without "+" or "00" (e.g. 923001234567 or 14155552671).',
+                    'error'  => 'Please include your country code (e.g. 923216793596 for PK or 14155552671 for US).',
                 ], 422);
             }
             $phoneNumber = $cleanPhone;
