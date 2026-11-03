@@ -61,17 +61,35 @@
                                 </div>
 
                                 <div class="mb-4 d-none" id="phoneNumberWrapper">
-                                    <label class="fw-bold mb-1">WhatsApp Phone Number <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-light text-muted font-monospace"><i class="las la-globe me-1 text-primary"></i> +</span>
-                                        <input type="text" name="phone_number" id="phoneNumberInput" class="form-control form-control-lg font-monospace" placeholder="e.g. 923001234567 or 03001234567" autocomplete="tel">
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-5 col-12">
+                                            <label class="fw-bold mb-1 small text-dark"><i class="las la-globe text-primary me-1"></i> Country <span class="text-danger">*</span></label>
+                                            <select name="country_iso" id="countryCodeSelect" class="form-select form-control select2-country" style="width: 100%;">
+                                                @foreach($countries as $iso => $country)
+                                                    <option value="{{ $iso }}" 
+                                                            data-dial_code="{{ $country->dial_code }}" 
+                                                            data-country="{{ $country->country }}"
+                                                            @selected(strtoupper($userCountry ?? 'PK') === strtoupper($iso))>
+                                                        {{ $country->country }} (+{{ $country->dial_code }})
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-md-7 col-12">
+                                            <label class="fw-bold mb-1 small text-dark"><i class="lab la-whatsapp text-success me-1"></i> Local Phone Number <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light text-primary font-monospace fw-bold" id="selectedDialCodeBadge">+{{ $defaultDialCode }}</span>
+                                                <input type="tel" name="local_phone_number" id="phoneNumberInput" class="form-control form-control-lg font-monospace" placeholder="e.g. 3001234567" autocomplete="tel">
+                                            </div>
+                                        </div>
                                     </div>
+                                    <input type="hidden" name="phone_number" id="fullPhoneNumberInput">
                                     <div id="phoneHelperText" class="mt-2 small text-muted">
-                                        <i class="las la-info-circle text-primary"></i> Enter your WhatsApp number with country code (e.g. <code>923001234567</code> or local <code>03001234567</code>).
+                                        <i class="las la-info-circle text-primary"></i> Select your country from the dropdown and type only your local phone number (no country code needed, e.g. <code>3001234567</code>).
                                     </div>
                                     <div id="phoneLiveBadge" class="mt-2 d-none">
                                         <span class="badge bg-success text-white px-3 py-2 fs-6 shadow-sm">
-                                            <i class="lab la-whatsapp me-1"></i> Linking with: <strong id="phoneFormattedPreview">+92 300 1234567</strong>
+                                            <i class="lab la-whatsapp me-1"></i> Ready to link: <strong id="phoneFormattedPreview">+92 300 1234567</strong>
                                         </span>
                                     </div>
                                     <div id="phoneInlineError" class="mt-2 text-danger small d-none">
@@ -161,6 +179,32 @@
 </div>
 @endsection
 
+@push('style')
+<style>
+    .select2-container--default .select2-selection--single {
+        height: 48px !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 0.375rem !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 46px !important;
+        font-weight: 500 !important;
+        color: #212529 !important;
+        padding-left: 12px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 46px !important;
+        right: 10px !important;
+    }
+    .select2-dropdown {
+        border-radius: 0.375rem !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    }
+</style>
+@endpush
+
 @push('script')
 <script>
     (function ($) {
@@ -170,36 +214,47 @@
         var currentSessionId = null;
         var activeMethod = 'qr';
 
-        function normalizePhone(val) {
-            if (!val) return '';
-            var clean = val.toString().replace(/[^0-9]/g, '');
-            if (clean.startsWith('00')) clean = clean.substring(2);
-            // Auto-convert Pakistan domestic 03XXXXXXXXX (11 digits) -> 923XXXXXXXXX
-            if (/^03[0-9]{9}$/.test(clean)) {
-                clean = '92' + clean.substring(1);
-            } else if (/^3[0-9]{9}$/.test(clean)) {
-                clean = '92' + clean;
-            } else {
-                clean = clean.replace(/^0+/, '');
-            }
-            return clean;
+        if ($.fn.select2) {
+            $('.select2-country').select2({
+                width: '100%'
+            });
         }
 
-        function formatPhonePreview(clean) {
-            if (!clean || clean.length < 9) return '';
-            if (clean.startsWith('92') && clean.length === 12) {
-                return '+92 ' + clean.substring(2, 5) + ' ' + clean.substring(5);
+        $('#countryCodeSelect').on('change', function () {
+            var dial = $(this).find(':selected').data('dial_code') || '92';
+            $('#selectedDialCodeBadge').text('+' + dial);
+            updatePhonePreview();
+        });
+
+        function getSelectedDialCode() {
+            return ($('#countryCodeSelect option:selected').data('dial_code') || '92').toString();
+        }
+
+        function cleanLocalPhone(raw, dialCode) {
+            if (!raw) return '';
+            var digits = raw.toString().replace(/[^0-9]/g, '');
+            if (digits.startsWith('00')) digits = digits.substring(2);
+
+            // If user pasted a number that already starts with the dial code, strip it so we get only the local portion
+            if (dialCode && digits.startsWith(dialCode) && digits.length >= (dialCode.length + 8)) {
+                digits = digits.substring(dialCode.length);
             }
-            if (clean.startsWith('1') && clean.length === 11) {
-                return '+1 (' + clean.substring(1, 4) + ') ' + clean.substring(4, 7) + '-' + clean.substring(7);
+
+            // Strip domestic leading zeros (e.g. 0300... -> 300...)
+            digits = digits.replace(/^0+/, '');
+            return digits;
+        }
+
+        function formatPhonePreview(dialCode, cleanLocal) {
+            if (!cleanLocal) return '+' + dialCode;
+            if (cleanLocal.length > 6) {
+                return '+' + dialCode + ' ' + cleanLocal.substring(0, 3) + ' ' + cleanLocal.substring(3);
             }
-            if (clean.length > 3) {
-                return '+' + clean.substring(0, clean.length - 7) + ' ' + clean.substring(clean.length - 7, clean.length - 4) + ' ' + clean.substring(clean.length - 4);
-            }
-            return '+' + clean;
+            return '+' + dialCode + ' ' + cleanLocal;
         }
 
         function updatePhonePreview() {
+            var dialCode = getSelectedDialCode();
             var raw = ($('#phoneNumberInput').val() || '').trim();
             if (raw.startsWith('+')) {
                 raw = raw.replace(/^\++/, '');
@@ -207,13 +262,16 @@
             }
             $('#phoneInlineError').addClass('d-none');
 
-            var clean = normalizePhone(raw);
-            if (clean.length >= 9) {
-                var formatted = formatPhonePreview(clean);
+            var cleanLocal = cleanLocalPhone(raw, dialCode);
+            if (cleanLocal.length >= 7) {
+                var full = dialCode + cleanLocal;
+                $('#fullPhoneNumberInput').val(full);
+                var formatted = formatPhonePreview(dialCode, cleanLocal);
                 $('#phoneFormattedPreview').text(formatted);
                 $('#phoneLiveBadge').removeClass('d-none');
             } else {
                 $('#phoneLiveBadge').addClass('d-none');
+                $('#fullPhoneNumberInput').val('');
             }
         }
 
@@ -265,18 +323,20 @@
             activeMethod = $('input[name="pairing_method"]:checked').val() || 'qr';
 
             if (activeMethod === 'code') {
+                var dialCode = getSelectedDialCode();
                 var rawInput = ($('#phoneNumberInput').val() || '').trim();
-                var clean = normalizePhone(rawInput);
+                var cleanLocal = cleanLocalPhone(rawInput, dialCode);
 
-                if (!clean || clean.length < 9) {
+                if (!cleanLocal || cleanLocal.length < 7) {
                     $('#phoneInlineError').removeClass('d-none');
-                    $('#phoneInlineErrorText').text('Please enter a valid phone number with country code (e.g. 923001234567 or local 03001234567).');
+                    $('#phoneInlineErrorText').text('Please enter a valid local phone number for ' + ($('#countryCodeSelect option:selected').data('country') || 'your country') + ' (e.g. 3001234567).');
                     $('#phoneNumberInput').focus();
                     return false;
                 }
 
-                // Place the clean normalized number into input so it is submitted cleanly
-                $('#phoneNumberInput').val(clean);
+                var full = dialCode + cleanLocal;
+                $('#fullPhoneNumberInput').val(full);
+                $('#phoneNumberInput').val(cleanLocal);
                 $('#phoneInlineError').addClass('d-none');
             }
 

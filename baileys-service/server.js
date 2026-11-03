@@ -695,7 +695,7 @@ async function initBaileysSession(sessionId, accountName, phoneNumber = null, us
                 // Wait for WebSocket connection to open (sock.ws.readyState === 1)
                 // Check up to 15 seconds (30 iterations * 500ms)
                 let waitIterations = 0;
-                while ((!sock?.ws || sock?.ws?.readyState !== 1) && waitIterations < 30) {
+                while ((!sock?.ws || sock?.ws?.readyState !== 1) && waitIterations < 60) {
                     if (sessionData.status === 'connected') return;
                     await new Promise(r => setTimeout(r, 500));
                     waitIterations++;

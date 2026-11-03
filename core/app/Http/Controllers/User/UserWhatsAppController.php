@@ -47,15 +47,25 @@ class UserWhatsAppController extends Controller
             return redirect()->route('user.plans.index')->withNotify($notify);
         }
 
-        return view('Template::user.whatsapp.create', compact('pageTitle', 'plan'));
+        $countries = json_decode(file_get_contents(resource_path('views/partials/country.json')));
+        $userCountry = strtoupper($user->country_code ?? 'PK');
+        $defaultDialCode = '92';
+        if (isset($countries->$userCountry)) {
+            $defaultDialCode = (string)$countries->$userCountry->dial_code;
+        }
+
+        return view('Template::user.whatsapp.create', compact('pageTitle', 'plan', 'countries', 'userCountry', 'defaultDialCode'));
     }
 
     public function initSession(Request $request)
     {
         $request->validate([
-            'account_name'   => 'required|string|max:100',
-            'pairing_method' => 'nullable|in:qr,code',
-            'phone_number'   => 'nullable|string|max:50',
+            'account_name'        => 'required|string|max:100',
+            'pairing_method'      => 'nullable|in:qr,code',
+            'country_iso'         => 'nullable|string|max:10',
+            'country_code'        => 'nullable|string|max:10',
+            'local_phone_number'  => 'nullable|string|max:50',
+            'phone_number'        => 'nullable|string|max:50',
         ]);
 
         $user = auth()->user();
@@ -77,35 +87,56 @@ class UserWhatsAppController extends Controller
 
         $accountName   = $request->account_name;
         $pairingMethod = $request->pairing_method ?: 'qr';
-        $phoneNumber   = $request->phone_number ? preg_replace('/[^0-9]/', '', $request->phone_number) : null;
+        $phoneNumber   = null;
 
         if ($pairingMethod === 'code') {
-            if (empty($phoneNumber)) {
+            $countryIso = strtoupper($request->country_iso ?? $request->country_code ?? '');
+            $countries  = (array) json_decode(file_get_contents(resource_path('views/partials/country.json')), true);
+            $dialCode   = '';
+            if ($countryIso && isset($countries[$countryIso])) {
+                $dialCode = (string) $countries[$countryIso]['dial_code'];
+            }
+
+            // Prefer explicit local_phone_number or fallback to phone_number
+            $rawInput = $request->local_phone_number ?: $request->phone_number;
+            $cleanInput = $rawInput ? preg_replace('/[^0-9]/', '', (string)$rawInput) : '';
+            $cleanInput = preg_replace('/^00+/', '', $cleanInput);
+
+            if (empty($cleanInput)) {
                 return response()->json([
                     'status' => 'error',
-                    'error'  => 'Please enter your WhatsApp phone number with country code.',
+                    'error'  => 'Please enter your phone number.',
                 ], 422);
             }
 
-            // Strip leading 00 if international format was prefixed with 00 (e.g. 00923001234567 -> 923001234567)
-            $cleanPhone = preg_replace('/^00+/', '', $phoneNumber);
-
-            // Auto-detect domestic Pakistan mobile format (e.g. 03001234567 [11 digits] or 3001234567 [10 digits])
-            if (preg_match('/^03[0-9]{9}$/', $cleanPhone)) {
-                $cleanPhone = '92' . substr($cleanPhone, 1);
-            } elseif (preg_match('/^3[0-9]{9}$/', $cleanPhone)) {
-                $cleanPhone = '92' . $cleanPhone;
+            if ($dialCode) {
+                // Strip domestic leading zeros (e.g. 0300... -> 300...)
+                $strippedLocal = ltrim($cleanInput, '0');
+                // Check if user already typed/pasted the dial code
+                if (str_starts_with($strippedLocal, $dialCode) && strlen($strippedLocal) >= (strlen($dialCode) + 8)) {
+                    $finalPhone = $strippedLocal;
+                } else {
+                    $finalPhone = $dialCode . $strippedLocal;
+                }
             } else {
-                $cleanPhone = ltrim($cleanPhone, '0');
+                // Auto-detect Pakistan domestic mobile format
+                if (preg_match('/^03[0-9]{9}$/', $cleanInput)) {
+                    $finalPhone = '92' . substr($cleanInput, 1);
+                } elseif (preg_match('/^3[0-9]{9}$/', $cleanInput)) {
+                    $finalPhone = '92' . $cleanInput;
+                } else {
+                    $finalPhone = ltrim($cleanInput, '0');
+                }
             }
 
-            if (strlen($cleanPhone) < 9) {
+            if (strlen($finalPhone) < 9 || strlen($finalPhone) > 16) {
                 return response()->json([
                     'status' => 'error',
-                    'error'  => 'Please include your country code (e.g. 923001234567 for PK or 14155552671 for US).',
+                    'error'  => 'Please enter a valid phone number (e.g. 3001234567).',
                 ], 422);
             }
-            $phoneNumber = $cleanPhone;
+
+            $phoneNumber = $finalPhone;
         }
 
         $sessionId = 'usr_' . $user->id . '_' . time() . '_' . Str::random(6);

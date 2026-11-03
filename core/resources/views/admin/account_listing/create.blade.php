@@ -50,16 +50,37 @@
 
                     <!-- Phone Number Input (Active when Phone Code method selected) -->
                     <div class="form-group mb-4" id="phoneInputGroup">
-                        <label class="fw-bold mb-2 small text-dark">
-                            <i class="las la-phone text--success me-1"></i> @lang('WhatsApp Phone Number') <span class="text--danger">*</span>
-                        </label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light text-muted font-monospace"><i class="las la-globe"></i> +</span>
-                            <input type="text" name="phone_number" id="phone_number" class="form-control form-control-lg font-monospace" placeholder="@lang('e.g. 14155552671 or 447123456789')">
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-5 col-12">
+                                <label class="fw-bold mb-1 small text-dark"><i class="las la-globe text--primary me-1"></i> @lang('Country') <span class="text--danger">*</span></label>
+                                <select name="country_iso" id="adminCountryCodeSelect" class="form-control select2" style="width: 100%;">
+                                    @foreach($countries as $iso => $country)
+                                        <option value="{{ $iso }}" 
+                                                data-dial_code="{{ $country->dial_code }}" 
+                                                data-country="{{ $country->country }}"
+                                                @selected(strtoupper($defaultCountry ?? 'PK') === strtoupper($iso))>
+                                            {{ $country->country }} (+{{ $country->dial_code }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-7 col-12">
+                                <label class="fw-bold mb-1 small text-dark"><i class="las la-phone text--success me-1"></i> @lang('Local Phone Number') <span class="text--danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-primary font-monospace fw-bold" id="adminDialCodeBadge">+{{ $defaultDialCode }}</span>
+                                    <input type="tel" name="local_phone_number" id="phone_number" class="form-control form-control-lg font-monospace" placeholder="e.g. 3001234567" autocomplete="tel">
+                                </div>
+                            </div>
                         </div>
+                        <input type="hidden" name="full_phone_number" id="adminFullPhoneNumber">
                         <span class="text-muted d-block mt-1 text-xs">
-                            <i class="las la-info-circle me-1"></i> @lang('Include country code without + or spaces (e.g. 92 for PK, 1 for US, 91 for IN).')
+                            <i class="las la-info-circle me-1"></i> @lang('Select country and enter local number only (no country code needed, e.g. 3001234567).')
                         </span>
+                        <div id="adminPhoneLiveBadge" class="mt-2 d-none">
+                            <span class="badge badge--success px-3 py-2 fs-6 shadow-sm">
+                                <i class="lab la-whatsapp me-1"></i> @lang('Ready to link:') <strong id="adminPhoneFormattedPreview">+92 300 1234567</strong>
+                            </span>
+                        </div>
                     </div>
 
                     <!-- Submit Button -->
@@ -328,12 +349,58 @@
         }
     });
 
+    function getAdminDialCode() {
+        return ($('#adminCountryCodeSelect option:selected').data('dial_code') || '92').toString();
+    }
+
+    function cleanAdminLocalPhone(raw, dialCode) {
+        if (!raw) return '';
+        var digits = raw.toString().replace(/[^0-9]/g, '');
+        if (digits.startsWith('00')) digits = digits.substring(2);
+        if (dialCode && digits.startsWith(dialCode) && digits.length >= (dialCode.length + 8)) {
+            digits = digits.substring(dialCode.length);
+        }
+        digits = digits.replace(/^0+/, '');
+        return digits;
+    }
+
+    function updateAdminPhonePreview() {
+        var dialCode = getAdminDialCode();
+        var raw = ($('#phone_number').val() || '').trim();
+        if (raw.startsWith('+')) {
+            raw = raw.replace(/^\++/, '');
+            $('#phone_number').val(raw);
+        }
+        var cleanLocal = cleanAdminLocalPhone(raw, dialCode);
+        if (cleanLocal.length >= 7) {
+            var full = dialCode + cleanLocal;
+            $('#adminFullPhoneNumber').val(full);
+            $('#adminPhoneFormattedPreview').text('+' + dialCode + ' ' + cleanLocal);
+            $('#adminPhoneLiveBadge').removeClass('d-none');
+        } else {
+            $('#adminPhoneLiveBadge').addClass('d-none');
+            $('#adminFullPhoneNumber').val('');
+        }
+    }
+
+    $('#adminCountryCodeSelect').on('change', function () {
+        var dial = $(this).find(':selected').data('dial_code') || '92';
+        $('#adminDialCodeBadge').text('+' + dial);
+        updateAdminPhonePreview();
+    });
+
+    $('#phone_number').on('input propertychange change paste keyup', function () {
+        updateAdminPhonePreview();
+    });
+
     // Form Submission: Initialize Session with Code or QR
     $('#connectAccountForm').on('submit', function(e){
         e.preventDefault();
 
         const accountName = $('#account_name').val().trim();
-        const phoneNumber = $('#phone_number').val().trim();
+        const dialCode = getAdminDialCode();
+        const rawPhone = $('#phone_number').val().trim();
+        const cleanLocal = cleanAdminLocalPhone(rawPhone, dialCode);
         const method = $('#pairing_method').val();
 
         if(!accountName){
@@ -341,10 +408,13 @@
             return;
         }
 
-        if(method === 'code' && !phoneNumber){
-            notify('error', 'Please enter your WhatsApp phone number with country code');
+        if(method === 'code' && (!cleanLocal || cleanLocal.length < 7)){
+            notify('error', 'Please enter a valid local phone number (e.g. 3001234567)');
+            $('#phone_number').focus();
             return;
         }
+
+        const fullPhoneNumber = dialCode + cleanLocal;
 
         if(pollInterval) clearInterval(pollInterval);
 
@@ -357,7 +427,7 @@
 
         if(method === 'code'){
             $('#loadingTitle').text("@lang('Requesting 8-Digit Pairing Code...')");
-            $('#loadingSubtitle').text(`@lang('Connecting to WhatsApp servers for phone +') ${phoneNumber}...`);
+            $('#loadingSubtitle').text(`@lang('Connecting to WhatsApp servers for phone +') ${fullPhoneNumber}...`);
             $('#btnConnectSubmit').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i> Generating Code...');
         } else {
             $('#loadingTitle').text("@lang('Generating WhatsApp QR Code...')");
@@ -374,7 +444,9 @@
                 _token: "{{ csrf_token() }}",
                 account_name: accountName,
                 pairing_method: method,
-                phone_number: phoneNumber
+                country_iso: $('#adminCountryCodeSelect').val(),
+                local_phone_number: cleanLocal,
+                phone_number: fullPhoneNumber
             },
             success: function(response){
                 $('#loadingState').addClass('d-none');
