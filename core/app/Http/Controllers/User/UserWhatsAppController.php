@@ -132,7 +132,7 @@ class UserWhatsAppController extends Controller
             if (strlen($finalPhone) < 9 || strlen($finalPhone) > 16) {
                 return response()->json([
                     'status' => 'error',
-                    'error'  => 'Please enter a valid phone number (e.g. 3001234567).',
+                    'error'  => 'Please enter a valid phone number.',
                 ], 422);
             }
 

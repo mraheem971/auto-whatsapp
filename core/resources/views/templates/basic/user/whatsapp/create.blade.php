@@ -76,20 +76,20 @@
                                             </select>
                                         </div>
                                         <div class="col-md-7 col-12">
-                                            <label class="fw-bold mb-1 small text-dark"><i class="lab la-whatsapp text-success me-1"></i> Local Phone Number <span class="text-danger">*</span></label>
+                                            <label class="fw-bold mb-1 small text-dark"><i class="lab la-whatsapp text-success me-1"></i> Phone Number <span class="text-danger">*</span></label>
                                             <div class="input-group">
-                                                <span class="input-group-text bg-light text-primary font-monospace fw-bold" id="selectedDialCodeBadge">+{{ $defaultDialCode }}</span>
-                                                <input type="tel" name="local_phone_number" id="phoneNumberInput" class="form-control form-control-lg font-monospace" placeholder="e.g. 3001234567" autocomplete="tel">
+                                                <span class="input-group-text bg-light text-muted"><i class="las la-phone"></i></span>
+                                                <input type="tel" name="local_phone_number" id="phoneNumberInput" class="form-control form-control-lg font-monospace" placeholder="Enter phone number" autocomplete="tel">
                                             </div>
                                         </div>
                                     </div>
                                     <input type="hidden" name="phone_number" id="fullPhoneNumberInput">
                                     <div id="phoneHelperText" class="mt-2 small text-muted">
-                                        <i class="las la-info-circle text-primary"></i> Select your country from the dropdown and type only your local phone number (no country code needed, e.g. <code>3001234567</code>).
+                                        <i class="las la-info-circle text-primary"></i> Select your country from the dropdown and enter your phone number without the country code.
                                     </div>
                                     <div id="phoneLiveBadge" class="mt-2 d-none">
                                         <span class="badge bg-success text-white px-3 py-2 fs-6 shadow-sm">
-                                            <i class="lab la-whatsapp me-1"></i> Ready to link: <strong id="phoneFormattedPreview">+92 300 1234567</strong>
+                                            <i class="lab la-whatsapp me-1"></i> Ready to link: <strong id="phoneFormattedPreview"></strong>
                                         </span>
                                     </div>
                                     <div id="phoneInlineError" class="mt-2 text-danger small d-none">
@@ -221,8 +221,6 @@
         }
 
         $('#countryCodeSelect').on('change', function () {
-            var dial = $(this).find(':selected').data('dial_code') || '92';
-            $('#selectedDialCodeBadge').text('+' + dial);
             updatePhonePreview();
         });
 
@@ -329,7 +327,7 @@
 
                 if (!cleanLocal || cleanLocal.length < 7) {
                     $('#phoneInlineError').removeClass('d-none');
-                    $('#phoneInlineErrorText').text('Please enter a valid local phone number for ' + ($('#countryCodeSelect option:selected').data('country') || 'your country') + ' (e.g. 3001234567).');
+                    $('#phoneInlineErrorText').text('Please enter a valid phone number for ' + ($('#countryCodeSelect option:selected').data('country') || 'your country') + '.');
                     $('#phoneNumberInput').focus();
                     return false;
                 }

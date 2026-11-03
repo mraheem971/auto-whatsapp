@@ -65,20 +65,20 @@
                                 </select>
                             </div>
                             <div class="col-md-7 col-12">
-                                <label class="fw-bold mb-1 small text-dark"><i class="las la-phone text--success me-1"></i> @lang('Local Phone Number') <span class="text--danger">*</span></label>
+                                <label class="fw-bold mb-1 small text-dark"><i class="las la-phone text--success me-1"></i> @lang('Phone Number') <span class="text--danger">*</span></label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light text-primary font-monospace fw-bold" id="adminDialCodeBadge">+{{ $defaultDialCode }}</span>
-                                    <input type="tel" name="local_phone_number" id="phone_number" class="form-control form-control-lg font-monospace" placeholder="e.g. 3001234567" autocomplete="tel">
+                                    <span class="input-group-text bg-light text-muted"><i class="las la-phone"></i></span>
+                                    <input type="tel" name="local_phone_number" id="phone_number" class="form-control form-control-lg font-monospace" placeholder="@lang('Enter phone number')" autocomplete="tel">
                                 </div>
                             </div>
                         </div>
                         <input type="hidden" name="full_phone_number" id="adminFullPhoneNumber">
                         <span class="text-muted d-block mt-1 text-xs">
-                            <i class="las la-info-circle me-1"></i> @lang('Select country and enter local number only (no country code needed, e.g. 3001234567).')
+                            <i class="las la-info-circle me-1"></i> @lang('Select country and enter phone number without country code.')
                         </span>
                         <div id="adminPhoneLiveBadge" class="mt-2 d-none">
                             <span class="badge badge--success px-3 py-2 fs-6 shadow-sm">
-                                <i class="lab la-whatsapp me-1"></i> @lang('Ready to link:') <strong id="adminPhoneFormattedPreview">+92 300 1234567</strong>
+                                <i class="lab la-whatsapp me-1"></i> @lang('Ready to link:') <strong id="adminPhoneFormattedPreview"></strong>
                             </span>
                         </div>
                     </div>
@@ -384,8 +384,6 @@
     }
 
     $('#adminCountryCodeSelect').on('change', function () {
-        var dial = $(this).find(':selected').data('dial_code') || '92';
-        $('#adminDialCodeBadge').text('+' + dial);
         updateAdminPhonePreview();
     });
 
@@ -409,7 +407,7 @@
         }
 
         if(method === 'code' && (!cleanLocal || cleanLocal.length < 7)){
-            notify('error', 'Please enter a valid local phone number (e.g. 3001234567)');
+            notify('error', 'Please enter a valid phone number');
             $('#phone_number').focus();
             return;
         }
