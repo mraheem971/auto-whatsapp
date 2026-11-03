@@ -64,14 +64,14 @@
                                     <label class="fw-bold mb-1">WhatsApp Phone Number <span class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-light text-muted font-monospace"><i class="las la-globe me-1 text-primary"></i> +</span>
-                                        <input type="text" name="phone_number" id="phoneNumberInput" class="form-control form-control-lg font-monospace" placeholder="e.g. 923216793596 or 03216793596" autocomplete="tel">
+                                        <input type="text" name="phone_number" id="phoneNumberInput" class="form-control form-control-lg font-monospace" placeholder="e.g. 923001234567 or 03001234567" autocomplete="tel">
                                     </div>
                                     <div id="phoneHelperText" class="mt-2 small text-muted">
-                                        <i class="las la-info-circle text-primary"></i> Enter your WhatsApp number with country code (e.g. <code>923216793596</code> or local <code>03216793596</code>).
+                                        <i class="las la-info-circle text-primary"></i> Enter your WhatsApp number with country code (e.g. <code>923001234567</code> or local <code>03001234567</code>).
                                     </div>
                                     <div id="phoneLiveBadge" class="mt-2 d-none">
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
-                                            <i class="lab la-whatsapp me-1"></i> Linking with: <strong id="phoneFormattedPreview">+92 321 6793596</strong>
+                                        <span class="badge bg-success text-white px-3 py-2 fs-6 shadow-sm">
+                                            <i class="lab la-whatsapp me-1"></i> Linking with: <strong id="phoneFormattedPreview">+92 300 1234567</strong>
                                         </span>
                                     </div>
                                     <div id="phoneInlineError" class="mt-2 text-danger small d-none">
@@ -201,7 +201,10 @@
 
         function updatePhonePreview() {
             var raw = ($('#phoneNumberInput').val() || '').trim();
-            if (window.iziToast) iziToast.destroy();
+            if (raw.startsWith('+')) {
+                raw = raw.replace(/^\++/, '');
+                $('#phoneNumberInput').val(raw);
+            }
             $('#phoneInlineError').addClass('d-none');
 
             var clean = normalizePhone(raw);
@@ -254,7 +257,7 @@
 
         $('#initWhatsAppForm').on('submit', function (e) {
             e.preventDefault();
-            if (window.iziToast) iziToast.destroy();
+            document.querySelectorAll('.iziToast').forEach(function(el) { el.style.display = 'none'; });
 
             var $btn = $('#btnInitSession');
             var originalText = $btn.html();
@@ -267,7 +270,7 @@
 
                 if (!clean || clean.length < 9) {
                     $('#phoneInlineError').removeClass('d-none');
-                    $('#phoneInlineErrorText').text('Please enter a valid phone number with country code (e.g. 923216793596 or local 03216793596).');
+                    $('#phoneInlineErrorText').text('Please enter a valid phone number with country code (e.g. 923001234567 or local 03001234567).');
                     $('#phoneNumberInput').focus();
                     return false;
                 }

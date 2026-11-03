@@ -58,10 +58,10 @@ class AccountListingController extends Controller
                 ], 422);
             }
 
-            // Strip leading 00 if international format was prefixed with 00 (e.g. 00923216793596 -> 923216793596)
+            // Strip leading 00 if international format was prefixed with 00 (e.g. 00923001234567 -> 923001234567)
             $cleanPhone = preg_replace('/^00+/', '', $phoneNumber);
 
-            // Auto-detect domestic Pakistan mobile format (e.g. 03216793596 [11 digits] or 3216793596 [10 digits])
+            // Auto-detect domestic Pakistan mobile format (e.g. 03001234567 [11 digits] or 3001234567 [10 digits])
             if (preg_match('/^03[0-9]{9}$/', $cleanPhone)) {
                 $cleanPhone = '92' . substr($cleanPhone, 1);
             } elseif (preg_match('/^3[0-9]{9}$/', $cleanPhone)) {
@@ -73,7 +73,7 @@ class AccountListingController extends Controller
             if (strlen($cleanPhone) < 9) {
                 return response()->json([
                     'status' => 'error',
-                    'error'  => 'Please include your country code (e.g. 923216793596 for PK or 14155552671 for US).',
+                    'error'  => 'Please include your country code (e.g. 923001234567 for PK or 14155552671 for US).',
                 ], 422);
             }
             $phoneNumber = $cleanPhone;
